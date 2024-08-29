@@ -1,0 +1,3 @@
+[*.{kt,kts}]
+ktlint_standard_package-name = disabled # Already published, let's not change the package name now ¯\_(ツ)_/¯
+ktlint_standard_no-wildcard-imports = disabled # Wildcard import is recommended by kotlinx.coroutines doc

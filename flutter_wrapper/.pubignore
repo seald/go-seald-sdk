@@ -1,0 +1,4 @@
+# Pubignore file used by `flutter pub publish`, which allows to specify files to ignore
+# + makes it not use .gitignore (because there are some gitignored files that we actually want)
+
+README_DEV.md

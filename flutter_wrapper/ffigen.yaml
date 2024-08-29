@@ -1,0 +1,38 @@
+# Run with `dart run ffigen --config ffigen.yaml`.
+name: SealdSdkCBindings
+description: |
+  Bindings for `c-headers/seald_sdk.h`.
+
+  Regenerate bindings with `dart run ffigen --config ffigen.yaml`.
+output: 'lib/seald_sdk_c_bindings_generated.dart'
+headers:
+  entry-points:
+    - 'c-headers/seald_sdk.h'
+  include-directives:
+    - 'c-headers/seald_sdk.h'
+preamble: |
+  // ignore_for_file: always_specify_types
+  // ignore_for_file: camel_case_types
+  // ignore_for_file: non_constant_identifier_names
+structs:
+  rename:
+    '.+': 'Native$0'
+functions:
+  symbol-address:
+    include:
+      - 'SealdEncryptionSession_Free'
+      - 'SealdSsksTMRPlugin_Free'
+      - 'SealdSsksPasswordPlugin_Free'
+comments:
+  style: any
+  length: full
+type-map:
+  'native-types': # Targets native types.
+    'char':
+      'lib': 'pkg_ffi' # predefined import.
+      'c-type': 'Utf8'
+      'dart-type': 'char'
+    'unsigned char':
+      'lib': 'ffi'
+      'c-type': 'Uint8'
+      'dart-type': 'unsigned char'

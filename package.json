@@ -1,0 +1,22 @@
+{
+  "name": "@seald/go-seald-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "author": "Seald SAS",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "before_go": "mocha tests_js/before_go/*.spec.js",
+    "after_go": "mocha tests_js/after_go/*.spec.js"
+  },
+  "dependencies": {
+    "@seald-io/sdk": "0.29.1",
+    "@seald-io/sdk-plugin-ssks-2mr": "0.29.1",
+    "@seald-io/sdk-plugin-ssks-password": "0.29.1",
+    "bson": "^6.7.0",
+    "jose": "^5.3.0",
+    "mocha": "^10.4.0",
+    "node-fetch": "^2.7.0",
+    "sscrypto": "^1.1.1"
+  }
+}

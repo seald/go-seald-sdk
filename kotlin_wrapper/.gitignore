@@ -1,0 +1,7 @@
+.gradle
+goLibs/*
+!goLibs/build.gradle
+tmp/
+pubring.kbx
+local.properties
+/doc

@@ -1,0 +1,23 @@
+dartdoc:
+  categories:
+    "SealdSdk":
+      markdown: doc/empty.md
+    "SealdEncryptionSession":
+      markdown: doc/empty.md
+    "Helpers":
+      markdown: doc/Helpers.md
+    "SealdSsksPasswordPlugin":
+      markdown: doc/empty.md
+    "SealdSsksTMRPlugin":
+      markdown: doc/empty.md
+  categoryOrder:
+    - "SealdSdk"
+    - "SealdEncryptionSession"
+    - "Helpers"
+    - "SealdSsksPasswordPlugin"
+    - "SealdSsksTMRPlugin"
+  nodoc:
+    - lib/seald_sdk_c_bindings_generated.dart
+  errors:
+    - ambiguous-doc-reference
+    - unresolved-doc-reference

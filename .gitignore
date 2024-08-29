@@ -1,0 +1,25 @@
+.idea/
+.DS_Store
+node_modules/
+.vscode/
+/build/
+/lib/
+*.so
+bindings.h
+encrypt_decrypt_file/encrypted_file.seald
+encrypt_decrypt_file/sym_key
+coverage.txt
+coverage.xml
+test_output/
+!test_output/.keep
+/test_artifacts
+/.build/
+seald-sdk-*.aar
+
+# use as test directories
+tmp/
+
+# dependencies licenses autogeneration stuff
+/dependencies_licenses.csv
+/dependencies_licenses.txt
+/dependencies_licenses_errors

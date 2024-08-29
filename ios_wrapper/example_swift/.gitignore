@@ -1,0 +1,29 @@
+# JetBrains stuff
+.idea
+
+# MacOs stuff
+.DS_Store
+
+# Xcode user-specific settings
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+
+# Derived Data
+DerivedData/
+
+# Build products
+build/
+
+# CocoaPods
+Pods/
+
+# Swift Package Manager
+.build/
+
+# Personal Xcode settings
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
