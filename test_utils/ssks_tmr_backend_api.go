@@ -15,6 +15,7 @@ type SSKS2MRBackendApiClient struct {
 }
 
 func NewSSKS2MRBackendApiClient(keyStorageURL string, appId string, appKey string) *SSKS2MRBackendApiClient {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	ssksTMRbackendLogger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli}).With().Timestamp().Str("instance", "TMRBackend").Logger()
 	client := SSKS2MRBackendApiClient{
 		ApiClient: *api_helper.NewApiClient(keyStorageURL, []api_helper.Header{{Name: "X-SEALD-APPID", Value: appId}, {Name: "X-SEALD-APIKEY", Value: appKey}}, ssksTMRbackendLogger),

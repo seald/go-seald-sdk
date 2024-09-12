@@ -45,6 +45,7 @@ func CreateAnonymousSDK(options *AnonymousInitializeOptions) AnonymousSDK {
 	if options.LogWriter == nil {
 		options.LogWriter = os.Stdout
 	}
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	instanceLogger := zerolog.New(zerolog.ConsoleWriter{Out: options.LogWriter, TimeFormat: time.StampMilli, NoColor: options.LogNoColor}).With().Timestamp().Logger()
 	instanceLogger = instanceLogger.Level(options.LogLevel)
 	if options.InstanceName != "" {

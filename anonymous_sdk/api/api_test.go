@@ -15,6 +15,7 @@ func TestAnonymousApiClient(t *testing.T) {
 	credentials, err := test_utils.GetCredentials()
 	require.NoError(t, err)
 
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli}).With().Timestamp().Str("instance", "testAnonymousAPI").Logger()
 	apiClient := ApiClient{ApiClient: *api_helper.NewApiClient(credentials.ApiUrl, nil, logger)}
 

@@ -138,7 +138,7 @@ publishing {
 
 tasks.withType(PublishToMavenRepository).configureEach { publishTask -> // block publication if PACKAGE_VERSION is not set
     publishTask.doFirst {
-        if (!project.hasProperty('PACKAGE_VERSION') || project.PACKAGE_VERSION == null) {
+        if (!project.hasProperty('PACKAGE_VERSION') || project.PACKAGE_VERSION == null || project.PACKAGE_VERSION == 'unspecified' || project.PACKAGE_VERSION == '') {
             throw new GradleException('PACKAGE_VERSION is not set. Publication is not allowed.')
         }
     }

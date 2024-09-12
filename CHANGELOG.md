@@ -1,3 +1,7 @@
+# 0.7.1 : 2024/09/12
+- @all: \[bug fix\] Log timestamps now correctly have millisecond precision.
+
+
 # 0.7.0 : 2024/08/29
 - @all: \[enhancement\] Add a specific error when given a database encryption key of invalid length.
 - @all: \[enhancement\] Add the URL and the method when returning an APIError

@@ -16,6 +16,7 @@ import (
 func TestBeardApiClient_CreateAccount(t *testing.T) {
 	credentials, err := test_utils.GetCredentials()
 	require.NoError(t, err)
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli}).With().Timestamp().Str("instance", "BeardAPITest").Logger()
 	apiClient := beardApiClient{*api_helper.NewApiClient(credentials.ApiUrl, nil, logger)}
 

@@ -71,9 +71,9 @@ To get USERNAME and PASSWORD, you must generate a Token : https://central.sonaty
 
 ### Upload & manual release
 
-You can just upload to Maven but not do the release, with:
+You can just upload to Maven **but not do the release**, with:
 ```bash
-./gradlew publishReleasePublicationToSonatypeRepository -PPACKAGE_VERSION=${VERSION}
+./gradlew publishReleasePublicationToSonatypeRepository -PPACKAGE_VERSION=${PACKAGE_VERSION}
 ```
 
 This upload the package to a staging repository on OSSRH.
@@ -90,7 +90,7 @@ After this, to release you would have to:
 
 You can upload & automatically release with:
 ```bash
-./gradlew publishReleasePublicationToSonatypeRepository closeAndReleaseSonatypeStagingRepository -PPACKAGE_VERSION=${VERSION}
+./gradlew publishReleasePublicationToSonatypeRepository closeAndReleaseSonatypeStagingRepository -PPACKAGE_VERSION=${PACKAGE_VERSION}
 ```
 
 The two gradle tasks *have* to be done in a single command, because the
