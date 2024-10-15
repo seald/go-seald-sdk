@@ -8,8 +8,8 @@ You can find a `test_credentials.template.json` that shows the expected format.
 
 # Custom Go toolchain
 
-To build on iOS, in order to avoid random crashes of the SDK, you need to build a custom Go toolchain,
-which includes the patch https://go-review.googlesource.com/c/go/+/408395.
+To build on iOS, in order to avoid random crashes of the SDK (`unaligned arguments` errors), you need to build a custom
+Go toolchain, which includes the patch https://go-review.googlesource.com/c/go/+/408395.
 
 To build this custom toolchain, you must:
 - Pull the golang project ( https://github.com/golang/go/ ) and checkout the correct version (at the time of writing, the `go1.21.5` tag)

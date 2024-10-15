@@ -67,7 +67,33 @@ func TestAnonymousApiClient(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, len(devices))
 
-		_, err = apiClient.MessageCreate(signedToken, []EncryptedMessageKey{{CreatedForKey: devices[0].Id, Token: "TOTO", CreatedForKeyHash: "TATA"}}, "test-metadata")
+		req := MessageCreateRequest{
+			EncryptedMessageKeys: []*EncryptedMessageKey{{CreatedForKey: devices[0].Id, Token: "TOTO", CreatedForKeyHash: "TATA"}},
+			Metadata:             "test-metadata",
+		}
+		_, err = apiClient.MessageCreate(signedToken, &req)
+		require.NoError(t, err)
+	})
+
+	t.Run("MessageCreate with TMR access", func(t *testing.T) {
+		signedToken, err := test_utils.GetJWT(test_utils.Claims{
+			Recipients:    []string{anonymousSDKUser.BearduserId},
+			TmrRecipients: []test_utils.TMRRecipient{{Value: "email@domain.tld", Type: "EM"}},
+			Owner:         anonymousSDKUser.BearduserId,
+			Scopes:        []test_utils.JWTPermissionScopes{test_utils.PermissionAnonymousFindKeys, test_utils.PermissionAnonymousCreateMessage},
+		})
+		require.NoError(t, err)
+
+		devices, err := apiClient.KeyFindAll(signedToken, []string{anonymousSDKUser.BearduserId})
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(devices))
+
+		req := MessageCreateRequest{
+			TMRMessageKeys:       []*TMRMessageKey{{AuthFactorType: "EM", AuthFactorValue: "email@domain.tld", Token: "token"}},
+			EncryptedMessageKeys: []*EncryptedMessageKey{{CreatedForKey: devices[0].Id, Token: "TOTO", CreatedForKeyHash: "TATA"}},
+			Metadata:             "test-metadata",
+		}
+		_, err = apiClient.MessageCreate(signedToken, &req)
 		require.NoError(t, err)
 	})
 }

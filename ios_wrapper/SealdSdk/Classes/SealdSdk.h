@@ -11,8 +11,12 @@
 
 #import <Foundation/Foundation.h>
 #import <SealdSdkInternals/SealdSdkInternals.h>
+// All headers must be imported here, for SwiftPackageManager to be happy
 #import "Helpers.h"
 #import "SealdEncryptionSession.h"
+#import "SealdSsksPasswordPlugin.h"
+#import "SealdSsksTMRPlugin.h"
+#import "Utils.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

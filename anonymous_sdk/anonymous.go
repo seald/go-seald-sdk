@@ -72,19 +72,30 @@ func CreateAnonymousSDK(options *AnonymousInitializeOptions) AnonymousSDK {
 	}
 }
 
-func (sdk AnonymousSDK) encrypt(encryptionToken string, getKeysToken string, sealdIds []string, clearFile []byte, filename string) (string, []byte, error) {
-	log.Println("Doing anonymous encrypt for", sealdIds, "for file", filename)
+type TMRRecipient struct {
+	Type                 string
+	Value                string
+	RawOverEncryptionKey []byte
+}
+
+type Recipients struct {
+	SealdIds      []string
+	TMRRecipients []TMRRecipient
+}
+
+func (sdk AnonymousSDK) encrypt(encryptionToken string, getKeysToken string, recipients Recipients, clearFile []byte, filename string) (string, []byte, error) {
+	log.Printf("Doing anonymous encrypt %s for %d sealdIds and %d TMR accesses", filename, len(recipients.SealdIds), len(recipients.SealdIds))
 	symKey, err := symmetric_key.Generate()
 	if err != nil {
 		return "", nil, tracerr.Wrap(err)
 	}
 
-	devices, err := sdk.ApiClient.KeyFindAll(getKeysToken, sealdIds)
+	devices, err := sdk.ApiClient.KeyFindAll(getKeysToken, recipients.SealdIds)
 	if err != nil {
 		return "", nil, tracerr.Wrap(err)
 	}
 
-	var encryptedMessageKeys []api.EncryptedMessageKey
+	var encryptedMessageKeys []*api.EncryptedMessageKey
 	for i := 0; i < len(devices); i++ {
 		deviceKey, err := asymkey.PublicKeyFromB64(devices[i].EncryptionPubKey)
 		if err != nil {
@@ -94,13 +105,38 @@ func (sdk AnonymousSDK) encrypt(encryptionToken string, getKeysToken string, sea
 		if err != nil {
 			return "", nil, tracerr.Wrap(err)
 		}
-		encryptedMessageKeys = append(encryptedMessageKeys, api.EncryptedMessageKey{
+		encryptedMessageKeys = append(encryptedMessageKeys, &api.EncryptedMessageKey{
 			CreatedForKey:     devices[i].Id,
 			CreatedForKeyHash: deviceKey.GetHash(),
-			Token:             utils.B64toS64(base64.StdEncoding.EncodeToString(token)),
+			Token:             base64.StdEncoding.EncodeToString(token),
 		})
 	}
-	msg, err := sdk.ApiClient.MessageCreate(encryptionToken, encryptedMessageKeys, filename)
+
+	// Handling TMR Accesses
+	var encryptedTMRAccess []*api.TMRMessageKey
+	for i := 0; i < len(recipients.TMRRecipients); i++ {
+		tmrSymKey, err := symmetric_key.Decode(recipients.TMRRecipients[i].RawOverEncryptionKey)
+		if err != nil {
+			return "", nil, tracerr.Wrap(err)
+		}
+		token, err := tmrSymKey.Encrypt(symKey.Encode())
+		if err != nil {
+			return "", nil, tracerr.Wrap(err)
+		}
+
+		encryptedTMRAccess = append(encryptedTMRAccess, &api.TMRMessageKey{
+			AuthFactorValue: recipients.TMRRecipients[i].Value,
+			AuthFactorType:  recipients.TMRRecipients[i].Type,
+			Token:           base64.StdEncoding.EncodeToString(token),
+		})
+	}
+
+	request := &api.MessageCreateRequest{
+		EncryptedMessageKeys: encryptedMessageKeys,
+		TMRMessageKeys:       encryptedTMRAccess,
+		Metadata:             filename,
+	}
+	msg, err := sdk.ApiClient.MessageCreate(encryptionToken, request)
 	if err != nil {
 		return "", nil, tracerr.Wrap(err)
 	}

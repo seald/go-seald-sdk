@@ -9,7 +9,6 @@
 
 import SwiftUI
 import SealdSdk
-import JWT
 
 struct TestCredentials {
     var apiURL: String
@@ -531,7 +530,7 @@ func testSealdSDK() async -> Bool {
 
         // we can add a custom userId using a JWT
         let customConnectorJWTValue = "user1-custom-id"
-        let addConnectorJWT = jwtBuilder.connectorJWT(customUserId: customConnectorJWTValue,
+        let addConnectorJWT = try await jwtBuilder.connectorJWT(customUserId: customConnectorJWTValue,
         appId: testCredentials.appId)
         try await sdk1.pushJWTAsync(withJWT: addConnectorJWT)
 

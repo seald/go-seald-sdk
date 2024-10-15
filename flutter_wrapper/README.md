@@ -5,6 +5,8 @@ SealdSDK allows you to use the full power of Seald encryption, directly in your 
 You can create and retrieve Seald identities for your app's users, encrypt and decrypt files,
 create encryption sessions, add or revoke recipients...
 
+SealdSDK for Flutter requires Flutter >= 3.10.0.
+
 For more information, visit our website : https://seald.io .
 
 This package is published on pub.dev at https://pub.dev/packages/seald_sdk_flutter .
