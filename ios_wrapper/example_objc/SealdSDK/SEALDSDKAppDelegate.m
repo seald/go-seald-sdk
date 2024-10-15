@@ -69,6 +69,7 @@ BOOL testSealdSDK(void)
             NSLog(@"Seald Database removed successfully");
         } else {
             NSLog(@"Error removing Seald database %@", error.userInfo);
+            error = nil;
         }
 
         // Seald uses JWT to manage licenses and identity.

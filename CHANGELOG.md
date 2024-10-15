@@ -1,3 +1,8 @@
+# 0.8.0 : Unreleased
+- @flutter: \[**breaking change**\] Correctly specify minimum Flutter version as `3.10.0`. Version `0.7.0` was already incompatible with Flutter versions older than `3.10.0`, it just was not specified in `pubspec.yaml`.
+- @ios: \[new feature\] The Seald SDK for iOS is now also available through Swift Package Manager, at `https://github.com/seald/seald-sdk-ios`.
+
+
 # 0.7.1 : 2024/09/12
 - @all: \[bug fix\] Log timestamps now correctly have millisecond precision.
 
