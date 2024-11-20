@@ -9,7 +9,6 @@
 
 import SwiftUI
 import SealdSdk
-import JWT
 
 struct TestCredentials {
     var apiURL: String
@@ -202,7 +201,7 @@ func testSealdSDK() async -> Bool {
 
         // The app backend creates an SSKS authentication session.
         // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false,
-        // but we force auth because we want to convert TMR Accesses.
+        // but we force auth because we want to convert TMR accesses.
         let tmrSession = try await SSKSBackend.challengeSend(
             userId: user2AccountInfo.userId,
             authFactor: tmrAuthFactor,
@@ -531,7 +530,7 @@ func testSealdSDK() async -> Bool {
 
         // we can add a custom userId using a JWT
         let customConnectorJWTValue = "user1-custom-id"
-        let addConnectorJWT = jwtBuilder.connectorJWT(customUserId: customConnectorJWTValue,
+        let addConnectorJWT = try await jwtBuilder.connectorJWT(customUserId: customConnectorJWTValue,
         appId: testCredentials.appId)
         try await sdk1.pushJWTAsync(withJWT: addConnectorJWT)
 
@@ -660,6 +659,54 @@ func testSealdSDK() async -> Bool {
         assert(badPositionCheck.found == false)
         // For badPositionCheck, position cannot be asserted as it is not set when the hash is not found.
         assert(badPositionCheck.lastPosition == 2)
+
+        // Group TMR temporary key
+
+        // First, create a group to test on. sdk1 create a TMR key to this group, sdk2 will join.
+        let groupTMRName = "group-tmr"
+        let groupTMRMembers = [user1AccountInfo.userId]
+        let groupTMRAdmins = [user1AccountInfo.userId]
+        let groupTMRId = try await sdk1.createGroupAsync(
+            withGroupName: groupTMRName,
+            members: groupTMRMembers,
+            admins: groupTMRAdmins,
+            privateKeys: nil)
+
+        // WARNING: This should be a cryptographically random buffer of 64 bytes.
+        // This random generation is NOT good enough.
+        let gTMRRawOverEncryptionKey = randomData(length: 64)
+
+        // We defined a two man rule recipient earlier. We will use it again.
+        // The authentication factor is defined by `tmrAuthFactor`.
+        // Also we already have the TMR JWT associated with it: `tmrJWT.token`
+
+        let gTMRTKCreated = try await sdk1.createGroupTMRTemporaryKeyAsync(
+            withGroupId: groupTMRId,
+            authFactor: tmrAuthFactor,
+            isAdmin: false,
+            rawOverEncryptionKey: gTMRRawOverEncryptionKey)
+
+        let gTMRList = try await sdk1.listGroupTMRTemporaryKeysAsync(withGroupId: groupTMRId, page: 1, all: false)
+        assert(gTMRList.nbPage == 1)
+        assert(gTMRList.keys.count == 1)
+        assert(gTMRList.keys[0].groupId == groupTMRId)
+        assert(gTMRList.keys[0].keyId == gTMRTKCreated.keyId)
+
+        let gTMRSearch = try await sdk2.searchGroupTMRTemporaryKeysAsync(withTmrJWT: tmrJWT.token, options: nil)
+        assert(gTMRSearch.nbPage == 1)
+        assert(gTMRSearch.keys.count == 1)
+        assert(gTMRSearch.keys[0].groupId == groupTMRId)
+        assert(gTMRSearch.keys[0].keyId == gTMRTKCreated.keyId)
+
+        try await sdk2.convertGroupTMRTemporaryKeyAsync(
+            withGroupId: groupTMRId,
+            temporaryKeyId: gTMRTKCreated.keyId,
+            tmrJWT: tmrJWT.token,
+            rawOverEncryptionKey: gTMRRawOverEncryptionKey,
+            deleteOnConvert: false)
+        try await sdk1.deleteGroupTMRTemporaryKeyAsync(
+            withGroupId: groupTMRId,
+            temporaryKeyId: gTMRTKCreated.keyId)
 
         // Heartbeat can be used to check if proxies and firewalls are configured
         // properly so that the app can reach Seald's servers.

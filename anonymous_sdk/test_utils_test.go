@@ -1,4 +1,4 @@
-package ssks_tmr
+package anonymous_sdk
 
 import (
 	"github.com/rs/zerolog"

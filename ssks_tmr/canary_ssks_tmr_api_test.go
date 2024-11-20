@@ -2,8 +2,8 @@ package ssks_tmr
 
 import (
 	"encoding/json"
+	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
 )
 
 type canarySsksTMRApiClient struct {

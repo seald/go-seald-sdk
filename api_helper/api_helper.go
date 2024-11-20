@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/rs/zerolog"
-	"go-seald-sdk/utils"
+	"github.com/seald/go-seald-sdk/utils"
 	"io"
 	"io/ioutil"
 	"log"

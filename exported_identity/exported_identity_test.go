@@ -2,9 +2,9 @@ package exported_identity
 
 import (
 	"encoding/base64"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/stretchr/testify/assert"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"testing"
 )

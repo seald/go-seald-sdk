@@ -3,8 +3,8 @@ package mobile_sdk
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/seald/go-seald-sdk/test_utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/test_utils"
 	"math/rand"
 	"os"
 	"time"

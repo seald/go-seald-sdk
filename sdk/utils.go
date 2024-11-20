@@ -3,10 +3,10 @@ package sdk
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/encrypt_decrypt_file"
+	"github.com/seald/go-seald-sdk/messages"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/encrypt_decrypt_file"
-	"go-seald-sdk/messages"
 	"os"
 )
 

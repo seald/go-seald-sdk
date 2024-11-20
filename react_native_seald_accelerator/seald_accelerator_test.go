@@ -2,9 +2,9 @@ package react_native_seald_accelerator
 
 import (
 	"bytes"
+	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go-seald-sdk/symmetric_key"
 	"os"
 	"runtime"
 	"testing"

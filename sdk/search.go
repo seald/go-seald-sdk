@@ -1,10 +1,10 @@
 package sdk
 
 import (
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk/sigchain"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/sdk/sigchain"
-	"go-seald-sdk/utils"
 )
 
 var (
@@ -132,14 +132,8 @@ func (state *State) searchUnlocked(value string, forceUpdate bool, recursive boo
 	// Update group keys and members
 	if c.IsGroup {
 		state.logger.Trace().Str("id", value).Msg("Search: contact is a group, trying group update")
-		var membersIds []string
-		for _, block := range c.Sigchain.Blocks {
-			if block.Transaction.Operation.Type == sigchain.SIGCHAIN_OPERATION_MEMBERS {
-				membersIds = *block.Transaction.Operation.Members
-			}
-		}
 		isMember := false
-		for _, mId := range membersIds {
+		for mId := range checkResult.KnownMembers {
 			if mId == currentDevice.UserId {
 				isMember = true
 				break

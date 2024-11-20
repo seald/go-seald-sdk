@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/api_helper"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/api_helper"
-	"go-seald-sdk/utils"
 	"io"
 	"os"
 	"sync"
@@ -27,6 +27,8 @@ var (
 	ErrorSdkClosed = utils.NewSealdError("SDK_CLOSED", "this SDK instance has already been closed")
 	// ErrorPlatformRequired is returned Platform is not defined
 	ErrorPlatformRequired = utils.NewSealdError("SDK_PLATFORM_REQUIRED", "Platform argument is required")
+	// ErrorDatabaseRequired is returned Database is not defined
+	ErrorDatabaseRequired = utils.NewSealdError("SDK_DATABASE_REQUIRED", "Database argument is required")
 )
 
 // InitializeOptions is the main options object for initializing the SDK instance.
@@ -91,6 +93,9 @@ func validateOptions(options InitializeOptions) error {
 	}
 	if options.Platform == "" {
 		return tracerr.Wrap(ErrorPlatformRequired)
+	}
+	if options.Database == nil {
+		return tracerr.Wrap(ErrorDatabaseRequired)
 	}
 	return nil
 }
@@ -317,7 +322,7 @@ func handleLocked[T func(*U) (*V, error), U any, V any](state *State, f T, retri
 		if errors.Is(err, utils.APIError{Status: 423, Code: ""}) && retries > 0 { // if the error was caused by a lock
 			state.logger.Debug().Int("retries", retries).Msg("Request failed because of lock, waiting 1s then retrying.")
 			time.Sleep(1 * time.Second)
-			return handleLocked(state, f, retries-1)(args)
+			return handleLocked[T, U, V](state, f, retries-1)(args)
 		}
 		return nil, tracerr.Wrap(err)
 	}

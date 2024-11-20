@@ -1,3 +1,12 @@
+# 0.8.0 : 2024/11/20
+- @flutter: \[**breaking change**\] Correctly specify minimum Flutter version as `3.10.0`. Version `0.7.0` was already incompatible with Flutter versions older than `3.10.0`, it just was not specified in `pubspec.yaml`.
+- @go:  \[**breaking change**\] In Anonymous SDK, add ability to encrypt for TMR Recipients. This changes the arguments of the `AnonymousSDK.encrypt` function.
+- @ios: \[new feature\] The Seald SDK for iOS is now also available through Swift Package Manager, at `https://github.com/seald/seald-sdk-ios`.
+- @all: \[new feature\] Add group TMR temporary keys functions to join a group using TMR. `CreateGroupTMRTemporaryKey`, `ListGroupTMRTemporaryKeys`,`DeleteGroupTMRTemporaryKey`, `ConvertGroupTMRTemporaryKey` and `SearchGroupTMRTemporaryKeys`.
+- @all: \[enhancement\] Update dependencies
+- @go:  \[bug fix\] Fix package name in `go.mod` so the Go SDK can be imported by other projects
+
+
 # 0.7.1 : 2024/09/12
 - @all: \[bug fix\] Log timestamps now correctly have millisecond precision.
 
@@ -9,6 +18,7 @@
 - @flutter: \[bug fix\] Fix sending of SDK version header
 - @flutter: \[bug fix\] Now respects configured `keySize` when using native key generation.
 - @flutter: \[bug fix\] Fix memory-management of `session.encryptFile` and `session.decryptFile`, and their async versions. 
+- @all: \[enhancement\] First release publicly available on GitHub
 
 
 # 0.6.0 : 2024/05/30

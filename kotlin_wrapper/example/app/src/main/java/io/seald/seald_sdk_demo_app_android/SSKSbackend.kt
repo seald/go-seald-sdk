@@ -12,7 +12,10 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 
 @Serializable
-data class AuthFactorJson(val type: String, val value: String)
+data class AuthFactorJson(
+    val type: String,
+    val value: String,
+)
 
 @Serializable
 data class ChallengeSendJson(
@@ -23,7 +26,11 @@ data class ChallengeSendJson(
     val fake_otp: Boolean,
 )
 
-class SSKSbackend(keyStorageURL: String, appId: String, appKey: String) {
+class SSKSbackend(
+    keyStorageURL: String,
+    appId: String,
+    appKey: String,
+) {
     private val keyStorageURL: String
     private val appId: String
     private val appKey: String
@@ -47,7 +54,8 @@ class SSKSbackend(keyStorageURL: String, appId: String, appKey: String) {
         requestBody: RequestBody,
     ): String {
         val request =
-            Request.Builder()
+            Request
+                .Builder()
                 .url(keyStorageURL + endpoint)
                 .addHeader("X-SEALD-APPID", this.appId)
                 .addHeader("X-SEALD-APIKEY", this.appKey)

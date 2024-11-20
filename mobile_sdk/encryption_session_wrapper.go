@@ -2,9 +2,9 @@ package mobile_sdk
 
 import (
 	"fmt"
+	"github.com/seald/go-seald-sdk/sdk"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/sdk"
-	"go-seald-sdk/utils"
 )
 
 type MobileEncryptionSession struct {

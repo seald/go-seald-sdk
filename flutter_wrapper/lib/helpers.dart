@@ -694,3 +694,94 @@ String _generatePrivateKey(int size) {
     return res;
   }
 }
+
+/// SealdGroupTMRTemporaryKey holds the information of a group TMR temporary key.
+class SealdGroupTMRTemporaryKey {
+  /// The id of the group TMR temporary key.
+  final String id;
+
+  /// The id of the group.
+  final String groupId;
+
+  /// Does that key give the admin status.
+  final bool isAdmin;
+
+  /// Id of the user who created this key.
+  final String createdById;
+
+  /// Date of creation.
+  final DateTime created;
+
+  /// The type of authentication factor.
+  final String authFactorType;
+
+  SealdGroupTMRTemporaryKey._fromC(
+      Pointer<NativeSealdGroupTMRTemporaryKey> nativeResp,
+      {bool free = true})
+      : id = nativeResp.ref.Id.toDartString(),
+        groupId = nativeResp.ref.GroupId.toDartString(),
+        isAdmin = nativeResp.ref.IsAdmin != 0,
+        createdById = nativeResp.ref.CreatedById.toDartString(),
+        created =
+            DateTime.fromMillisecondsSinceEpoch(nativeResp.ref.Created * 1000),
+        authFactorType = nativeResp.ref.AuthFactorType.toDartString() {
+    // Cleanup
+    if (free) _bindings.SealdGroupTMRTemporaryKey_Free(nativeResp);
+  }
+
+  static List<SealdGroupTMRTemporaryKey> _fromCArray(
+      Pointer<NativeSealdGroupTMRTemporaryKeysArray> nativeArr) {
+    final int size = _bindings.SealdGroupTMRTemporaryKeysArray_Size(nativeArr);
+    final List<SealdGroupTMRTemporaryKey> l = [];
+    for (int i = 0; i < size; i++) {
+      final Pointer<NativeSealdGroupTMRTemporaryKey> nativeGTMRTK =
+          _bindings.SealdGroupTMRTemporaryKeysArray_Get(nativeArr, i);
+      l.add(SealdGroupTMRTemporaryKey._fromC(nativeGTMRTK, free: false));
+    }
+    return l;
+  }
+}
+
+/// SealdListedGroupTMRTemporaryKey holds the information of a list of group TMR temporary keys.
+class SealdListedGroupTMRTemporaryKey {
+  /// Number of pages found.
+  final int nbPage;
+
+  /// Temporary keys found. */
+  final List<SealdGroupTMRTemporaryKey> keys;
+
+  SealdListedGroupTMRTemporaryKey._fromC(
+      Pointer<NativeSealdGroupTMRTemporaryKeysArray> nativeArr,
+      Pointer<Int> nbPageFound)
+      : nbPage = nbPageFound.value,
+        keys = SealdGroupTMRTemporaryKey._fromCArray(nativeArr) {
+    // Cleanup
+    _bindings.SealdGroupTMRTemporaryKeysArray_Free(nativeArr);
+  }
+}
+
+/// SealdSearchGroupTMRTemporaryKeysOpts holds the tmr filters used when searching group TMR temporary keys.
+class SealdSearchGroupTMRTemporaryKeysOpts {
+  /// Return only the TMR temporary keys that give access to this groupId.
+  final String groupId;
+
+  /// Page to return.
+  final int page;
+
+  /// Should return all pages after `page`.
+  final bool all;
+
+  SealdSearchGroupTMRTemporaryKeysOpts({
+    this.groupId = "",
+    this.page = 1,
+    this.all = false,
+  });
+
+  Pointer<NativeSealdSearchGroupTMRTemporaryKeysOpts> _toC() {
+    final nativeStruct = calloc<NativeSealdSearchGroupTMRTemporaryKeysOpts>();
+    nativeStruct.ref.GroupId = groupId.toNativeUtf8();
+    nativeStruct.ref.Page = page;
+    nativeStruct.ref.All = all ? 1 : 0;
+    return nativeStruct;
+  }
+}

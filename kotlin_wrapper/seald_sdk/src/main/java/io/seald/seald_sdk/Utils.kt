@@ -12,7 +12,8 @@ package io.seald.seald_sdk
 @Throws(SealdException::class)
 fun parseSessionIdFromFile(encryptedFilePath: String): String {
     convertExceptions {
-        return io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk.parseSessionIdFromFile(encryptedFilePath)
+        return io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk
+            .parseSessionIdFromFile(encryptedFilePath)
     }
 }
 
@@ -26,7 +27,8 @@ fun parseSessionIdFromFile(encryptedFilePath: String): String {
 @Throws(SealdException::class)
 fun parseSessionIdFromBytes(fileByteArray: ByteArray): String {
     convertExceptions {
-        return io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk.parseSessionIdFromBytes(fileByteArray)
+        return io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk
+            .parseSessionIdFromBytes(fileByteArray)
     }
 }
 
@@ -40,6 +42,7 @@ fun parseSessionIdFromBytes(fileByteArray: ByteArray): String {
 @Throws(SealdException::class)
 fun parseSessionIdFromMessage(message: String): String {
     convertExceptions {
-        return io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk.parseSessionIdFromMessage(message)
+        return io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk
+            .parseSessionIdFromMessage(message)
     }
 }

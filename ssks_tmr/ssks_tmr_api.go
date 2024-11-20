@@ -2,9 +2,9 @@ package ssks_tmr
 
 import (
 	"encoding/json"
+	"github.com/seald/go-seald-sdk/api_helper"
+	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/api_helper"
-	"go-seald-sdk/common_models"
 )
 
 type apiClient struct {

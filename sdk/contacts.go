@@ -2,8 +2,8 @@ package sdk
 
 import (
 	"fmt"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/utils"
 	"time"
 )
 

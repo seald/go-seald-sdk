@@ -20,7 +20,9 @@ import java.time.Instant
  * @property raw The raw underlying error.
  * @property nativeStack The call stack in Seald native code.
  */
-class SealdException(originalException: Throwable) : RuntimeException() {
+class SealdException(
+    originalException: Throwable,
+) : RuntimeException() {
     val status: Int?
     val code: String
     val id: String
@@ -50,8 +52,8 @@ class SealdException(originalException: Throwable) : RuntimeException() {
         message = toString()
     }
 
-    override fun toString(): String {
-        return "SealdException(" +
+    override fun toString(): String =
+        "SealdException(" +
             "status=$status," +
             " code='$code'," +
             " id='$id'," +
@@ -60,7 +62,6 @@ class SealdException(originalException: Throwable) : RuntimeException() {
             " raw='$raw'," +
             " nativeStack='$nativeStack'" +
             ")"
-    }
 }
 
 internal inline fun <T> convertExceptions(call: () -> T): T {
@@ -74,7 +75,9 @@ internal inline fun <T> convertExceptions(call: () -> T): T {
 // We cannot directly pass an array to GO. We need to instantiate a StringArray struct, and pass it.
 // Maybe one day... https://github.com/golang/go/issues/13445
 internal fun arrayToStringArray(array: Array<String>): io.seald.seald_sdk_internals.mobile_sdk.StringArray {
-    var sa = io.seald.seald_sdk_internals.mobile_sdk.StringArray()
+    var sa =
+        io.seald.seald_sdk_internals.mobile_sdk
+            .StringArray()
     val arrayIterator = array.iterator()
     while (arrayIterator.hasNext()) {
         sa = sa.add(arrayIterator.next())
@@ -158,7 +161,9 @@ data class BeardError(
  * - `EM` for email connectors
  * - `AP` for App connectors
  */
-enum class ConnectorType(val type: String) {
+enum class ConnectorType(
+    val type: String,
+) {
     EM("EM"),
     AP("AP"),
     ;
@@ -178,7 +183,9 @@ enum class ConnectorType(val type: String) {
 /**
  * ConnectorState represents the allowed values for Connector states.
  */
-enum class ConnectorState(val state: String) {
+enum class ConnectorState(
+    val state: String,
+) {
     PENDING("PE"),
     VALIDATED("VO"),
     REVOKED("RE"),
@@ -208,7 +215,9 @@ data class ConnectorTypeValue(
         internal fun toMobileSdkArray(
             connectorsArray: Array<ConnectorTypeValue>,
         ): io.seald.seald_sdk_internals.mobile_sdk.ConnectorTypeValueArray {
-            val result = io.seald.seald_sdk_internals.mobile_sdk.ConnectorTypeValueArray()
+            val result =
+                io.seald.seald_sdk_internals.mobile_sdk
+                    .ConnectorTypeValueArray()
             for (c in connectorsArray) {
                 result.add(c.toMobileSdk())
             }
@@ -217,7 +226,9 @@ data class ConnectorTypeValue(
     }
 
     internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.ConnectorTypeValue {
-        val res = io.seald.seald_sdk_internals.mobile_sdk.ConnectorTypeValue()
+        val res =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .ConnectorTypeValue()
         res.type = this.type.type
         res.value = this.value
         return res
@@ -235,24 +246,24 @@ data class Connector(
     val state: ConnectorState,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(c: io.seald.seald_sdk_internals.mobile_sdk.Connector): Connector {
-            return Connector(
+        internal fun fromMobileSdk(c: io.seald.seald_sdk_internals.mobile_sdk.Connector): Connector =
+            Connector(
                 sealdId = c.sealdId,
                 type = ConnectorType.fromString(c.type),
                 value = c.value,
                 id = c.id,
                 state = ConnectorState.fromString(c.state),
             )
-        }
 
-        internal fun fromMobileSdkArray(connectorsArray: io.seald.seald_sdk_internals.mobile_sdk.ConnectorsArray): Array<Connector> {
-            return Array(
+        internal fun fromMobileSdkArray(connectorsArray: io.seald.seald_sdk_internals.mobile_sdk.ConnectorsArray): Array<Connector> =
+            Array(
                 size = connectorsArray.size().toInt(),
             ) { i -> fromMobileSdk(connectorsArray.get(i.toLong())) }
-        }
 
         internal fun toMobileSdkArray(connectorsArray: Array<Connector>): io.seald.seald_sdk_internals.mobile_sdk.ConnectorsArray {
-            val result = io.seald.seald_sdk_internals.mobile_sdk.ConnectorsArray()
+            val result =
+                io.seald.seald_sdk_internals.mobile_sdk
+                    .ConnectorsArray()
             for (c in connectorsArray) {
                 result.add(c.toMobileSdk())
             }
@@ -261,7 +272,9 @@ data class Connector(
     }
 
     internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.Connector {
-        val res = io.seald.seald_sdk_internals.mobile_sdk.Connector()
+        val res =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .Connector()
         res.sealdId = this.sealdId
         res.type = this.type.type
         res.value = this.value
@@ -280,7 +293,9 @@ data class PreValidationToken(
     val token: String,
 ) {
     internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.PreValidationToken {
-        val res = io.seald.seald_sdk_internals.mobile_sdk.PreValidationToken()
+        val res =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .PreValidationToken()
         res.domainValidationKeyId = this.domainValidationKeyId
         res.nonce = this.nonce
         res.token = this.token
@@ -315,7 +330,9 @@ data class MassReencryptOptions
         var forceLocalAccountUpdate: Boolean = false,
     ) {
         internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.MassReencryptOptions {
-            val res = io.seald.seald_sdk_internals.mobile_sdk.MassReencryptOptions()
+            val res =
+                io.seald.seald_sdk_internals.mobile_sdk
+                    .MassReencryptOptions()
             res.retries = retries.toLong()
             res.retrieveBatchSize = retrieveBatchSize.toLong()
             res.waitBetweenRetries = waitBetweenRetries.toMillis()
@@ -340,12 +357,11 @@ data class MassReencryptResponse(
     val failed: Int,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.MassReencryptResponse): MassReencryptResponse {
-            return MassReencryptResponse(
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.MassReencryptResponse): MassReencryptResponse =
+            MassReencryptResponse(
                 reencrypted = d.reencrypted.toInt(),
                 failed = d.failed.toInt(),
             )
-        }
     }
 }
 
@@ -358,17 +374,15 @@ data class DeviceMissingKeys(
     val deviceId: String,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.DeviceMissingKeys): DeviceMissingKeys {
-            return DeviceMissingKeys(
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.DeviceMissingKeys): DeviceMissingKeys =
+            DeviceMissingKeys(
                 deviceId = d.deviceId,
             )
-        }
 
-        internal fun fromMobileSdkArray(array: io.seald.seald_sdk_internals.mobile_sdk.DevicesMissingKeysArray): Array<DeviceMissingKeys> {
-            return Array(
+        internal fun fromMobileSdkArray(array: io.seald.seald_sdk_internals.mobile_sdk.DevicesMissingKeysArray): Array<DeviceMissingKeys> =
+            Array(
                 size = array.size().toInt(),
             ) { i -> fromMobileSdk(array.get(i.toLong())) }
-        }
     }
 }
 
@@ -408,12 +422,11 @@ data class RevokeResult(
     val proxySessions: Map<String, ActionStatus>,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(r: io.seald.seald_sdk_internals.mobile_sdk.RevokeResult): RevokeResult {
-            return RevokeResult(
+        internal fun fromMobileSdk(r: io.seald.seald_sdk_internals.mobile_sdk.RevokeResult): RevokeResult =
+            RevokeResult(
                 recipients = ActionStatus.fromMobileSdkArray(r.recipients),
                 proxySessions = ActionStatus.fromMobileSdkArray(r.proxySessions),
             )
-        }
     }
 }
 
@@ -430,7 +443,9 @@ data class RecipientRights(
     val revoke: Boolean = false,
 ) {
     internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.RecipientRights {
-        val result = io.seald.seald_sdk_internals.mobile_sdk.RecipientRights()
+        val result =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .RecipientRights()
         result.read = this.read
         result.revoke = this.revoke
         result.forward = this.forward
@@ -454,7 +469,9 @@ data class RecipientWithRights(
         internal fun toMobileSdkArray(
             recipientWithRightArray: Array<RecipientWithRights>,
         ): io.seald.seald_sdk_internals.mobile_sdk.RecipientsWithRightsArray {
-            val result = io.seald.seald_sdk_internals.mobile_sdk.RecipientsWithRightsArray()
+            val result =
+                io.seald.seald_sdk_internals.mobile_sdk
+                    .RecipientsWithRightsArray()
             for (rwr in recipientWithRightArray) {
                 result.add(rwr.toMobileSdk())
             }
@@ -463,7 +480,9 @@ data class RecipientWithRights(
     }
 
     internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.RecipientWithRights {
-        val result = io.seald.seald_sdk_internals.mobile_sdk.RecipientWithRights()
+        val result =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .RecipientWithRights()
         result.recipientId = this.recipientId
         result.rights = this.rights?.toMobileSdk()
         return result
@@ -473,7 +492,9 @@ data class RecipientWithRights(
 /**
  * EncryptionSessionRetrievalFlow represents the way the session was retrieved : as a direct recipient, as member of a group, or through a proxy session
  */
-enum class EncryptionSessionRetrievalFlow(val value: Int) {
+enum class EncryptionSessionRetrievalFlow(
+    val value: Int,
+) {
     /** The session was created locally. */
     CREATED(0),
 
@@ -519,14 +540,13 @@ class EncryptionSessionRetrievalDetails(
     internal companion object {
         internal fun fromMobileSdk(
             d: io.seald.seald_sdk_internals.mobile_sdk.EncryptionSessionRetrievalDetails,
-        ): EncryptionSessionRetrievalDetails {
-            return EncryptionSessionRetrievalDetails(
+        ): EncryptionSessionRetrievalDetails =
+            EncryptionSessionRetrievalDetails(
                 flow = EncryptionSessionRetrievalFlow.fromInt(d.flow.toInt()),
                 groupId = if (d.groupId != "") d.groupId else null,
                 proxySessionId = if (d.proxySessionId != "") d.proxySessionId else null,
                 fromCache = d.fromCache,
             )
-        }
     }
 }
 
@@ -541,12 +561,11 @@ data class GetSigchainResponse(
     val position: Int,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.GetSigchainResponse): GetSigchainResponse {
-            return GetSigchainResponse(
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.GetSigchainResponse): GetSigchainResponse =
+            GetSigchainResponse(
                 sigchainHash = d.hash,
                 position = d.position.toInt(),
             )
-        }
     }
 }
 
@@ -563,13 +582,12 @@ data class CheckSigchainResponse(
     val lastPosition: Int,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.CheckSigchainResponse): CheckSigchainResponse {
-            return CheckSigchainResponse(
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.CheckSigchainResponse): CheckSigchainResponse =
+            CheckSigchainResponse(
                 found = d.found,
                 position = d.position.toInt(),
                 lastPosition = d.lastPosition.toInt(),
             )
-        }
     }
 }
 
@@ -584,7 +602,9 @@ data class TMRAccessesRetrievalFilters(
     val tmrAccessId: String = "",
 ) {
     internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.TmrAccessesRetrievalFilters {
-        val result = io.seald.seald_sdk_internals.mobile_sdk.TmrAccessesRetrievalFilters()
+        val result =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .TmrAccessesRetrievalFilters()
         result.createdById = this.createdById
         result.tmrAccessId = this.tmrAccessId
         return result
@@ -604,7 +624,9 @@ data class TMRAccessesConvertFilters(
     val tmrAccessId: String = "",
 ) {
     internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.TmrAccessesConvertFilters {
-        val result = io.seald.seald_sdk_internals.mobile_sdk.TmrAccessesConvertFilters()
+        val result =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .TmrAccessesConvertFilters()
         result.sessionId = this.sessionId
         result.createdById = this.createdById
         result.tmrAccessId = this.tmrAccessId
@@ -627,14 +649,13 @@ data class ConvertTmrAccessesResponse(
     val converted: Array<String>,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.ConvertTmrAccessesResponse): ConvertTmrAccessesResponse {
-            return ConvertTmrAccessesResponse(
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.ConvertTmrAccessesResponse): ConvertTmrAccessesResponse =
+            ConvertTmrAccessesResponse(
                 status = d.status,
                 errored = d.errored.toInt(),
                 succeeded = d.succeeded.toInt(),
                 converted = stringArrayToArray(d.converted),
             )
-        }
     }
 }
 
@@ -654,7 +675,9 @@ data class TmrRecipientWithRights(
         internal fun toMobileSdkArray(
             tmrRecipientWithRightsArray: Array<TmrRecipientWithRights>,
         ): io.seald.seald_sdk_internals.mobile_sdk.TmrRecipientWithRightsArray {
-            val result = io.seald.seald_sdk_internals.mobile_sdk.TmrRecipientWithRightsArray()
+            val result =
+                io.seald.seald_sdk_internals.mobile_sdk
+                    .TmrRecipientWithRightsArray()
             for (tmrR in tmrRecipientWithRightsArray) {
                 result.add(tmrR.toMobileSdk())
             }
@@ -663,7 +686,9 @@ data class TmrRecipientWithRights(
     }
 
     internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.TmrRecipientWithRights {
-        val result = io.seald.seald_sdk_internals.mobile_sdk.TmrRecipientWithRights()
+        val result =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .TmrRecipientWithRights()
         result.authFactor = this.authFactor.toMobileSdk()
         result.rights = this.rights?.toMobileSdk()
         result.overEncryptionKey = this.overEncryptionKey
@@ -679,3 +704,89 @@ data class TmrRecipientWithRights(
 data class PreGeneratedKeys(
     internal val preGeneratedKeys: io.seald.seald_sdk_internals.mobile_sdk.PreGeneratedKeys,
 )
+
+/**
+ * GroupTmrTemporaryKey holds the information about a group TMR temporary key.
+ *
+ * @property id Id of the TMR key.
+ * @property groupId The id of the group.
+ * @property isAdmin Does that key give the admin status.
+ * @property createdById Id of the user who created this key.
+ * @property authFactorType The type of authentication factor.
+ * @property created Date of creation.
+ */
+data class GroupTmrTemporaryKey(
+    val id: String,
+    val groupId: String,
+    val isAdmin: Boolean,
+    val createdById: String,
+    val authFactorType: String,
+    val created: Instant,
+) {
+    internal companion object {
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.GroupTMRTemporaryKey): GroupTmrTemporaryKey =
+            GroupTmrTemporaryKey(
+                id = d.keyId,
+                groupId = d.groupId,
+                isAdmin = d.isAdmin,
+                createdById = d.createdById,
+                authFactorType = d.authFactorType,
+                created = Instant.ofEpochSecond(d.created),
+            )
+
+        internal fun fromMobileSdkArray(
+            goArray: io.seald.seald_sdk_internals.mobile_sdk.GroupTMRTemporaryKeyArray,
+        ): Array<GroupTmrTemporaryKey> {
+            val result =
+                Array(goArray.size().toInt()) {
+                    fromMobileSdk(goArray.get(it.toLong()))
+                }
+            return result
+        }
+    }
+}
+
+/**
+ * ListedGroupTMRTemporaryKeys holds a list of GroupTmrTemporaryKey.
+ *
+ * @property nbPage Number of pages found.
+ * @property gTMRTKeys Temporary keys found.
+ */
+data class ListedGroupTMRTemporaryKeys(
+    val nbPage: Int,
+    val gTMRTKeys: Array<GroupTmrTemporaryKey>,
+) {
+    internal companion object {
+        internal fun fromMobileSdk(
+            nativeList: io.seald.seald_sdk_internals.mobile_sdk.ListedGroupTMRTemporaryKeys,
+        ): ListedGroupTMRTemporaryKeys {
+            val keys = GroupTmrTemporaryKey.fromMobileSdkArray(nativeList.keys)
+            return ListedGroupTMRTemporaryKeys(nativeList.nbPage.toInt(), keys)
+        }
+    }
+}
+
+/**
+ * SealdSearchGroupTMRTemporaryKeysOpts holds the tmr filters used when searching group TMR temporary keys.
+ *
+ * @property groupId Return only the TMR temporary keys that give access to this groupId.
+ * @property page Page to return.
+ * @property all Should return all pages after `Page`.
+ */
+data class SearchGroupTMRTemporaryKeysOpts
+    @JvmOverloads
+    constructor(
+        val groupId: String = "",
+        val page: Int = 1,
+        val all: Boolean = false,
+    ) {
+        internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.SearchGroupTMRTemporaryKeysOpts {
+            val result =
+                io.seald.seald_sdk_internals.mobile_sdk
+                    .SearchGroupTMRTemporaryKeysOpts()
+            result.groupId = this.groupId
+            result.page = this.page.toLong()
+            result.all = this.all
+            return result
+        }
+    }

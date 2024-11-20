@@ -311,7 +311,7 @@ Future<bool> testSealdSdk() async {
         testCredentials["ssks_backend_app_key"]!);
 
     // The app backend creates an SSKS authentication session.
-    // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false, but we force auth because we want to convert TMR Accesses.
+    // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false, but we force auth because we want to convert TMR accesses.
     ChallengeSendResponse authSession = await yourCompanyDummyBackend.challengeSend(
         authFactorValue, authFactorType, authFactorValue, true, true,
         fakeOtp:
@@ -774,6 +774,39 @@ Future<bool> testSealdSdk() async {
     assertEqual(badPositionCheck.found, false);
     // For badPositionCheck, position cannot be asserted as it is not set when the hash is not found.
     assertEqual(badPositionCheck.lastPosition, 2);
+
+    // Group TMR temporary keys
+
+    // First, create a group to test on. sdk1 create a TMR temporary key to this group, sdk2 will join.
+    final String groupTMRId = await sdk1.createGroupAsync(
+        groupName: "group-TMR-1",
+        members: [user1AccountInfo.userId],
+        admins: [user1AccountInfo.userId]);
+
+    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    Uint8List gTMRRawOverEncryptionKey = randomBuffer(64);
+
+    // We defined a two man rule recipient earlier. We will use it again.
+    // The authentication factor is defined by `authFactorType` and `authFactorValue`.
+    // Also we already have the TMR JWT associated with it: `tmrJWT.token`
+
+    final SealdGroupTMRTemporaryKey gTMRTKCreated =
+        await sdk1.createGroupTMRTemporaryKeyAsync(groupTMRId, authFactorType,
+            authFactorValue, gTMRRawOverEncryptionKey);
+
+    final SealdListedGroupTMRTemporaryKey gTMRTKListed =
+        await sdk1.listGroupTMRTemporaryKeysAsync(groupTMRId);
+    assertEqual(gTMRTKListed.nbPage, 1);
+    assertEqual(gTMRTKListed.keys[0].id, gTMRTKCreated.id);
+
+    final SealdListedGroupTMRTemporaryKey gTMRTKSearched =
+        await sdk2.searchGroupTMRTemporaryKeysAsync(tmrJWT.token);
+    assertEqual(gTMRTKSearched.nbPage, 1);
+    assertEqual(gTMRTKSearched.keys[0].id, gTMRTKCreated.id);
+
+    await sdk2.convertGroupTMRTemporaryKeyAsync(
+        groupTMRId, gTMRTKCreated.id, tmrJWT.token, gTMRRawOverEncryptionKey);
+    await sdk1.deleteGroupTMRTemporaryKeyAsync(groupTMRId, gTMRTKCreated.id);
 
     // Heartbeat can be used to check if proxies and firewalls are configured properly so that the app can reach Seald's servers.
     await sdk1.heartbeatAsync();

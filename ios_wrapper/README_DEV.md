@@ -28,11 +28,11 @@ To fix formatting, you can run `uncrustify -c ../uncrustify.cfg --no-backup -l O
 
 For Swift code (the Swift example), linting uses [`SwiftLint`](https://github.com/realm/SwiftLint).
 
-To install, simply run `pod install` in the `ios_wrapper/example_swift/` folder.
+To install, simply run `brew install swiftlint`.
 
-To verify formatting, you can run `./Pods/SwiftLint/swiftlint lint`.
+To verify formatting, you can run `swiftlint lint` in the `ios_wrapper/example_swift/` folder.
 
-To fix formatting, you can run `./Pods/SwiftLint/swiftlint lint --fix`.
+To fix formatting, you can run `swiftlint lint --fix` in the `ios_wrapper/example_swift/` folder.
 
 ## Using the local version in a project
 

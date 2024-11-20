@@ -3,11 +3,13 @@ package sdk
 import (
 	"encoding/base64"
 	"errors"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk/sigchain"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/sdk/sigchain"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/utils"
+	"sort"
 	"time"
 )
 
@@ -47,6 +49,8 @@ var (
 	ErrorGroupsRetrieveInfoNoGroup = utils.NewSealdError("GROUPS_RETRIEVE_INFO_NO_GROUP", "updating group unknown locally")
 	// ErrorGroupsGroupCannotBeMember is returned when trying to set a group as a member of itself
 	ErrorGroupsGroupCannotBeMember = utils.NewSealdError("GROUPS_GROUP_CANNOT_BE_MEMBER", "group cannot be a member of itself")
+	// ErrorGroupsRenewGroupKeyCannotDecryptTMRTempKey is returned when we cannot decrypt a group TMR temporary SymKey with the group device
+	ErrorGroupsRenewGroupKeyCannotDecryptTMRTempKey = utils.NewSealdError("GROUPS_GROUP_RENEW_KEY_CANNOT_DECRYPT_TMR_TEMP_KEY", "Cannot decrypt a group TMR temporary SymKey with this group device")
 )
 
 // CreateGroup creates a group, and returns the created group's ID.
@@ -138,6 +142,10 @@ func (state *State) CreateGroup(groupName string, members []string, admins []str
 
 	groupId := group_.Group.BeardUser.Id
 
+	// define createdAt here instead of relying on the default in CreateSigchainTransaction so that we can
+	// compute the exact value of expireAt, in order to save it in the model
+	createdAt := time.Now()
+
 	// Generating sigchain transactions
 	block1, err := sigchain.CreateSigchainTransaction(&sigchain.CreateSigchainTransactionOptions{
 		OperationType:          sigchain.SIGCHAIN_OPERATION_CREATE,
@@ -149,16 +157,13 @@ func (state *State) CreateGroup(groupName string, members []string, admins []str
 		Position:               0,
 		PreviousHash:           "",
 		SignerDeviceId:         group_.Group.DeviceId,
+		CreatedAt:              &createdAt,
 	})
 
 	if err != nil {
 		return "", tracerr.Wrap(err)
 	}
 
-	// define createdAt here instead of relying on the default in CreateSigchainTransaction so that we can
-	// compute the exact value of expireAt, in order to save it in the model
-	createdAt := time.Now()
-	expireAt := time.Unix(createdAt.Add(sigchain.DEVICE_DEFAULT_LIFE_TIME).Unix(), 0) // keep only the unix timestamp part (no sub-second precision)
 	block2, err := sigchain.CreateSigchainTransaction(&sigchain.CreateSigchainTransactionOptions{
 		OperationType:     sigchain.SIGCHAIN_OPERATION_MEMBERS,
 		OperationMembers:  &members,
@@ -168,7 +173,6 @@ func (state *State) CreateGroup(groupName string, members []string, admins []str
 		PreviousHash:      block1.Signature.Hash,
 		SignerDeviceId:    group_.Group.DeviceId,
 		CreatedAt:         &createdAt,
-		ExpireAfter:       sigchain.DEVICE_DEFAULT_LIFE_TIME,
 	})
 
 	if err != nil {
@@ -194,6 +198,7 @@ func (state *State) CreateGroup(groupName string, members []string, admins []str
 			IsAdmin: utils.SliceIncludes(admins, member),
 		})
 	}
+	expireAt := time.Unix(createdAt.Add(sigchain.DEVICE_DEFAULT_LIFE_TIME).Unix(), 0) // keep only the unix timestamp part (no sub-second precision)
 	state.storage.groups.set(group{
 		Id:       groupId,
 		DeviceId: group_.Group.DeviceId,
@@ -821,6 +826,61 @@ func (state *State) RenewGroupKey(groupId string, preGeneratedKeys *PreGenerated
 		keys2 = append(keys2, encryptedMessageKey2{Key: k.Token, CreatedForKey: k.CreatedForKey, CreatedForKeyHash: k.CreatedForKeyHash})
 	}
 
+	// List all group TMR temporary keys that need to be reencrypted
+	state.logger.Trace().Msg("RenewGroupKey: Listing group TMR temporary keys...")
+	temporaryKeysToConvert, err := state.listGTMRK(groupId, 1, true, true)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	state.logger.Trace().Int("nbr to convert", len(temporaryKeysToConvert.Keys)).Msg("RenewGroupKey: Got group TMR temporary keys to convert")
+
+	reencryptedTempKeys := make(map[string]gTMRTKRenewed)
+	for _, keyToConvert := range temporaryKeysToConvert.Keys {
+		encryptedSymKeyGroupBytes, err := base64.StdEncoding.DecodeString(keyToConvert.EncryptedSymKeyGroup)
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+		symKeySignatureBytes, err := base64.StdEncoding.DecodeString(keyToConvert.SymKeySignature)
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+
+		var symKeyBytes []byte
+		symKeyBytes, err = group.CurrentKey.EncryptionPrivateKey.Decrypt(encryptedSymKeyGroupBytes)
+		if err != nil {
+			state.logger.Error().Msg("RenewGroupKey: Cannot decrypt retrived symKey.")
+			return tracerr.Wrap(ErrorGroupsRenewGroupKeyCannotDecryptTMRTempKey.AddDetails(err.Error()))
+		}
+		err = group.CurrentKey.SigningPrivateKey.Public().Verify(symKeyBytes, symKeySignatureBytes)
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+
+		symKey, err := symmetric_key.Decode(symKeyBytes)
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+
+		reencryptedKeyBytes, err := symKey.Encrypt(key.Encode())
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+		symkeySignatureBuff, err := group.CurrentKey.SigningPrivateKey.Sign(symKey.Encode())
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+		renewedEncryptedSymKeyBytes, err := group.CurrentKey.EncryptionPrivateKey.Public().Encrypt(symKey.Encode())
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+		reencryptedTempKeys[keyToConvert.Id] = gTMRTKRenewed{
+			Data:                 base64.StdEncoding.EncodeToString(reencryptedKeyBytes),
+			Signature:            base64.StdEncoding.EncodeToString(symkeySignatureBuff),
+			EncryptedSymkeyGroup: base64.StdEncoding.EncodeToString(renewedEncryptedSymKeyBytes),
+		}
+	}
+	state.logger.Trace().Msg("RenewGroupKey: All group TMR temporary keys converted")
+
 	state.logger.Trace().Str("groupId", groupId).Msg("RenewGroupKey: Generating sigchain transaction")
 	// Generating sigchain transaction
 	block, err := sigchain.CreateSigchainTransaction(&sigchain.CreateSigchainTransactionOptions{
@@ -847,6 +907,7 @@ func (state *State) RenewGroupKey(groupId string, preGeneratedKeys *PreGenerated
 		EncryptedEncryptionPrivkey: base64.StdEncoding.EncodeToString(encryptedEncryptionPrivateKey),
 		EncryptedSigningPrivkey:    base64.StdEncoding.EncodeToString(encryptedSigningPrivateKey),
 		MessageKeys:                keys2,
+		GroupTMRTemporaryKeys:      reencryptedTempKeys,
 	})
 	if err != nil {
 		return tracerr.Wrap(err)
@@ -975,5 +1036,425 @@ func (state *State) SetGroupAdmins(groupId string, addToAdmins []string, removeF
 		return tracerr.Wrap(err)
 	}
 
+	return nil
+}
+
+type ListedGroupTMRTemporaryKeys struct {
+	NbPage int
+	Keys   []*GroupTMRTemporaryKey
+}
+
+func (state *State) listGTMRK(groupId string, page int, all bool, full bool) (*ListedGroupTMRTemporaryKeys, error) {
+	state.logger.Trace().Bool("all", all).Bool("full", full).Str("groupId", groupId).Int("page", page).Msg("listGTMRK: listing group TMR temp keys...")
+	lastPage := utils.Ternary(all, 1000, utils.Ternary(page > 1, page, 1))
+
+	res := &ListedGroupTMRTemporaryKeys{
+		NbPage: lastPage,
+	}
+	for currentPage := utils.Ternary(page > 1, page, 1); currentPage <= lastPage; currentPage++ {
+		result, err := autoLogin(state, state.apiClient.listGroupTMRTemporaryKeys)(&listGroupTMRTemporaryKeysRequest{
+			GroupId: groupId,
+			Page:    currentPage,
+			Full:    full,
+		})
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+
+		lastPage = utils.Ternary(all, result.NbPage, currentPage)
+		res.NbPage = result.NbPage
+		res.Keys = append(res.Keys, result.Results...)
+	}
+
+	return res, nil
+
+}
+
+// ListGroupTMRTemporaryKeys list a group TMR temporary key.
+// If `all` set to true, list all pages after `page`
+func (state *State) ListGroupTMRTemporaryKeys(groupId string, page int, all bool) (*ListedGroupTMRTemporaryKeys, error) {
+	err := state.checkSdkState(true)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return state.listGTMRK(groupId, page, all, false)
+}
+
+// CreateGroupTMRTemporaryKey create a group TMR temporary key.
+func (state *State) CreateGroupTMRTemporaryKey(groupId string, authFactor *common_models.AuthFactor, isAdmin bool, rawOverEncryptionKey []byte) (*GroupTMRTemporaryKey, error) {
+	err := state.checkSdkState(true)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	state.logger.Trace().Str("groupId", groupId).Msg("Calling CreateGroupTMRTemporaryKey...")
+
+	// Lock group user
+	state.locks.contactsLockGroup.Lock(groupId)
+	defer state.locks.contactsLockGroup.Unlock(groupId)
+
+	// Validate inputs
+	err = utils.CheckUUID(groupId)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	err = utils.CheckAuthFactor(authFactor)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	// Doing it early to validate arg value
+	overEncryptionTMRSymKey, err := symmetric_key.Decode(rawOverEncryptionKey)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	// Get updated info about group
+	_, err = state.getUpdatedContactUnlocked(groupId)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	group := state.storage.groups.get(groupId)
+	if group == nil {
+		return nil, tracerr.Wrap(ErrorGroupsNotMember)
+	}
+
+	// Check that we are allowed to do this
+	err = state.checkGroupAdmin(group)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	state.logger.Trace().Msg("CreateGroupTMRTemporaryKey: Generating new temporary symKey")
+	symKey, err := symmetric_key.Generate()
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	encryptedSymKeyRoekBytes, err := overEncryptionTMRSymKey.Encrypt(symKey.Encode())
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	encryptedSymKeyGroupBytes, err := group.CurrentKey.EncryptionPrivateKey.Public().Encrypt(symKey.Encode())
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	symkeySignatureBuff, err := group.CurrentKey.SigningPrivateKey.Sign(symKey.Encode())
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	state.logger.Trace().Msg("CreateGroupTMRTemporaryKey: All key instantiated. Generating userDevicesMessages...")
+	// generating userDevicesMessages
+	var groupKeys []groupKey
+	if group.OldKeys != nil {
+		groupKeys = append(groupKeys, group.OldKeys...)
+	}
+	groupKeys = append(groupKeys, group.CurrentKey)
+
+	var encGroupDeviceKeys = make(map[string]string)
+	for _, groupKey := range groupKeys {
+		messageKey, err := state.retrieveMessageKeyDirectOnly(groupKey.MessageId)
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+
+		tokenBuff, err := symKey.Encrypt(messageKey.Encode())
+		encGroupDeviceKeys[groupKey.MessageId] = base64.StdEncoding.EncodeToString(tokenBuff)
+	}
+
+	result, err := autoLogin(state, state.apiClient.createGroupTMRTemporaryKey)(&createGroupTMRTemporaryKeyRequest{
+		GroupId:              groupId,
+		IsAdmin:              isAdmin,
+		AuthFactorType:       authFactor.Type,
+		AuthFactorValue:      authFactor.Value,
+		EncryptedSymKeyRoek:  base64.StdEncoding.EncodeToString(encryptedSymKeyRoekBytes),
+		EncryptedSymKeyGroup: base64.StdEncoding.EncodeToString(encryptedSymKeyGroupBytes),
+		SymkeySignature:      base64.StdEncoding.EncodeToString(symkeySignatureBuff),
+		EncGroupDeviceKeys:   encGroupDeviceKeys,
+	})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return result, nil
+}
+
+// DeleteGroupTMRTemporaryKey delete a groupTMRTemporaryKey
+func (state *State) DeleteGroupTMRTemporaryKey(groupId string, temporaryKeyId string) error {
+	err := state.checkSdkState(true)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	_, err = autoLogin(state, state.apiClient.deleteGroupTMRTemporaryKey)(&deleteGroupTMRTemporaryKeyRequest{
+		GroupId:        groupId,
+		TemporaryKeyId: temporaryKeyId,
+	})
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	return nil
+}
+
+type SearchGroupTMRTemporaryKeysOpts struct {
+	GroupId string
+	Page    int
+	All     bool
+}
+
+// SearchGroupTMRTemporaryKeys search group TMR temporary keys that this tmrJWT could convert
+func (state *State) SearchGroupTMRTemporaryKeys(tmrJWT string, opts *SearchGroupTMRTemporaryKeysOpts) (*ListedGroupTMRTemporaryKeys, error) {
+	err := state.checkSdkState(true)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	state.logger.Trace().Interface("opts", opts).Msg("Calling SearchGroupTMRTemporaryKeys")
+	if opts == nil {
+		opts = &SearchGroupTMRTemporaryKeysOpts{}
+	}
+
+	lastPage := utils.Ternary(opts.All, 1000, utils.Ternary(opts.Page > 1, opts.Page, 1))
+	res := &ListedGroupTMRTemporaryKeys{
+		NbPage: lastPage,
+	}
+	for currentPage := utils.Ternary(opts.Page > 1, opts.Page, 1); currentPage <= lastPage; currentPage++ {
+		state.logger.Trace().Int("currentPage", currentPage).Msg("SearchGroupTMRTemporaryKeys: fetching next page...")
+		result, err := autoLogin(state, state.apiClient.searchGroupTMRTemporaryKeys)(&searchGroupTMRTemporaryKeysRequest{
+			TmrJWT:  tmrJWT,
+			GroupId: opts.GroupId,
+			Page:    currentPage,
+		})
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+
+		lastPage = utils.Ternary(opts.All, result.NbPage, currentPage)
+		res.NbPage = result.NbPage
+		res.Keys = append(res.Keys, result.Results...)
+	}
+
+	return res, nil
+}
+
+// ConvertGroupTMRTemporaryKey convert group TMR temporary key to a group membership.
+func (state *State) ConvertGroupTMRTemporaryKey(groupId string, temporaryKeyId string, tmrJWT string, rawOverEncryptionKey []byte, deleteOnConvert bool) error {
+	err := state.checkSdkState(true)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+
+	state.logger.Trace().Str("groupId", groupId).Str("temporaryKeyId", temporaryKeyId).Msg("Calling ConvertGroupTMRTemporaryKey")
+	lastPage := 1000
+	var gtmrk *gtmrtk
+	var messagesToConvert []*groupDeviceKeyData
+	for currentPage := 1; currentPage <= lastPage; currentPage++ {
+		result, err := autoLogin(state, state.apiClient.getGroupTMRTemporaryKey)(&getGroupTMRTemporaryKeyRequest{
+			GroupId:        groupId,
+			TemporaryKeyId: temporaryKeyId,
+			TmrJWT:         tmrJWT,
+			Page:           currentPage,
+		})
+		if err != nil {
+			return tracerr.Wrap(err)
+		}
+
+		lastPage = result.NbPage
+		gtmrk = result.Gtmrtk
+		messagesToConvert = append(messagesToConvert, result.Results...)
+	}
+	state.logger.Trace().Int("messagesToConvert len:", len(messagesToConvert)).Msg("ConvertGroupTMRTemporaryKey: got messages to convert")
+
+	overEncryptionTMRSymKey, err := symmetric_key.Decode(rawOverEncryptionKey)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+
+	encryptedSymKeyRoekBytes, err := base64.StdEncoding.DecodeString(gtmrk.EncryptedSymKeyRoek)
+	if err != nil {
+		return err
+	}
+	symKeyBytes, err := overEncryptionTMRSymKey.Decrypt(encryptedSymKeyRoekBytes)
+	if err != nil {
+		return err
+	}
+	symKey, err := symmetric_key.Decode(symKeyBytes)
+	if err != nil {
+		return err
+	}
+
+	state.logger.Trace().Msg("ConvertGroupTMRTemporaryKey: start converting keys")
+	var convertedKey []emkAndId
+	var groupKeys []groupKey
+	var keyExpireAt []time.Time
+	// Make sure messagesToConvert are sorted, the oldest first, the most recent last.
+	sort.Slice(messagesToConvert, func(i, j int) bool {
+		return messagesToConvert[i].GroupDeviceKey.Created.Before(messagesToConvert[j].GroupDeviceKey.Created)
+	})
+	for _, keyToConvert := range messagesToConvert {
+		dataBuff, err := base64.StdEncoding.DecodeString(keyToConvert.Data)
+		if err != nil {
+			return err
+		}
+		messageKeyBuff, err := symKey.Decrypt(dataBuff)
+		if err != nil {
+			return err
+		}
+		messageKey, err := symmetric_key.Decode(messageKeyBuff)
+		if err != nil {
+			return err
+		}
+
+		encEncPrivKBytes, err := base64.StdEncoding.DecodeString(keyToConvert.GroupDeviceKey.EncryptedEncryptionPrivateKey)
+		if err != nil {
+			return err
+		}
+		clearEncPrivKey, err := messageKey.Decrypt(encEncPrivKBytes)
+		if err != nil {
+			return err
+		}
+
+		encSigPrivKBytes, err := base64.StdEncoding.DecodeString(keyToConvert.GroupDeviceKey.EncryptedSigningPrivateKey)
+		if err != nil {
+			return err
+		}
+		clearSigPrivKey, err := messageKey.Decrypt(encSigPrivKBytes)
+		if err != nil {
+			return err
+		}
+
+		encKey, err := asymkey.PrivateKeyDecode(clearEncPrivKey)
+		if err != nil {
+			return err
+		}
+		sigKey, err := asymkey.PrivateKeyDecode(clearSigPrivKey)
+		if err != nil {
+			return err
+		}
+		keyPair := groupKey{
+			MessageId:            keyToConvert.GroupDeviceKey.MessageId,
+			EncryptionPrivateKey: encKey,
+			SigningPrivateKey:    sigKey,
+		}
+		groupKeys = append(groupKeys, keyPair)
+		keyExpireAt = append(keyExpireAt, time.Unix(int64(keyToConvert.GroupDeviceKey.KeyExpirationDate), 0))
+
+		userDevices := state.storage.contacts.get(state.storage.currentDevice.get().UserId)
+		var convertedEMK []encryptedMessageKey2
+		for _, uDevice := range userDevices.Devices {
+			emk, err := uDevice.EncryptionKey.Encrypt(messageKeyBuff)
+			if err != nil {
+				return err
+			}
+			emkB64 := base64.StdEncoding.EncodeToString(emk)
+			convertedEMK = append(convertedEMK, encryptedMessageKey2{
+				Key:               utils.B64toS64(emkB64),
+				CreatedForKey:     uDevice.Id,
+				CreatedForKeyHash: uDevice.EncryptionKey.GetHash(),
+			})
+		}
+
+		convertedKey = append(convertedKey, emkAndId{
+			MessageId:   keyToConvert.GroupDeviceKey.MessageId,
+			MessageKeys: convertedEMK,
+		})
+	}
+	state.logger.Trace().Msg("ConvertGroupTMRTemporaryKey: finished keys conversion")
+
+	// Get updated info about group
+	groupContact, err := state.getUpdatedContactUnlocked(groupId)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+
+	state.logger.Trace().Interface("groupContact", groupContact).Msg("ConvertGroupTMRTemporaryKey: retrieveGroupInfo...")
+
+	members, err := autoLogin(state, state.apiClient.listGroupMembers)(&listGroupMembersRequest{GroupId: groupId})
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	var newMembers []groupMember
+	var newMembersIds []string
+	for _, member := range members.GroupMember {
+		newMembersIds = append(newMembersIds, member.Id)
+		newMembers = append(newMembers, groupMember{Id: member.Id, IsAdmin: member.IsAdmin})
+	}
+	newMembers = append(newMembers, groupMember{Id: state.storage.currentDevice.get().UserId, IsAdmin: gtmrk.IsAdmin})
+	newMembersIds = append(newMembersIds, state.storage.currentDevice.get().UserId)
+
+	state.logger.Trace().Interface("members", members).Msg("ConvertGroupTMRTemporaryKey: Creating groupUser...")
+	groupUser := group{
+		Id:            groupId,
+		DeviceId:      groupContact.Devices[0].Id,
+		CurrentKey:    groupKeys[len(groupKeys)-1],
+		Members:       newMembers,
+		DeviceExpires: keyExpireAt[len(keyExpireAt)-1],
+		OldKeys:       groupKeys[:len(groupKeys)-1],
+	}
+
+	state.logger.Trace().Msg("ConvertGroupTMRTemporaryKey: create sigchain transaction")
+	// Generating sigchain transaction with the new members list
+	block, err := sigchain.CreateSigchainTransaction(&sigchain.CreateSigchainTransactionOptions{
+		OperationType:     sigchain.SIGCHAIN_OPERATION_MEMBERS,
+		OperationMembers:  &newMembersIds,
+		OperationDeviceId: groupUser.DeviceId,
+		SigningKey:        groupUser.CurrentKey.SigningPrivateKey,
+		Position:          groupContact.Sigchain.GetLastBlock().Transaction.Position + 1,
+		PreviousHash:      groupContact.Sigchain.GetLastBlock().Signature.Hash,
+		SignerDeviceId:    groupUser.DeviceId,
+	})
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	groupSigchain := sigchain.Sigchain{
+		Blocks: append(groupContact.Sigchain.Blocks, block),
+	}
+	checkResult, err := sigchain.CheckSigchainTransactions(groupSigchain, false)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+	groupDevices := []*device{
+		{
+			Id:            groupUser.DeviceId,
+			EncryptionKey: groupKeys[len(groupKeys)-1].EncryptionPrivateKey.Public(),
+			SigningKey:    groupKeys[len(groupKeys)-1].SigningPrivateKey.Public(),
+		},
+	}
+	err = checkKeyringMatchesSigChain(checkResult, groupDevices)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+
+	state.logger.Trace().Msg("ConvertGroupTMRTemporaryKey: api call and save.")
+	keysToAdd := make(map[string][]emkAndId)
+	keysToAdd[state.storage.currentDevice.get().UserId] = convertedKey
+	_, err = autoLogin(state, state.apiClient.convertGroupTMRTemporaryKey)(&convertGroupTMRTemporaryKeyRequest{
+		GroupId:                groupId,
+		TemporaryKeyId:         temporaryKeyId,
+		TmrJWT:                 tmrJWT,
+		DeleteOnConvert:        deleteOnConvert,
+		UserDevicesMessages:    keysToAdd,
+		TransactionDataMembers: block,
+	})
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+
+	state.storage.groups.set(groupUser)
+	state.storage.contacts.set(contact{
+		Id:       groupId,
+		IsGroup:  true,
+		Sigchain: groupSigchain,
+		Devices:  groupDevices,
+	})
+
+	err = state.saveGroups()
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+
+	err = state.saveContacts()
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
 	return nil
 }

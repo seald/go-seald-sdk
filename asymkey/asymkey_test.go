@@ -11,10 +11,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/seald/go-seald-sdk/test_utils"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go-seald-sdk/test_utils"
-	"go-seald-sdk/utils"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"os"
@@ -302,7 +302,7 @@ func TestAsymkey(t *testing.T) {
 				cipherText2[0] = 0
 				_, err := privateKey.Decrypt(cipherText2)
 				if assert.Error(t, err) {
-					assert.EqualError(t, err, "crypto/rsa: decryption error")
+					assert.EqualError(t, err, "ASYMKEY_DECRYPT_CRYPTO_ERROR - Cannot decrypt : crypto/rsa: decryption error")
 				}
 			})
 			t.Run("Invalid CRC32", func(t *testing.T) {
@@ -313,7 +313,7 @@ func TestAsymkey(t *testing.T) {
 				assert.NoError(t, err)
 				_, err = privateKey.Decrypt(cipherText2)
 				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorDecryptInvalidCRC)
+					assert.ErrorIs(t, err, ErrorDecryptCryptoRSA)
 				}
 			})
 
@@ -323,7 +323,7 @@ func TestAsymkey(t *testing.T) {
 				assert.NoError(t, err)
 				_, err = privateKey.Decrypt(cipherText2)
 				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorDecryptTooShort)
+					assert.ErrorIs(t, err, ErrorDecryptCryptoRSA)
 				}
 			})
 
@@ -342,7 +342,7 @@ func TestAsymkey(t *testing.T) {
 				assert.NoError(t, err)
 				_, err = privateKey.Decrypt(cipherText2)
 				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorDecryptInvalidCRC)
+					assert.ErrorIs(t, err, ErrorDecryptCryptoRSA)
 				}
 			})
 		})

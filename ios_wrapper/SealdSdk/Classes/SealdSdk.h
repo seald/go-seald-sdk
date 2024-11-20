@@ -11,8 +11,12 @@
 
 #import <Foundation/Foundation.h>
 #import <SealdSdkInternals/SealdSdkInternals.h>
+// All headers must be imported here, for SwiftPackageManager to be happy
 #import "Helpers.h"
 #import "SealdEncryptionSession.h"
+#import "SealdSsksPasswordPlugin.h"
+#import "SealdSsksTMRPlugin.h"
+#import "Utils.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -942,7 +946,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param overEncryptionKey TMR over-encryption key. This *MUST* be a cryptographically random NSData of 64 bytes.
  * @param conversionFilters Convert tmr accesses filters. If multiple TMR Accesses with the auth factor, filter out the unwanted ones.
  * @param deleteOnConvert Whether or not to delete the TMR access after conversion.
- * @param error The error that occurred while retrieving the session, if any.
+ * @param error If an error occurs, upon return contains an NSError object that describes the problem.
  * @return A SealdConvertTmrAccessesResult instance.
  */
 - (SealdConvertTmrAccessesResult*) convertTmrAccesses:(const NSString*)tmrJWT
@@ -966,6 +970,143 @@ NS_ASSUME_NONNULL_BEGIN
                conversionFilters:(const SealdTmrAccessesConvertFilters*_Nullable)conversionFilters
                  deleteOnConvert:(const BOOL)deleteOnConvert
                completionHandler:(void (^)(SealdConvertTmrAccessesResult* response, NSError*_Nullable error))completionHandler;
+
+/**
+ * Create a group TMR temporary key, and returns the created GroupTmrTemporaryKey instance.
+ *
+ * @param groupId  The Id of the group for which to create a TMR key.
+ * @param authFactor Authentication method of this user, to which SSKS has sent a challenge at the request of your app's server.
+ * @param isAdmin Should this TMR temporary key give the group admin status.
+ * @param rawOverEncryptionKey TMR over-encryption key. This *MUST* be a cryptographically random buffer of 64 bytes.
+ * @param error If an error occurs, upon return contains an NSError object that describes the problem.
+ * @return A SealdGroupTmrTemporaryKey instance.
+ */
+- (SealdGroupTmrTemporaryKey*) createGroupTMRTemporaryKeyWithGroupId:(const NSString*)groupId
+                                                          authFactor:(const SealdTmrAuthFactor*)authFactor
+                                                             isAdmin:(const BOOL)isAdmin
+                                                rawOverEncryptionKey:(const NSData*)rawOverEncryptionKey
+                                                               error:(NSError*_Nullable*)error;
+
+/**
+ * Create a group TMR temporary key, and returns the created GroupTmrTemporaryKey instance.
+ *
+ * @param groupId  The Id of the group for which to create a TMR key.
+ * @param authFactor Authentication method of this user, to which SSKS has sent a challenge at the request of your app's server.
+ * @param isAdmin Should this TMR temporary key give the group admin status.
+ * @param rawOverEncryptionKey TMR over-encryption key. This *MUST* be a cryptographically random buffer of 64 bytes.
+ * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdGroupTmrTemporaryKey` instance containing the response, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) createGroupTMRTemporaryKeyAsyncWithGroupId:(const NSString*)groupId
+                                         authFactor:(const SealdTmrAuthFactor*)authFactor
+                                            isAdmin:(const BOOL)isAdmin
+                               rawOverEncryptionKey:(const NSData*)rawOverEncryptionKey
+                                  completionHandler:(void (^)(SealdGroupTmrTemporaryKey* response, NSError*_Nullable error))completionHandler;
+
+/**
+ * List group TMR temporary keys.
+ *
+ * @param groupId The Id of the group for which to list TMR keys.
+ * @param page Page number to fetch.
+ * @param all Should list all pages after `page`.
+ * @param error If an error occurs, upon return contains an NSError object that describes the problem.
+ * @return A SealdListedGroupTMRTemporaryKeys instance.
+ */
+- (SealdListedGroupTMRTemporaryKeys*) listGroupTMRTemporaryKeysWithGroupId:(const NSString*)groupId
+                                                                      page:(const NSInteger)page
+                                                                       all:(const BOOL)all
+                                                                     error:(NSError*_Nullable*)error;
+
+/**
+ * List group TMR temporary keys.
+ *
+ * @param groupId The Id of the group for which to list TMR keys.
+ * @param page Page number to fetch.
+ * @param all Should list all pages after `page`.
+ * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdListedGroupTMRTemporaryKeys` instance containing the response, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) listGroupTMRTemporaryKeysAsyncWithGroupId:(const NSString*)groupId
+                                              page:(const NSInteger)page
+                                               all:(const BOOL)all
+                                 completionHandler:(void (^)(SealdListedGroupTMRTemporaryKeys* response, NSError*_Nullable error))completionHandler;
+
+/**
+ * Search group TMR temporary keys that can be used with the TMR JWT.
+ *
+ * @param tmrJWT TMR JWT to use.
+ * @param options Option to filter the search results.
+ * @param error If an error occurs, upon return contains an NSError object that describes the problem.
+ * @return A SealdListedGroupTMRTemporaryKeys instance.
+ */
+- (SealdListedGroupTMRTemporaryKeys*) searchGroupTMRTemporaryKeysWithTmrJWT:(const NSString*)tmrJWT
+                                                                    options:(SealdSearchGroupTMRTemporaryKeys*_Nullable)options
+                                                                      error:(NSError*_Nullable*)error;
+
+/**
+ * Search group TMR temporary keys that can be used with the TMR JWT.
+ *
+ * @param tmrJWT TMR JWT to use.
+ * @param options Option to filter the search results.
+ * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdListedGroupTMRTemporaryKeys` instance containing the response, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) searchGroupTMRTemporaryKeysAsyncWithTmrJWT:(const NSString*)tmrJWT
+                                            options:(SealdSearchGroupTMRTemporaryKeys*_Nullable)options
+                                  completionHandler:(void (^)(SealdListedGroupTMRTemporaryKeys* response, NSError*_Nullable error))completionHandler;
+
+/**
+ * Convert a group TMR temporary key to become a group member.
+ *
+ * @param groupId The Id of the group for which to convert a TMR key.
+ * @param temporaryKeyId Id of the TMR temporary key to convert
+ * @param tmrJWT TMR JWT to use
+ * @param rawOverEncryptionKey The raw encryption key to use. This *MUST* be a cryptographically random buffer of 64 bytes.
+ * @param deleteOnConvert Should the temporary key be deleted after conversion.
+ * @param error If an error occurs, upon return contains an NSError object that describes the problem.
+ */
+- (void) convertGroupTMRTemporaryKeyWithGroupId:(const NSString*)groupId
+                                 temporaryKeyId:(const NSString*)temporaryKeyId
+                                         tmrJWT:(const NSString*)tmrJWT
+                           rawOverEncryptionKey:(const NSData*)rawOverEncryptionKey
+                                deleteOnConvert:(const BOOL)deleteOnConvert
+                                          error:(NSError*_Nullable*)error;
+
+/**
+ * Convert a group TMR temporary key to become a group member.
+ *
+ * @param groupId The Id of the group for which to convert a TMR key.
+ * @param temporaryKeyId Id of the TMR temporary key to convert
+ * @param tmrJWT TMR JWT to use
+ * @param rawOverEncryptionKey The raw encryption key to use. This *MUST* be a cryptographically random buffer of 64 bytes.
+ * @param deleteOnConvert Should the temporary key be deleted after conversion.
+ * @param completionHandler A callback called after function execution. This callback take one argument, a `NSError*` that indicates if any error occurred.
+ */
+- (void) convertGroupTMRTemporaryKeyAsyncWithGroupId:(const NSString*)groupId
+                                      temporaryKeyId:(const NSString*)temporaryKeyId
+                                              tmrJWT:(const NSString*)tmrJWT
+                                rawOverEncryptionKey:(const NSData*)rawOverEncryptionKey
+                                     deleteOnConvert:(const BOOL)deleteOnConvert
+                                   completionHandler:(void (^)(NSError*_Nullable error))completionHandler;
+
+/**
+ * Delete a group TMR temporary key.
+ *
+ * @param groupId The Id of the group for which to delete a TMR key.
+ * @param temporaryKeyId Id of the TMR key to delete.
+ * @param error If an error occurs, upon return contains an NSError object that describes the problem.
+ */
+- (void) deleteGroupTMRTemporaryKeyWithGroupId:(const NSString*)groupId
+                                temporaryKeyId:(const NSString*)temporaryKeyId
+                                         error:(NSError*_Nullable*)error;
+
+/**
+ * Delete a group TMR temporary key.
+ *
+ * @param groupId The Id of the group for which to delete a TMR key.
+ * @param temporaryKeyId Id of the TMR key to delete.
+ * @param completionHandler A callback called after function execution. This callback take one argument, a `NSError*` that indicates if any error occurred.
+ */
+- (void) deleteGroupTMRTemporaryKeyAsyncWithGroupId:(const NSString*)groupId
+                                     temporaryKeyId:(const NSString*)temporaryKeyId
+                                  completionHandler:(void (^)(NSError*_Nullable error))completionHandler;
 @end
 
 NS_ASSUME_NONNULL_END

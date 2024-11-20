@@ -2,12 +2,12 @@ package sdk
 
 import (
 	"fmt"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/test_utils"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/test_utils"
-	"go-seald-sdk/utils"
 	"testing"
 )
 

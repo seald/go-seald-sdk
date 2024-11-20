@@ -498,7 +498,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SSKSBackend* yourCompanyDummyBackend = New_SSKSBackend(testCredentials->ssksUrl, testCredentials->appId, testCredentials->ssksBackendAppKey);
 
     // The app backend creates an SSKS authentication session.
-    // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false, but we force auth because we want to convert TMR Accesses.
+    // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false, but we force auth because we want to convert TMR accesses.
     ChallengeSendResponse* authTmrSession = NULL;
     errCode = ssks_backend_challenge_send(yourCompanyDummyBackend, createAccountResult1->UserId, "EM", authFactorValue, 1, 1, &authTmrSession);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
@@ -510,7 +510,6 @@ int testSealdSDK(TestCredentials* testCredentials) {
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     SealdSsksTMRPlugin_Free(ssksPluginTmrAccesses);
     free(authTmrSession);
-    free(authFactorValue);
 
     // Retrieve the encryption session using the JWT
     SealdEncryptionSession* es1SDK1ByTmr = NULL;
@@ -537,8 +536,6 @@ int testSealdSDK(TestCredentials* testCredentials) {
     ASSERT_INT_EQUAL(es1SDK1ConvertedRetrievalDetails->Flow, SealdEncryptionSessionRetrievalDirect);
     SealdEncryptionSession_Free(es1SDK1Converted);
     SealdEncryptionSessionRetrievalDetails_Free(es1SDK1ConvertedRetrievalDetails);
-
-    SealdSsksTMRPluginGetFactorTokenResponse_Free(retrievedToken);
 
     // Using proxy sessions: https://docs.seald.io/sdk/guides/proxy-sessions.html
 
@@ -1160,6 +1157,61 @@ int testSealdSDK(TestCredentials* testCredentials) {
     free(checkLastSigchainHash);
     free(checkFirstSigchainHash);
     free(badPositionCheck);
+
+    // Group TMR temporary keys
+
+    // First, create a group to test on. sdk1 create a TMR temporary key to this group, sdk2 will join.
+    SealdStringArray* membersGTMR = SealdStringArray_New();
+    SealdStringArray_Add(membersGTMR, createAccountResult1->UserId);
+    SealdStringArray* adminsGTMR = SealdStringArray_New();
+    SealdStringArray_Add(adminsGTMR, createAccountResult1->UserId);
+    char* groupTMRId = NULL;
+    errCode = SealdSdk_CreateGroup(sdk1, "group-tmr", membersGTMR, adminsGTMR, NULL, NULL, &groupTMRId, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    SealdStringArray_Free(membersGTMR);
+    SealdStringArray_Free(adminsGTMR);
+
+    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    int gTMRRawOverEncryptionKeyLen = 64;
+    unsigned char* gTMRRawOverEncryptionKeyBytes = randomBuffer(gTMRRawOverEncryptionKeyLen);
+
+    // We defined a two man rule recipient earlier. We will use it again.
+    // The authentication factor is defined by `authFactorType` and `authFactorValue`.
+    // Also we already have the TMR JWT associated with it: `retrievedToken->Token`
+
+    SealdGroupTMRTemporaryKey* gTMRCreated = NULL;
+    errCode = SealdSdk_CreateGroupTMRTemporaryKey(sdk1, groupTMRId, authFactorType, authFactorValue, 0, gTMRRawOverEncryptionKeyBytes, gTMRRawOverEncryptionKeyLen, &gTMRCreated, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+
+    SealdGroupTMRTemporaryKeysArray* gTMRList = NULL;
+    int gTMRListNbPage = 0;
+    errCode = SealdSdk_ListGroupTMRTemporaryKeys(sdk1, groupTMRId, 1, 1, &gTMRListNbPage, &gTMRList, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_WITH_MSG(gTMRListNbPage == 1, "Unexpected number of pages");
+    assert(SealdGroupTMRTemporaryKeysArray_Size(gTMRList) == 1);
+    SealdGroupTMRTemporaryKey* gTMRListed = SealdGroupTMRTemporaryKeysArray_Get(gTMRList, 0);
+    ASSERT_STRING_EQUAL(gTMRListed->Id, gTMRCreated->Id);
+    SealdGroupTMRTemporaryKeysArray_Free(gTMRList);
+
+    SealdGroupTMRTemporaryKeysArray* gTMRSearch = NULL;
+    int gTMRSearchNbPage = 0;
+    SealdSearchGroupTMRTemporaryKeysOpts searchTMROpts = {
+        .GroupId = groupTMRId,
+    };
+    errCode = SealdSdk_SearchGroupTMRTemporaryKeys(sdk1, retrievedToken->Token, &searchTMROpts, &gTMRSearchNbPage, &gTMRSearch, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_WITH_MSG(gTMRSearchNbPage == 1, "Unexpected number of pages");
+    SealdGroupTMRTemporaryKeysArray_Free(gTMRSearch);
+
+    errCode = SealdSdk_ConvertGroupTMRTemporaryKey(sdk2, groupTMRId, gTMRCreated->Id, retrievedToken->Token, gTMRRawOverEncryptionKeyBytes, gTMRRawOverEncryptionKeyLen, 0, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+
+    errCode = SealdSdk_DeleteGroupTMRTemporaryKey(sdk1, groupTMRId, gTMRCreated->Id, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+
+    SealdSsksTMRPluginGetFactorTokenResponse_Free(retrievedToken);
+    SealdGroupTMRTemporaryKey_Free(gTMRCreated);
+    free(authFactorValue);
 
     // Heartbeat can be used to check if proxies and firewalls are configured properly so that the app can reach Seald's servers.
     errCode = SealdSdk_Heartbeat(sdk1, &err);

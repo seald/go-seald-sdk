@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"github.com/gibson042/canonicaljson-go"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/utils"
 	"time"
 )
 

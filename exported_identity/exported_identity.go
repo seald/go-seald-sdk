@@ -1,9 +1,9 @@
 package exported_identity
 
 import (
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/utils"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
