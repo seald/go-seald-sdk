@@ -2,9 +2,13 @@
 
 This package is the Seald SDK for iOS.
 
-It is available as a [Cocoapod](https://cocoapods.org/).
+The current version is `##VERSION##`.
 
-The current version is `##VERSION##`. Here is how you can add it to your `Podfile`:
+You can install it either with [Cocoapods](https://cocoapods.org/), or with the [Swift Package Manager](https://www.swift.org/documentation/package-manager/).
+
+## Install with Cocoapods
+
+Here is how you can add it to your `Podfile`:
 
 ```ruby{2}
 target 'YourApp' do
@@ -13,6 +17,15 @@ end
 ```
 
 Then, you can install with `pod install`.
+
+## Install with Swift Package Manager
+
+You can add the repository <https://github.com/seald/seald-sdk-ios> to your `Package.swift`, or to your XCode _Package dependencies_.
+
+> ⚠️ This repository <https://github.com/seald/seald-sdk-ios> is only for distribution of the release version of the SDK.
+> To access the source code, see <https://github.com/seald/go-seald-sdk>.
+
+## Import 
 
 You can then import it in your code with:
 

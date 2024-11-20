@@ -2,9 +2,9 @@ package messages
 
 import (
 	"encoding/json"
+	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/stretchr/testify/assert"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/symmetric_key"
 	"testing"
 )
 

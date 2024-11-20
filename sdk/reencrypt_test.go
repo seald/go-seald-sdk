@@ -3,11 +3,11 @@ package sdk
 import (
 	"errors"
 	"fmt"
+	"github.com/seald/go-seald-sdk/sdk/sigchain"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/sdk/sigchain"
-	"go-seald-sdk/utils"
 	"testing"
 	"time"
 )

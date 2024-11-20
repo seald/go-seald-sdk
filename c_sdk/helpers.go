@@ -8,11 +8,11 @@ import "C"
 import (
 	"fmt"
 	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/sdk"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/utils"
 	"sync"
 	"time"
 	"unsafe"
@@ -960,4 +960,103 @@ func sliceToSealdEncryptionSessionArray(slice []*sdk.EncryptionSession) *C.Seald
 	goArray := sealdEncryptionSessionArrayToGo(array)
 	goArray.items = append([]*sdk.EncryptionSession{}, slice...)
 	return array
+}
+
+func sealdGroupTMRTempKeyFromGo(gTMRTK *sdk.GroupTMRTemporaryKey) *C.SealdGroupTMRTemporaryKey {
+	res := (*C.SealdGroupTMRTemporaryKey)(C.malloc(C.size_t(unsafe.Sizeof(C.SealdGroupTMRTemporaryKey{}))))
+	res.Id = C.CString(gTMRTK.Id)
+	res.GroupId = C.CString(gTMRTK.GroupId)
+	res.IsAdmin = utils.Ternary(gTMRTK.IsAdmin, C.int(1), C.int(0))
+	res.CreatedById = C.CString(gTMRTK.CreatedById)
+	res.Created = C.longlong(gTMRTK.Created.Unix())
+	res.AuthFactorType = C.CString(gTMRTK.AuthFactorType)
+	return res
+}
+
+//export SealdGroupTMRTemporaryKey_Free
+func SealdGroupTMRTemporaryKey_Free(gtmrtk *C.SealdGroupTMRTemporaryKey) {
+	if gtmrtk == nil {
+		return
+	}
+	C.free(unsafe.Pointer(gtmrtk.Id))
+	C.free(unsafe.Pointer(gtmrtk.GroupId))
+	C.free(unsafe.Pointer(gtmrtk.CreatedById))
+	C.free(unsafe.Pointer(gtmrtk.AuthFactorType))
+	C.free(unsafe.Pointer(gtmrtk))
+}
+
+type SealdGroupTMRTemporaryKeysArray struct {
+	items []*C.SealdGroupTMRTemporaryKey
+}
+
+func sealdGroupTMRTemporaryKeysArrayToGo(array *C.SealdGroupTMRTemporaryKeysArray) *SealdGroupTMRTemporaryKeysArray {
+	if array == nil {
+		return nil
+	}
+	return (*SealdGroupTMRTemporaryKeysArray)(unsafe.Pointer(array))
+}
+
+var sealdGroupTMRTemporaryKeysArrayRefMap = sync.Map{}
+
+//export SealdGroupTMRTemporaryKeysArray_New
+func SealdGroupTMRTemporaryKeysArray_New() *C.SealdGroupTMRTemporaryKeysArray {
+	array := &SealdGroupTMRTemporaryKeysArray{}
+	sealdGroupTMRTemporaryKeysArrayRefMap.Store(uintptr(unsafe.Pointer(array)), array)
+	return (*C.SealdGroupTMRTemporaryKeysArray)(unsafe.Pointer(array))
+}
+
+//export SealdGroupTMRTemporaryKeysArray_Free
+func SealdGroupTMRTemporaryKeysArray_Free(array *C.SealdGroupTMRTemporaryKeysArray) {
+	goArray := sealdGroupTMRTemporaryKeysArrayToGo(array)
+	items := goArray.items
+	goArray.items = nil
+	for _, as := range items {
+		SealdGroupTMRTemporaryKey_Free(as)
+	}
+	sealdGroupTMRTemporaryKeysArrayRefMap.Delete(uintptr(unsafe.Pointer(array)))
+}
+
+//export SealdGroupTMRTemporaryKeysArray_Add
+func SealdGroupTMRTemporaryKeysArray_Add(array *C.SealdGroupTMRTemporaryKeysArray, gtmrtk *C.SealdGroupTMRTemporaryKey) {
+	goArray := sealdGroupTMRTemporaryKeysArrayToGo(array)
+	goArray.items = append(goArray.items, gtmrtk)
+}
+
+//export SealdGroupTMRTemporaryKeysArray_Get
+func SealdGroupTMRTemporaryKeysArray_Get(array *C.SealdGroupTMRTemporaryKeysArray, i C.int) *C.SealdGroupTMRTemporaryKey {
+	goArray := sealdGroupTMRTemporaryKeysArrayToGo(array)
+	return goArray.items[int(i)]
+}
+
+//export SealdGroupTMRTemporaryKeysArray_Size
+func SealdGroupTMRTemporaryKeysArray_Size(array *C.SealdGroupTMRTemporaryKeysArray) C.int {
+	goArray := sealdGroupTMRTemporaryKeysArrayToGo(array)
+	return C.int(len(goArray.items))
+}
+
+func sliceToSealdGroupTMRTemporaryKeysArray(slice []*sdk.GroupTMRTemporaryKey) *C.SealdGroupTMRTemporaryKeysArray {
+	ca := SealdGroupTMRTemporaryKeysArray_New()
+	for _, el := range slice {
+		SealdGroupTMRTemporaryKeysArray_Add(ca, sealdGroupTMRTempKeyFromGo(el))
+	}
+	return ca
+}
+
+//export SealdSearchGroupTMRTemporaryKeysOpts_Free
+func SealdSearchGroupTMRTemporaryKeysOpts_Free(err *C.SealdSearchGroupTMRTemporaryKeysOpts) {
+	if err == nil {
+		return
+	}
+	C.free(unsafe.Pointer(err.GroupId))
+}
+
+func searchGroupTMRTemporaryKeysOptsToGo(cOpts *C.SealdSearchGroupTMRTemporaryKeysOpts) *sdk.SearchGroupTMRTemporaryKeysOpts {
+	if cOpts == nil {
+		return nil
+	}
+	return &sdk.SearchGroupTMRTemporaryKeysOpts{
+		GroupId: C.GoString(cOpts.GroupId),
+		Page:    int(cOpts.Page),
+		All:     int(cOpts.All) != 0,
+	}
 }

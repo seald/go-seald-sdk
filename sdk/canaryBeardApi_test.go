@@ -492,3 +492,69 @@ func (c canaryBeardApiClient) convertTmrAccesses(request *convertTmrAccessesRequ
 	}
 	return c.Client.convertTmrAccesses(request)
 }
+
+func (c canaryBeardApiClient) listGroupTMRTemporaryKeys(request *listGroupTMRTemporaryKeysRequest) (*listGroupTMRTemporaryKeysResponse, error) {
+	res, err := executeBeardApiCanary[listGroupTMRTemporaryKeysResponse](c, "listGroupTMRTemporaryKeys", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.listGroupTMRTemporaryKeys(request)
+}
+
+func (c canaryBeardApiClient) createGroupTMRTemporaryKey(request *createGroupTMRTemporaryKeyRequest) (*GroupTMRTemporaryKey, error) {
+	res, err := executeBeardApiCanary[GroupTMRTemporaryKey](c, "createGroupTMRTemporaryKey", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.createGroupTMRTemporaryKey(request)
+}
+
+func (c canaryBeardApiClient) deleteGroupTMRTemporaryKey(request *deleteGroupTMRTemporaryKeyRequest) (*statusResponse, error) {
+	res, err := executeBeardApiCanary[statusResponse](c, "deleteGroupTMRTemporaryKey", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.deleteGroupTMRTemporaryKey(request)
+}
+
+func (c canaryBeardApiClient) getGroupTMRTemporaryKey(request *getGroupTMRTemporaryKeyRequest) (*getGroupTMRTemporaryKeyResponse, error) {
+	res, err := executeBeardApiCanary[getGroupTMRTemporaryKeyResponse](c, "getGroupTMRTemporaryKeyResponse", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.getGroupTMRTemporaryKey(request)
+}
+
+func (c canaryBeardApiClient) convertGroupTMRTemporaryKey(request *convertGroupTMRTemporaryKeyRequest) (*statusResponse, error) {
+	res, err := executeBeardApiCanary[statusResponse](c, "convertGroupTMRTemporaryKey", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.convertGroupTMRTemporaryKey(request)
+}
+
+func (c canaryBeardApiClient) searchGroupTMRTemporaryKeys(request *searchGroupTMRTemporaryKeysRequest) (*searchGroupTMRTemporaryKeysResponse, error) {
+	res, err := executeBeardApiCanary[searchGroupTMRTemporaryKeysResponse](c, "searchGroupTMRTemporaryKey", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.searchGroupTMRTemporaryKeys(request)
+}

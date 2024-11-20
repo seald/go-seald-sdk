@@ -2,7 +2,7 @@ package sigchain
 
 import (
 	"encoding/json"
-	"go-seald-sdk/test_utils"
+	"github.com/seald/go-seald-sdk/test_utils"
 	"os"
 	"path/filepath"
 	"testing"

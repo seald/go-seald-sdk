@@ -11,14 +11,18 @@ data class AuthFactor(
     val value: String,
 ) {
     internal fun toMobileSdk(): io.seald.seald_sdk_internals.mobile_sdk.AuthFactor {
-        val internalAuthFactor = io.seald.seald_sdk_internals.mobile_sdk.AuthFactor()
+        val internalAuthFactor =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .AuthFactor()
         internalAuthFactor.type = type.value
         internalAuthFactor.value = value
         return internalAuthFactor
     }
 }
 
-enum class AuthFactorType(val value: String) {
+enum class AuthFactorType(
+    val value: String,
+) {
     EM("EM"),
     AP("SMS"),
 }
@@ -34,12 +38,11 @@ data class SaveIdentityResponse(
     var authenticatedSessionId: String?,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(resp: io.seald.seald_sdk_internals.mobile_sdk.SaveIdentityResponse): SaveIdentityResponse {
-            return SaveIdentityResponse(
+        internal fun fromMobileSdk(resp: io.seald.seald_sdk_internals.mobile_sdk.SaveIdentityResponse): SaveIdentityResponse =
+            SaveIdentityResponse(
                 ssksId = resp.ssksId,
                 authenticatedSessionId = if (resp.authenticatedSessionId != "") resp.authenticatedSessionId else null,
             )
-        }
     }
 }
 
@@ -56,13 +59,12 @@ data class RetrieveIdentityResponse(
     var authenticatedSessionId: String,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(resp: io.seald.seald_sdk_internals.mobile_sdk.RetrieveIdentityResponse): RetrieveIdentityResponse {
-            return RetrieveIdentityResponse(
+        internal fun fromMobileSdk(resp: io.seald.seald_sdk_internals.mobile_sdk.RetrieveIdentityResponse): RetrieveIdentityResponse =
+            RetrieveIdentityResponse(
                 identity = resp.identity,
                 shouldRenewKey = resp.shouldRenewKey,
                 authenticatedSessionId = resp.authenticatedSessionId,
             )
-        }
     }
 }
 
@@ -77,11 +79,10 @@ data class GetFactorTokenResponse(
     var authenticatedSessionId: String,
 ) {
     internal companion object {
-        internal fun fromMobileSdk(resp: io.seald.seald_sdk_internals.mobile_sdk.GetFactorTokenResponse): GetFactorTokenResponse {
-            return GetFactorTokenResponse(
+        internal fun fromMobileSdk(resp: io.seald.seald_sdk_internals.mobile_sdk.GetFactorTokenResponse): GetFactorTokenResponse =
+            GetFactorTokenResponse(
                 token = resp.token,
                 authenticatedSessionId = resp.authenticatedSessionId,
             )
-        }
     }
 }

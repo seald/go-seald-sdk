@@ -8,11 +8,11 @@ package main
 */
 import "C"
 import (
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/sdk"
-	"go-seald-sdk/utils"
 	"sync"
 	"time"
 	"unsafe"
@@ -301,6 +301,70 @@ func SealdSdk_ShouldRenewGroup(sealdSdk *C.SealdSdk, groupId *C.char, result *C.
 		return C.int(-1)
 	}
 	*result = boolToCInt(res)
+	return C.int(0)
+}
+
+//export SealdSdk_CreateGroupTMRTemporaryKey
+func SealdSdk_CreateGroupTMRTemporaryKey(sealdSdk *C.SealdSdk, groupId *C.char, authFactorType *C.char, authFactorValue *C.char, isAdmin C.int, rawOverEncryptionKey *C.uchar, rawOverEncryptionKeyLen C.int, result **C.SealdGroupTMRTemporaryKey, err_ **C.SealdError) C.int {
+	overEncryptionKeyBytes := C.GoBytes(unsafe.Pointer(rawOverEncryptionKey), rawOverEncryptionKeyLen)
+	authFactor := &common_models.AuthFactor{
+		Type:  C.GoString(authFactorType),
+		Value: C.GoString(authFactorValue),
+	}
+
+	nativeGTMRTK, err := sdkToGo(sealdSdk).CreateGroupTMRTemporaryKey(C.GoString(groupId), authFactor, int(isAdmin) != 0, overEncryptionKeyBytes)
+	if err != nil {
+		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
+		return C.int(-1)
+	}
+	*result = sealdGroupTMRTempKeyFromGo(nativeGTMRTK)
+	return C.int(0)
+}
+
+//export SealdSdk_ListGroupTMRTemporaryKeys
+func SealdSdk_ListGroupTMRTemporaryKeys(sealdSdk *C.SealdSdk, groupId *C.char, page C.int, all C.int, nbPageFound *C.int, keysList **C.SealdGroupTMRTemporaryKeysArray, err_ **C.SealdError) C.int {
+	nativeGTMRTK, err := sdkToGo(sealdSdk).ListGroupTMRTemporaryKeys(C.GoString(groupId), int(page), int(all) != 0)
+	if err != nil {
+		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
+		return C.int(-1)
+	}
+	*keysList = sliceToSealdGroupTMRTemporaryKeysArray(nativeGTMRTK.Keys)
+	*nbPageFound = C.int(nativeGTMRTK.NbPage)
+	return C.int(0)
+}
+
+//export SealdSdk_DeleteGroupTMRTemporaryKey
+func SealdSdk_DeleteGroupTMRTemporaryKey(sealdSdk *C.SealdSdk, groupId *C.char, temporaryKeyId *C.char, err_ **C.SealdError) C.int {
+	err := sdkToGo(sealdSdk).DeleteGroupTMRTemporaryKey(C.GoString(groupId), C.GoString(temporaryKeyId))
+	if err != nil {
+		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
+		return C.int(-1)
+	}
+
+	return C.int(0)
+}
+
+//export SealdSdk_SearchGroupTMRTemporaryKeys
+func SealdSdk_SearchGroupTMRTemporaryKeys(sealdSdk *C.SealdSdk, tmrJWT *C.char, opts *C.SealdSearchGroupTMRTemporaryKeysOpts, nbPageFound *C.int, keysList **C.SealdGroupTMRTemporaryKeysArray, err_ **C.SealdError) C.int {
+	nativeGTMRTK, err := sdkToGo(sealdSdk).SearchGroupTMRTemporaryKeys(C.GoString(tmrJWT), searchGroupTMRTemporaryKeysOptsToGo(opts))
+	if err != nil {
+		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
+		return C.int(-1)
+	}
+	*keysList = sliceToSealdGroupTMRTemporaryKeysArray(nativeGTMRTK.Keys)
+	*nbPageFound = C.int(nativeGTMRTK.NbPage)
+	return C.int(0)
+}
+
+//export SealdSdk_ConvertGroupTMRTemporaryKey
+func SealdSdk_ConvertGroupTMRTemporaryKey(sealdSdk *C.SealdSdk, groupId *C.char, temporaryKeyId *C.char, tmrJWT *C.char, rawOverEncryptionKey *C.uchar, rawOverEncryptionKeyLen C.int, deleteOnConvert C.int, err_ **C.SealdError) C.int {
+	overEncryptionKeyBytes := C.GoBytes(unsafe.Pointer(rawOverEncryptionKey), rawOverEncryptionKeyLen)
+	err := sdkToGo(sealdSdk).ConvertGroupTMRTemporaryKey(C.GoString(groupId), C.GoString(temporaryKeyId), C.GoString(tmrJWT), overEncryptionKeyBytes, int(deleteOnConvert) != 0)
+	if err != nil {
+		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
+		return C.int(-1)
+	}
+
 	return C.int(0)
 }
 
