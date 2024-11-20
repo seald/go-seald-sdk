@@ -2,13 +2,16 @@ package sdk
 
 import (
 	"encoding/base64"
+	"fmt"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk/sigchain"
+	"github.com/seald/go-seald-sdk/ssks_tmr"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/test_utils"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/sdk/sigchain"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/test_utils"
-	"go-seald-sdk/utils"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,12 +19,18 @@ import (
 )
 
 func Test_Groups(t *testing.T) {
+	credentials, err := test_utils.GetCredentials()
+	require.NoError(t, err)
+
 	account1, err := createTestAccount("sdk_groups_1")
 	require.NoError(t, err)
 	account2, err := createTestAccount("sdk_groups_2")
 	require.NoError(t, err)
+	account3, err := createTestAccount("sdk_groups_3")
+	require.NoError(t, err)
 	currentDevice1 := account1.storage.currentDevice.get()
 	currentDevice2 := account2.storage.currentDevice.get()
+	currentDevice3 := account3.storage.currentDevice.get()
 
 	allRights := &RecipientRights{
 		Read:    true,
@@ -850,6 +859,254 @@ func Test_Groups(t *testing.T) {
 		})
 	})
 
+	t.Run("Groups — TMR Temporary keys", func(t *testing.T) {
+		twoManRuleKey, err := symmetric_key.Generate()
+		require.NoError(t, err)
+
+		nonce, err := utils.GenerateRandomNonce()
+		require.NoError(t, err)
+		user2Email := fmt.Sprintf("%s-u2@test.com", nonce[0:15])
+		user3Email := fmt.Sprintf("%s-u3@test.com", nonce[0:15])
+		user2AuthFactor := &common_models.AuthFactor{Type: "EM", Value: user2Email}
+		user3AuthFactor := &common_models.AuthFactor{Type: "EM", Value: user3Email}
+
+		// Instantiate a SSKS plugin and backend for TMR auth
+		options1 := &ssks_tmr.PluginTMRInitializeOptions{
+			SsksURL:      credentials.SsksUrl,
+			AppId:        credentials.AppId,
+			InstanceName: "plugin-tmr-tests-1",
+			Platform:     "go-tests",
+		}
+		pluginInstance1 := ssks_tmr.NewPluginTMR(options1)
+		backend := test_utils.NewSSKS2MRBackendApiClient(credentials.SsksUrl, credentials.AppId, credentials.SsksBackendAppKey)
+
+		// Retrieve a TMR token
+		challSendRepU2, err := backend.ChallengeSend(currentDevice2.UserId, user2AuthFactor, true, true)
+		require.NoError(t, err)
+		user2JWT, err := pluginInstance1.GetFactorToken(challSendRepU2.SessionId, user2AuthFactor, credentials.SsksTMRChallenge)
+		require.NoError(t, err)
+
+		challSendRepU3, err := backend.ChallengeSend(currentDevice3.UserId, user3AuthFactor, true, true)
+		require.NoError(t, err)
+		user3JWT, err := pluginInstance1.GetFactorToken(challSendRepU3.SessionId, user3AuthFactor, credentials.SsksTMRChallenge)
+		require.NoError(t, err)
+
+		// Create a group
+		preGeneratedKeys, err := getPreGeneratedKeys()
+		require.NoError(t, err)
+		groupId, err := account1.CreateGroup(
+			"Tom Pidcock fan group",
+			[]string{currentDevice1.UserId},
+			[]string{currentDevice1.UserId},
+			preGeneratedKeys,
+		)
+		require.NoError(t, err)
+
+		// Create a session for the group
+		recipientGroup := &RecipientWithRights{Id: groupId, Rights: allRights}
+		sessionWithKey, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+		require.NoError(t, err)
+
+		// Create a group TMR temporary key to join the group
+		gtmrKeyCreated, err := account1.CreateGroupTMRTemporaryKey(groupId, user2AuthFactor, false, twoManRuleKey.Encode())
+		assert.NoError(t, err)
+		assert.Equal(t, gtmrKeyCreated.AuthFactorType, "EM")
+		assert.Equal(t, gtmrKeyCreated.IsAdmin, false)
+		assert.Equal(t, gtmrKeyCreated.GroupId, groupId)
+
+		// List the group TMR temporary keys, and check that we can list the one we just created
+		listedGTMRKey, err := account1.ListGroupTMRTemporaryKeys(groupId, 1, false)
+		assert.NoError(t, err)
+		assert.Equal(t, listedGTMRKey.NbPage, 1)
+		assert.Equal(t, len(listedGTMRKey.Keys), 1)
+		assert.Equal(t, listedGTMRKey.Keys[0].GroupId, groupId)
+		assert.Equal(t, listedGTMRKey.Keys[0].Id, gtmrKeyCreated.Id)
+		assert.Equal(t, listedGTMRKey.Keys[0].AuthFactorType, gtmrKeyCreated.AuthFactorType)
+		assert.Equal(t, listedGTMRKey.Keys[0].IsAdmin, gtmrKeyCreated.IsAdmin)
+		assert.Equal(t, listedGTMRKey.Keys[0].CreatedById, gtmrKeyCreated.CreatedById)
+		assert.Equal(t, listedGTMRKey.Keys[0].Created, gtmrKeyCreated.Created)
+		assert.Equal(t, listedGTMRKey.Keys[0].IsAdmin, false)
+		assert.Equal(t, listedGTMRKey.Keys[0].EncryptedSymKeyGroup, "")
+		assert.Equal(t, listedGTMRKey.Keys[0].SymKeySignature, "")
+
+		// Beard throw when a member try to add himself
+		err = account1.ConvertGroupTMRTemporaryKey(groupId, gtmrKeyCreated.Id, user2JWT.Token, twoManRuleKey.Encode(), false)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, utils.APIError{Status: 406, Code: "MEMBER_ALREADY_IN_GROUP"})
+
+		var u2GTMRKeys []*GroupTMRTemporaryKey
+		var u3GTMRKeys []*GroupTMRTemporaryKey
+		// Create more than 10 group TMR temporary key, and more than 10 RenewGroupKey, so everything will be paginated.
+		for i := 0; i < 11; i++ {
+			gtmrKeyEM1, err := account1.CreateGroupTMRTemporaryKey(groupId, &common_models.AuthFactor{Type: "EM", Value: user2Email}, false, twoManRuleKey.Encode())
+			require.NoError(t, err)
+			u2GTMRKeys = append(u2GTMRKeys, gtmrKeyEM1)
+
+			gtmrKeyEM2, err := account1.CreateGroupTMRTemporaryKey(groupId, &common_models.AuthFactor{Type: "EM", Value: user3Email}, true, twoManRuleKey.Encode())
+			require.NoError(t, err)
+			u3GTMRKeys = append(u3GTMRKeys, gtmrKeyEM2)
+
+			err = account1.RenewGroupKey(groupId, preGeneratedKeys)
+			require.NoError(t, err)
+		}
+
+		// List the group TMR temporary keys page 1
+		listedGTMRKeyP1, err := account1.ListGroupTMRTemporaryKeys(groupId, 1, false)
+		assert.NoError(t, err)
+		assert.Equal(t, 3, listedGTMRKeyP1.NbPage)
+		assert.Equal(t, 10, len(listedGTMRKeyP1.Keys))
+
+		// List all the group TMR temporary keys...
+		listedGTMRKeyAll, err := account1.ListGroupTMRTemporaryKeys(groupId, 1, true)
+		assert.NoError(t, err)
+		assert.Equal(t, 3, listedGTMRKeyAll.NbPage)
+		assert.Equal(t, 23, len(listedGTMRKeyAll.Keys))
+
+		// Delete one group TMR temporary key
+		err = account1.DeleteGroupTMRTemporaryKey(groupId, u3GTMRKeys[10].Id)
+		assert.NoError(t, err)
+
+		// Search group TMR temporary keys, filtered by groups
+		searchU2NoOpts, err := account2.SearchGroupTMRTemporaryKeys(user2JWT.Token, &SearchGroupTMRTemporaryKeysOpts{GroupId: groupId, All: true})
+		assert.NoError(t, err)
+		assert.Equal(t, 12, len(searchU2NoOpts.Keys))
+		assert.Equal(t, searchU2NoOpts.NbPage, 2)
+		// Search group TMR temporary keys, without filters
+		searchU3NoOpts, err := account3.SearchGroupTMRTemporaryKeys(user3JWT.Token, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 10, len(searchU3NoOpts.Keys))
+		assert.Equal(t, 1, searchU3NoOpts.NbPage)
+
+		// Convert group TMR temporary keys for user2
+		err = account2.ConvertGroupTMRTemporaryKey(groupId, gtmrKeyCreated.Id, user2JWT.Token, twoManRuleKey.Encode(), false)
+		assert.NoError(t, err)
+
+		// Convert group TMR temporary keys for user3
+		err = account3.ConvertGroupTMRTemporaryKey(groupId, u3GTMRKeys[3].Id, user3JWT.Token, twoManRuleKey.Encode(), true)
+		assert.NoError(t, err)
+
+		// List all the group TMR temporary keys. Check that one got deleted on convert
+		listedGTMRKeyAfter, err := account1.ListGroupTMRTemporaryKeys(groupId, 1, true)
+		assert.NoError(t, err)
+		assert.Equal(t, 3, listedGTMRKeyAfter.NbPage)
+		assert.Equal(t, 21, len(listedGTMRKeyAfter.Keys)) // one was deletedOnConvert
+
+		// Update the group and check group members
+		_, err = account1.getUpdatedContactUnlocked(groupId)
+		require.NoError(t, err)
+		group := account1.storage.groups.get(groupId)
+
+		assert.Equal(t, 3, len(group.Members))
+		assert.True(t, utils.SliceSameMembers(group.Members, []groupMember{
+			{Id: currentDevice1.UserId, IsAdmin: true},
+			{Id: currentDevice2.UserId, IsAdmin: false},
+			{Id: currentDevice3.UserId, IsAdmin: true},
+		}))
+
+		// Check that new group member can decrypt
+		_, err = account2.RetrieveEncryptionSession(sessionWithKey.Id, false, false, true)
+		assert.NoError(t, err)
+		_, err = account3.RetrieveEncryptionSession(sessionWithKey.Id, false, false, true)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Groups — TMR Temporary keys & renew keys", func(t *testing.T) {
+		twoManRuleKey1, err := symmetric_key.Generate()
+		require.NoError(t, err)
+		twoManRuleKey2, err := symmetric_key.Generate()
+		require.NoError(t, err)
+
+		nonce, err := utils.GenerateRandomNonce()
+		require.NoError(t, err)
+		user2Email := fmt.Sprintf("%s-u2@test.com", nonce[0:15])
+		user2AuthFactor := &common_models.AuthFactor{Type: "EM", Value: user2Email}
+		user3Email := fmt.Sprintf("%s-u3@test.com", nonce[0:15])
+		user3AuthFactor := &common_models.AuthFactor{Type: "EM", Value: user3Email}
+
+		// Instantiate a SSKS plugin and backend for TMR auth
+		options1 := &ssks_tmr.PluginTMRInitializeOptions{
+			SsksURL:      credentials.SsksUrl,
+			AppId:        credentials.AppId,
+			InstanceName: "plugin-tmr-tests-2",
+			Platform:     "go-tests",
+		}
+		pluginInstance := ssks_tmr.NewPluginTMR(options1)
+		backend := test_utils.NewSSKS2MRBackendApiClient(credentials.SsksUrl, credentials.AppId, credentials.SsksBackendAppKey)
+
+		// Retrieve a TMR token for each auth factor
+		challSendRepU2, err := backend.ChallengeSend(currentDevice2.UserId, user2AuthFactor, true, true)
+		require.NoError(t, err)
+		user2JWT, err := pluginInstance.GetFactorToken(challSendRepU2.SessionId, user2AuthFactor, credentials.SsksTMRChallenge)
+		require.NoError(t, err)
+
+		challSendRepU3, err := backend.ChallengeSend(currentDevice3.UserId, user3AuthFactor, true, true)
+		require.NoError(t, err)
+		user3JWT, err := pluginInstance.GetFactorToken(challSendRepU3.SessionId, user3AuthFactor, credentials.SsksTMRChallenge)
+		require.NoError(t, err)
+
+		// Create a group
+		preGeneratedKeys, err := getPreGeneratedKeys()
+		require.NoError(t, err)
+		groupId, err := account1.CreateGroup(
+			"karabatic fan group",
+			[]string{currentDevice1.UserId},
+			[]string{currentDevice1.UserId},
+			preGeneratedKeys,
+		)
+		require.NoError(t, err)
+
+		// Create a session for the group before all
+		recipientGroup := &RecipientWithRights{Id: groupId, Rights: allRights}
+		session1, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+		require.NoError(t, err)
+
+		// renew group a first time, BEFORE the GroupTmrTks
+		preGenKeysRenew1, err := getPreGeneratedKeys()
+		require.NoError(t, err)
+		err = account1.RenewGroupKey(groupId, preGenKeysRenew1)
+		require.NoError(t, err)
+
+		// Create another session after this renew
+		session2, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+		require.NoError(t, err)
+
+		// Create 2 group TMR temporary keys to join the group
+		gtmrKey1, err := account1.CreateGroupTMRTemporaryKey(groupId, user2AuthFactor, false, twoManRuleKey1.Encode())
+		assert.NoError(t, err)
+		gtmrKey2, err := account1.CreateGroupTMRTemporaryKey(groupId, user3AuthFactor, false, twoManRuleKey2.Encode())
+		assert.NoError(t, err)
+
+		// account2 can convert gtmrKey, and retrieve all sessions
+		err = account2.ConvertGroupTMRTemporaryKey(groupId, gtmrKey1.Id, user2JWT.Token, twoManRuleKey1.Encode(), false)
+		require.NoError(t, err)
+
+		_, err = account2.RetrieveEncryptionSession(session1.Id, false, false, true)
+		require.NoError(t, err)
+		_, err = account2.RetrieveEncryptionSession(session2.Id, false, false, true)
+		require.NoError(t, err)
+
+		// renew group a second time, AFTER the GroupTmrTks
+		preGenKeysRenew2, err := getPreGeneratedKeys()
+		require.NoError(t, err)
+		err = account1.RenewGroupKey(groupId, preGenKeysRenew2)
+		require.NoError(t, err)
+
+		// create a third session after the second renew
+		session3, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+		require.NoError(t, err)
+
+		// account3 can convert gtmrKey, and retrieve all sessions
+		err = account3.ConvertGroupTMRTemporaryKey(groupId, gtmrKey2.Id, user3JWT.Token, twoManRuleKey2.Encode(), false)
+		require.NoError(t, err)
+
+		_, err = account3.RetrieveEncryptionSession(session1.Id, false, false, true)
+		require.NoError(t, err)
+		_, err = account3.RetrieveEncryptionSession(session2.Id, false, false, true)
+		require.NoError(t, err)
+		_, err = account3.RetrieveEncryptionSession(session3.Id, false, false, true)
+		require.NoError(t, err)
+	})
+
 	t.Run("Compatible with JS", func(t *testing.T) {
 		t.Parallel()
 		t.Run("Import from JS", func(t *testing.T) {
@@ -882,6 +1139,50 @@ func Test_Groups(t *testing.T) {
 			require.NoError(t, err)
 			group := account.storage.groups.get(string(groupId))
 			assert.Equal(t, 1, len(group.OldKeys))
+
+			// Use the group TMR temp key to join the group
+			authFactorEM, err := os.ReadFile(filepath.Join(testArtifactsDir, "tmr_temp_key_EM"))
+			require.NoError(t, err)
+			gTMRTempKeyId, err := os.ReadFile(filepath.Join(testArtifactsDir, "tmr_temp_key_keyId"))
+			require.NoError(t, err)
+			rawOverEncryptionKey, err := os.ReadFile(filepath.Join(testArtifactsDir, "tmr_temp_key_OverEncKey"))
+			require.NoError(t, err)
+
+			authFactor := &common_models.AuthFactor{Type: "EM", Value: string(authFactorEM)}
+
+			// Instantiate a SSKS plugin and backend for TMR auth
+			credentials, err := test_utils.GetCredentials()
+			require.NoError(t, err)
+			options1 := &ssks_tmr.PluginTMRInitializeOptions{
+				SsksURL:      credentials.SsksUrl,
+				AppId:        credentials.AppId,
+				InstanceName: "plugin-tmr-tests-1",
+				Platform:     "go-tests",
+			}
+			pluginInstance1 := ssks_tmr.NewPluginTMR(options1)
+			backend := test_utils.NewSSKS2MRBackendApiClient(credentials.SsksUrl, credentials.AppId, credentials.SsksBackendAppKey)
+
+			// Retrieve a TMR token
+			challSendRepU2, err := backend.ChallengeSend(currentDevice2.UserId, authFactor, true, true)
+			require.NoError(t, err)
+			tmrJWT, err := pluginInstance1.GetFactorToken(challSendRepU2.SessionId, authFactor, credentials.SsksTMRChallenge)
+			require.NoError(t, err)
+
+			// account1 is NOT the imported account, but one of the groups test accounts
+			err = account1.ConvertGroupTMRTemporaryKey(string(groupId), string(gTMRTempKeyId), tmrJWT.Token, rawOverEncryptionKey, false)
+			require.NoError(t, err)
+
+			_, err = account1.RetrieveEncryptionSession(string(sessionId2), false, false, true)
+			require.NoError(t, err)
+			_, err = account1.RetrieveEncryptionSession(string(sessionId), false, false, true)
+			require.NoError(t, err)
+
+			// Renew group key. we will try to convert it again in after_go
+			preGeneratedKeys, err := getPreGeneratedKeys()
+			require.NoError(t, err)
+
+			err = account1.RenewGroupKey(string(groupId), preGeneratedKeys)
+			require.NoError(t, err)
 		})
 		t.Run("Export for JS", func(t *testing.T) {
 			// ensure artifacts dir exists
@@ -927,6 +1228,23 @@ func Test_Groups(t *testing.T) {
 			session2, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(testArtifactsDir, "session_id2"), []byte(session2.Id), 0o700)
+			require.NoError(t, err)
+
+			// group TMR Temp key
+			nonce, err := utils.GenerateRandomNonce()
+			require.NoError(t, err)
+			tmrEmail := fmt.Sprintf("%s-u2@test.com", nonce[0:15])
+
+			rawOverEncryptionKey, err := symmetric_key.Generate()
+			require.NoError(t, err)
+			gtmrKey, err := account.CreateGroupTMRTemporaryKey(groupId, &common_models.AuthFactor{Type: "EM", Value: tmrEmail}, false, rawOverEncryptionKey.Encode())
+			require.NoError(t, err)
+
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "tmr_temp_key_EM"), []byte(tmrEmail), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "tmr_temp_key_keyId"), []byte(gtmrKey.Id), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "tmr_temp_key_OverEncKey"), rawOverEncryptionKey.Encode(), 0o700)
 			require.NoError(t, err)
 		})
 	})

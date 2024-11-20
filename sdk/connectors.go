@@ -2,9 +2,9 @@ package sdk
 
 import (
 	"fmt"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/utils"
 	"net/mail"
 	"strings"
 )

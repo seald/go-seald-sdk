@@ -69,6 +69,7 @@ BOOL testSealdSDK(void)
             NSLog(@"Seald Database removed successfully");
         } else {
             NSLog(@"Error removing Seald database %@", error.userInfo);
+            error = nil;
         }
 
         // Seald uses JWT to manage licenses and identity.
@@ -159,7 +160,7 @@ BOOL testSealdSDK(void)
         SealdSsksTMRPlugin* ssksTMR = [[SealdSsksTMRPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL appId:sealdCredentials.appId instanceName:@"SsksTmr" logLevel:-1 logNoColor:YES];
 
         // The app backend creates an SSKS authentication session.
-        // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false, but we force auth because we want to convert TMR Accesses.
+        // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false, but we force auth because we want to convert TMR accesses.
         DemoAppSsksBackend* ssksBackend = [[DemoAppSsksBackend alloc] initWithSsksURL:sealdCredentials.ssksURL AppId:sealdCredentials.appId AppKey:sealdCredentials.ssksBackendAppKey];
         SealdSsksBackendChallengeResponse* authSession =
             [ssksBackend challengeSendWithUserId:user2AccountInfo.userId
@@ -540,6 +541,50 @@ BOOL testSealdSDK(void)
         NSCAssert(badPositionCheck.found == false, @"badPositionCheck unexpected found");
         // For badPositionCheck, position cannot be asserted as it is not set when the hash is not found.
         NSCAssert(badPositionCheck.lastPosition == 2, @"badPositionCheck unexpected lastPosition");
+
+        // Group TMR temporary keys
+
+        // First, create a group to test on. sdk1 create a TMR temporary key to this group, sdk2 will join.
+        NSArray<NSString*>* membersGTMR = [NSArray arrayWithObject:user1AccountInfo.userId];
+        NSArray<NSString*>* adminsGTMR = [NSArray arrayWithObject:user1AccountInfo.userId];
+        NSString* groupTMRId = [sdk1 createGroupWithGroupName:@"group-tmr" members:membersGTMR admins:adminsGTMR privateKeys:nil error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        NSData* gTMRRawOverEncryptionKey = randomData(64);
+
+        // We defined a two man rule recipient earlier. We will use it again.
+        // The authentication factor is defined by `tmrAuthFactor`.
+        // Also we already have the TMR JWT associated with it: `tmrJWT.token`
+
+        SealdGroupTmrTemporaryKey* gTMRKey =  [sdk1 createGroupTMRTemporaryKeyWithGroupId:groupTMRId authFactor:tmrAuthFactor isAdmin:NO rawOverEncryptionKey:gTMRRawOverEncryptionKey error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        SealdListedGroupTMRTemporaryKeys* gTMRKeysListed = [sdk1 listGroupTMRTemporaryKeysWithGroupId:groupTMRId page:1 all:NO error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert(gTMRKeysListed.nbPage == 1, @"List gTMRKeys unexpected number of pages");
+        NSCAssert([gTMRKeysListed.keys[0].groupId isEqualToString:gTMRKey.groupId], @"List gTMRKeys unexpected groupId");
+        NSCAssert([gTMRKeysListed.keys[0].keyId isEqualToString:gTMRKey.keyId], @"List gTMRKeys unexpected keyId");
+        NSCAssert([gTMRKeysListed.keys count] == 1, @"List gTMRKeys unexpected number of keys");
+
+        SealdListedGroupTMRTemporaryKeys* gTMRKeysSearch = [sdk2 searchGroupTMRTemporaryKeysWithTmrJWT:tmrJWT.token options:nil error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert(gTMRKeysSearch.nbPage == 1, @"Search gTMRKeys unexpected number of pages");
+        NSCAssert(gTMRKeysSearch.keys.count == 1, @"Search gTMRKeys unexpected number of keys");
+        NSCAssert([gTMRKeysSearch.keys[0].groupId isEqualToString:gTMRKey.groupId], @"Search gTMRKeys unexpected groupId");
+        NSCAssert([gTMRKeysSearch.keys[0].keyId isEqualToString:gTMRKey.keyId], @"Search gTMRKeys unexpected keyId");
+
+        [sdk2 convertGroupTMRTemporaryKeyWithGroupId:groupTMRId
+                                      temporaryKeyId:gTMRKey.keyId
+                                              tmrJWT:tmrJWT.token
+                                rawOverEncryptionKey:gTMRRawOverEncryptionKey
+                                     deleteOnConvert:NO
+                                               error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        [sdk1 deleteGroupTMRTemporaryKeyWithGroupId:groupTMRId temporaryKeyId:gTMRKey.keyId error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
 
         // Heartbeat can be used to check if proxies and firewalls are configured properly so that the app can reach Seald's servers.
         [sdk1 heartbeatWithError:&error];

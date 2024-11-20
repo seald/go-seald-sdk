@@ -5,9 +5,9 @@ package main
 */
 import "C"
 import (
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/sdk"
 	"sync"
 	"unsafe"
 )

@@ -2,8 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/seald/go-seald-sdk/api_helper"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/api_helper"
 	"strconv"
 	"time"
 )
@@ -150,11 +150,19 @@ func (apiClient ApiClient) SigchainFindAll(token string, userId string) ([]Sigch
 	return results, nil
 }
 
-func (apiClient ApiClient) MessageCreate(token string, encryptedMessageKeys []EncryptedMessageKey, metadata string) (*MessageCreateResponse, error) {
-	requestBody, err := json.Marshal(map[string]interface{}{
-		"encrypted_message_keys": encryptedMessageKeys,
-		"metadata":               metadata,
-	})
+type TMRMessageKey struct {
+	AuthFactorType  string `json:"auth_factor_type"`
+	AuthFactorValue string `json:"auth_factor_value"`
+	Token           string `json:"token"`
+}
+type MessageCreateRequest struct {
+	EncryptedMessageKeys []*EncryptedMessageKey `json:"encrypted_message_keys"`
+	TMRMessageKeys       []*TMRMessageKey       `json:"tmr_message_keys,omitempty"`
+	Metadata             string                 `json:"metadata"`
+}
+
+func (apiClient ApiClient) MessageCreate(token string, request *MessageCreateRequest) (*MessageCreateResponse, error) {
+	requestBody, err := json.Marshal(request)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}

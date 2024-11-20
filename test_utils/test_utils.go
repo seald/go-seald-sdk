@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/utils"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -81,12 +81,18 @@ type ConnectorAdd struct {
 	Type  common_models.ConnectorType `json:"type,omitempty"`
 }
 
+type TMRRecipient struct {
+	Value string `json:"auth_factor_value"`
+	Type  string `json:"auth_factor_type"`
+}
+
 type Claims struct {
-	Recipients   []string
-	Owner        string
-	JoinTeam     bool
-	ConnectorAdd ConnectorAdd
-	Scopes       []JWTPermissionScopes
+	Recipients    []string
+	TmrRecipients []TMRRecipient
+	Owner         string
+	JoinTeam      bool
+	ConnectorAdd  ConnectorAdd
+	Scopes        []JWTPermissionScopes
 }
 
 func GetJWT(claims Claims) (string, error) {
@@ -100,8 +106,12 @@ func GetJWT(claims Claims) (string, error) {
 		"iss":       credentials.JWTSharedSecretId,
 		"iat":       time.Now().Unix(),
 	}
+
 	if claims.Recipients != nil {
 		customClaims["recipients"] = claims.Recipients
+	}
+	if claims.TmrRecipients != nil {
+		customClaims["tmr_recipients"] = claims.TmrRecipients
 	}
 	if claims.Owner != "" {
 		customClaims["owner"] = claims.Owner

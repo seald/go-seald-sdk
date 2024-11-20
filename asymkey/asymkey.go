@@ -12,8 +12,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -30,10 +30,8 @@ var (
 	ErrorUnmarshalBSONValueTooShort = utils.NewSealdError("ASYMKEY_UNMARSHALL_BSON_VALUE_TOO_SHORT", "Cannot unmarshal, not enough bytes")
 	// ErrorUnmarshalBSONValueInvalidType is returned when trying to unmarshal a bson that is not a string
 	ErrorUnmarshalBSONValueInvalidType = utils.NewSealdError("ASYMKEY_UNMARSHALL_BSON_VALUE_INVALID_TYPE", "Cannot unmarshal, type is not String")
-	// ErrorDecryptTooShort is returned when the decrypted data is too short to find the crc32
-	ErrorDecryptTooShort = utils.NewSealdError("ASYMKEY_DECRYPT_TOO_SHORT", "cleartext is too short, cannot find crc32")
-	// ErrorDecryptInvalidCRC is returned when the decrypted data crc32 does not match
-	ErrorDecryptInvalidCRC = utils.NewSealdError("ASYMKEY_DECRYPT_INVALID_CRC", "crc32 do not match")
+	// ErrorDecryptCryptoRSA is returned when an error happen during decryption
+	ErrorDecryptCryptoRSA = utils.NewSealdError("ASYMKEY_DECRYPT_CRYPTO_ERROR", "Cannot decrypt")
 	// ErrorPublicKeyDecodeUnknownKeyType is returned when a decoded public key is of an invalid type
 	ErrorPublicKeyDecodeUnknownKeyType = utils.NewSealdError("ASYMKEY_PUBLIC_KEY_DECODE_UNKNOWN_KEY_TYPE", "PublicKeyDecode: unknown key type")
 )
@@ -175,11 +173,11 @@ func (k *PrivateKey) Public() *PublicKey {
 func (k *PrivateKey) Decrypt(encryptedMessage []byte) ([]byte, error) {
 	decryptedMessage, err := rsa.DecryptOAEP(sha1.New(), rand.Reader, &k.key, encryptedMessage, nil)
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return nil, tracerr.Wrap(ErrorDecryptCryptoRSA.AddDetails(err.Error()))
 	}
 	checksumBytes := make([]byte, 4)
 	if len(decryptedMessage) < 4 {
-		return nil, tracerr.Wrap(ErrorDecryptTooShort)
+		return nil, tracerr.Wrap(ErrorDecryptCryptoRSA.AddDetails("cleartext is too short, cannot find crc32"))
 	}
 	message := make([]byte, len(decryptedMessage)-4)
 	copy(checksumBytes, decryptedMessage[:4])
@@ -188,7 +186,7 @@ func (k *PrivateKey) Decrypt(encryptedMessage []byte) ([]byte, error) {
 	checksumBytes2 := calculateCRC32(message)
 
 	if subtle.ConstantTimeCompare(checksumBytes2, checksumBytes) != 1 {
-		return nil, tracerr.Wrap(ErrorDecryptInvalidCRC)
+		return nil, tracerr.Wrap(ErrorDecryptCryptoRSA.AddDetails("crc32 do not match"))
 	}
 
 	return message, nil

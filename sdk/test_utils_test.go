@@ -3,10 +3,10 @@ package sdk
 import (
 	"encoding/base64"
 	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/test_utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/test_utils"
 	"math/rand"
 	"os"
 	"time"

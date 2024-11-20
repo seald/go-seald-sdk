@@ -2,9 +2,9 @@ package mobile_sdk
 
 import (
 	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/ssks_password"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/ssks_password"
-	"go-seald-sdk/utils"
 )
 
 type MobileSSKSPassword struct {

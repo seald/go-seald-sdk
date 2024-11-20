@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/seald/go-seald-sdk/api_helper"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk/sigchain"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/api_helper"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/sdk/sigchain"
-	"go-seald-sdk/utils"
 	"golang.org/x/exp/maps"
 	"strconv"
 	"time"
@@ -73,6 +73,12 @@ type beardApiClientInterface interface {
 	listTmrAccesses(*listTmrAccessesRequest) (*ListTmrAccessesResponse, error)
 	retrieveTmrAccesses(*retrieveTmrAccessesRequest) (*retrieveTmrAccessesResponse, error)
 	convertTmrAccesses(*convertTmrAccessesRequest) (*ConvertTmrAccessesResponse, error)
+	listGroupTMRTemporaryKeys(*listGroupTMRTemporaryKeysRequest) (*listGroupTMRTemporaryKeysResponse, error)
+	createGroupTMRTemporaryKey(*createGroupTMRTemporaryKeyRequest) (*GroupTMRTemporaryKey, error)
+	deleteGroupTMRTemporaryKey(*deleteGroupTMRTemporaryKeyRequest) (*statusResponse, error)
+	getGroupTMRTemporaryKey(request *getGroupTMRTemporaryKeyRequest) (*getGroupTMRTemporaryKeyResponse, error)
+	convertGroupTMRTemporaryKey(request *convertGroupTMRTemporaryKeyRequest) (*statusResponse, error)
+	searchGroupTMRTemporaryKeys(request *searchGroupTMRTemporaryKeysRequest) (*searchGroupTMRTemporaryKeysResponse, error)
 }
 
 type emptyInterface struct{}
@@ -1458,14 +1464,21 @@ func (apiClient *beardApiClient) removeGroupMembers(request *removeGroupMembersR
 	return &result, nil
 }
 
+type gTMRTKRenewed struct {
+	Data                 string `json:"data"`
+	Signature            string `json:"signature"`
+	EncryptedSymkeyGroup string `json:"encrypted_symkey_group"`
+}
+
 type renewGroupKeyRequest struct {
-	GroupId                    string                 `json:"-"`
-	TransactionData            *sigchain.Block        `json:"transaction_data"`
-	EncryptPubkey              string                 `json:"encrypt_pubkey"`
-	SigningPubkey              string                 `json:"signing_pubkey"`
-	EncryptedEncryptionPrivkey string                 `json:"encrypted_encryption_privkey"`
-	EncryptedSigningPrivkey    string                 `json:"encrypted_signing_privkey"`
-	MessageKeys                []encryptedMessageKey2 `json:"message_keys"`
+	GroupId                    string                   `json:"-"`
+	TransactionData            *sigchain.Block          `json:"transaction_data"`
+	EncryptPubkey              string                   `json:"encrypt_pubkey"`
+	SigningPubkey              string                   `json:"signing_pubkey"`
+	EncryptedEncryptionPrivkey string                   `json:"encrypted_encryption_privkey"`
+	EncryptedSigningPrivkey    string                   `json:"encrypted_signing_privkey"`
+	MessageKeys                []encryptedMessageKey2   `json:"message_keys"`
+	GroupTMRTemporaryKeys      map[string]gTMRTKRenewed `json:"group_tmr_keys_data"`
 }
 
 type renewGroupKeyResponse struct {
@@ -1890,6 +1903,220 @@ func (apiClient *beardApiClient) convertTmrAccesses(request *convertTmrAccessesR
 	}
 
 	var result ConvertTmrAccessesResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type listGroupTMRTemporaryKeysRequest struct {
+	GroupId string
+	Page    int
+	Full    bool
+}
+
+type GroupTMRTemporaryKey struct {
+	Id                   string    `json:"id"`
+	GroupId              string    `json:"group_id"`
+	Created              time.Time `json:"created"`
+	IsAdmin              bool      `json:"is_admin"`
+	CreatedById          string    `json:"created_by_id"`
+	AuthFactorType       string    `json:"auth_factor_type"`
+	EncryptedSymKeyGroup string    `json:"encrypted_symkey_group"`
+	SymKeySignature      string    `json:"symkey_signature"`
+}
+
+type listGroupTMRTemporaryKeysResponse struct {
+	Status  string                  `json:"status"`
+	NbPage  int                     `json:"nb_page"`
+	Results []*GroupTMRTemporaryKey `json:"results"`
+}
+
+func (apiClient *beardApiClient) listGroupTMRTemporaryKeys(request *listGroupTMRTemporaryKeysRequest) (*listGroupTMRTemporaryKeysResponse, error) {
+	responseBody, err := apiClient.MakeRequest(
+		"GET",
+		fmt.Sprintf("/api/group/%s/twomenrule_temporary_keys/?page=%d", request.GroupId, request.Page)+utils.Ternary(request.Full, "&full=true", ""),
+		[]byte{},
+		[]api_helper.Header{},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	var result listGroupTMRTemporaryKeysResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type createGroupTMRTemporaryKeyRequest struct {
+	GroupId              string            `json:"-"`
+	IsAdmin              bool              `json:"is_admin"`
+	AuthFactorType       string            `json:"auth_factor_type"`
+	AuthFactorValue      string            `json:"auth_factor_value"`
+	EncryptedSymKeyRoek  string            `json:"encrypted_symkey_roek"`
+	EncryptedSymKeyGroup string            `json:"encrypted_symkey_group"`
+	SymkeySignature      string            `json:"symkey_signature"`
+	EncGroupDeviceKeys   map[string]string `json:"data"`
+}
+
+func (apiClient *beardApiClient) createGroupTMRTemporaryKey(request *createGroupTMRTemporaryKeyRequest) (*GroupTMRTemporaryKey, error) {
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	responseBody, err := apiClient.MakeRequest(
+		"POST",
+		fmt.Sprintf("/api/group/%s/twomenrule_temporary_keys/", request.GroupId),
+		requestBody,
+		[]api_helper.Header{},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	var result GroupTMRTemporaryKey
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type deleteGroupTMRTemporaryKeyRequest struct {
+	GroupId        string
+	TemporaryKeyId string
+}
+
+func (apiClient *beardApiClient) deleteGroupTMRTemporaryKey(request *deleteGroupTMRTemporaryKeyRequest) (*statusResponse, error) {
+
+	responseBody, err := apiClient.MakeRequest(
+		"DELETE",
+		fmt.Sprintf("/api/group/%s/manage/%s/", request.GroupId, request.TemporaryKeyId),
+		[]byte{},
+		[]api_helper.Header{},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result statusResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type getGroupTMRTemporaryKeyRequest struct {
+	GroupId        string
+	TemporaryKeyId string
+	TmrJWT         string
+	Page           int
+}
+
+type gtmrtk struct {
+	Id                  string    `json:"status"`
+	GroupId             string    `json:"group_id"`
+	Created             time.Time `json:"created"`
+	IsAdmin             bool      `json:"is_admin"`
+	CreatedById         string    `json:"created_by_id"`
+	AuthFactorType      string    `json:"auth_factor_type"`
+	EncryptedSymKeyRoek string    `json:"encrypted_symkey_roek"`
+	SymKeySignature     string    `json:"symkey_signature"`
+}
+
+type groupDeviceKeyData struct {
+	Data           string          `json:"data"`
+	GroupDeviceKey *groupDeviceKey `json:"group_device_key"`
+}
+
+type getGroupTMRTemporaryKeyResponse struct {
+	Status  string                `json:"status"`
+	NbPage  int                   `json:"nb_page"`
+	Gtmrtk  *gtmrtk               `json:"gtmrtk"`
+	Results []*groupDeviceKeyData `json:"results"`
+}
+
+func (apiClient *beardApiClient) getGroupTMRTemporaryKey(request *getGroupTMRTemporaryKeyRequest) (*getGroupTMRTemporaryKeyResponse, error) {
+	responseBody, err := apiClient.MakeRequest(
+		"GET",
+		fmt.Sprintf("/api/group/%s/manage/%s/convert/?page=%d", request.GroupId, request.TemporaryKeyId, request.Page),
+		[]byte{},
+		[]api_helper.Header{{Name: "AUTHORIZATION", Value: "Bearer " + request.TmrJWT}},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result getGroupTMRTemporaryKeyResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type convertGroupTMRTemporaryKeyRequest struct {
+	GroupId                string                `json:"-"`
+	TemporaryKeyId         string                `json:"-"`
+	TmrJWT                 string                `json:"-"`
+	DeleteOnConvert        bool                  `json:"delete_on_convert"`
+	UserDevicesMessages    map[string][]emkAndId `json:"edited_beardusers_device_messages"`
+	TransactionDataMembers *sigchain.Block       `json:"transaction_data_members"`
+}
+
+func (apiClient *beardApiClient) convertGroupTMRTemporaryKey(request *convertGroupTMRTemporaryKeyRequest) (*statusResponse, error) {
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	responseBody, err := apiClient.MakeRequest(
+		"POST",
+		fmt.Sprintf("/api/group/%s/manage/%s/convert/", request.GroupId, request.TemporaryKeyId),
+		requestBody,
+		[]api_helper.Header{{Name: "AUTHORIZATION", Value: "Bearer " + request.TmrJWT}},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result statusResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type searchGroupTMRTemporaryKeysRequest struct {
+	GroupId string
+	TmrJWT  string
+	Page    int
+}
+type searchGroupTMRTemporaryKeysResponse struct {
+	Status  string                  `json:"status"`
+	NbPage  int                     `json:"nb_page"`
+	Results []*GroupTMRTemporaryKey `json:"results"`
+}
+
+func (apiClient *beardApiClient) searchGroupTMRTemporaryKeys(request *searchGroupTMRTemporaryKeysRequest) (*searchGroupTMRTemporaryKeysResponse, error) {
+	responseBody, err := apiClient.MakeRequest(
+		"GET",
+		fmt.Sprintf("/api/group/twomenrule_temporary_keys_search/?page=%d", request.Page)+utils.Ternary(request.GroupId != "", "&group_id="+request.GroupId, ""),
+		[]byte{},
+		[]api_helper.Header{{Name: "AUTHORIZATION", Value: "Bearer " + request.TmrJWT}},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result searchGroupTMRTemporaryKeysResponse
 	err = json.Unmarshal(responseBody, &result)
 	if err != nil {
 		return nil, tracerr.Wrap(err)

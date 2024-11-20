@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/ztrue/tracerr"
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/exp/constraints"
@@ -26,6 +27,10 @@ var (
 	ErrorInvalidUUIDSlice = NewSealdError("INVALID_UUID_SLICE", "invalid UUID in slice")
 	// ErrorNotUnique is returned when items in a slice are not unique.
 	ErrorNotUnique = NewSealdError("NOT_UNIQUE", "not unique")
+	// ErrorInvalidAuthFactorType is returned when an authentication factor has an invalid type
+	ErrorInvalidAuthFactorType     = NewSealdError("INVALID_AUTH_FACTOR_TYPE", "authentication factor type must be 'EM' or 'SMS'")
+	ErrorInvalidAuthFactorValueEM  = NewSealdError("INVALID_AUTH_FACTOR_VALUE_EM", "Invalid authentication factor value. It must be a valid email address.")
+	ErrorInvalidAuthFactorValueSMS = NewSealdError("INVALID_AUTH_FACTOR_VALUE_SMS", "Invalid authentication factor value. Cannot parse phone number.")
 )
 
 var (
@@ -33,6 +38,8 @@ var (
 	b64UUIDRegexp            = regexp.MustCompile(`^[A-Za-z0-9%+]{22}$`)
 	validJWTRegexp           = regexp.MustCompile("^[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]*$") // it's in URL base64 _-
 	validAuthChallengeRegexp = regexp.MustCompile("^BEARD-AUTH-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+	emailRegexp              = regexp.MustCompile("^[a-zA-Z0-9_.+-]+@([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$")
+	phoneRegexp              = regexp.MustCompile("^\\+[0-9]+$")
 )
 
 func GenerateRandomBytes(n int) ([]byte, error) {
@@ -72,6 +79,27 @@ func CheckUUIDSlice(uuids []string) error {
 		}
 	}
 	return nil
+}
+func IsEmail(email string) bool {
+	lowerCaseEmail := strings.ToLower(email)
+	return emailRegexp.MatchString(lowerCaseEmail)
+}
+
+func CheckAuthFactor(af *common_models.AuthFactor) error {
+	if af.Type == "EM" {
+		if IsEmail(af.Value) {
+			return nil
+		}
+		return tracerr.Wrap(ErrorInvalidAuthFactorValueEM.AddDetails(af.Value))
+	}
+	if af.Type == "SMS" {
+		if phoneRegexp.MatchString(af.Value) {
+			return nil
+
+		}
+		return tracerr.Wrap(ErrorInvalidAuthFactorValueSMS.AddDetails(af.Value))
+	}
+	return tracerr.Wrap(ErrorInvalidAuthFactorType.AddDetails(af.Type))
 }
 
 func IsB64UUID(uuid string) bool {

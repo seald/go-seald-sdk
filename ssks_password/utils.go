@@ -3,8 +3,8 @@ package ssks_password
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/utils"
 	"golang.org/x/crypto/scrypt"
 	"regexp"
 )

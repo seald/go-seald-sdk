@@ -20,14 +20,18 @@ internal fun getRsaKey(size: Int = 4096): String {
 }
 
 fun generatePrivateKeys(keySize: Int = 4096): PreGeneratedKeys {
-    val preGeneratedKeys = io.seald.seald_sdk_internals.mobile_sdk.PreGeneratedKeys()
+    val preGeneratedKeys =
+        io.seald.seald_sdk_internals.mobile_sdk
+            .PreGeneratedKeys()
     preGeneratedKeys.encryptionKey = getRsaKey(keySize)
     preGeneratedKeys.signingKey = getRsaKey(keySize)
     return PreGeneratedKeys(preGeneratedKeys)
 }
 
 suspend fun generatePrivateKeysAsync(keySize: Int = 4096): PreGeneratedKeys {
-    val preGeneratedKeys = io.seald.seald_sdk_internals.mobile_sdk.PreGeneratedKeys()
+    val preGeneratedKeys =
+        io.seald.seald_sdk_internals.mobile_sdk
+            .PreGeneratedKeys()
     val scope = CoroutineScope(Dispatchers.Default)
 
     val deferredFirstKey = scope.async { getRsaKey(keySize) }
@@ -68,7 +72,9 @@ class SealdSDK
         private var mobileSDK: io.seald.seald_sdk_internals.mobile_sdk.MobileSDK
 
         init {
-            val initOpts = io.seald.seald_sdk_internals.mobile_sdk.SdkInitializeOptions()
+            val initOpts =
+                io.seald.seald_sdk_internals.mobile_sdk
+                    .SdkInitializeOptions()
             initOpts.apiURL = apiURL
             initOpts.appId = appId
             initOpts.databasePath = databasePath ?: ""
@@ -81,7 +87,8 @@ class SealdSDK
             initOpts.keySize = keySize.toLong()
             mobileSDK =
                 convertExceptions {
-                    io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk.initialize(initOpts)
+                    io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk
+                        .initialize(initOpts)
                 }
         }
 
@@ -136,7 +143,9 @@ class SealdSDK
             expireAfter: Duration = Duration.ofDays(365 * 5),
         ): AccountInfo {
             convertExceptions {
-                val createAccountOpts = io.seald.seald_sdk_internals.mobile_sdk.CreateAccountOptions()
+                val createAccountOpts =
+                    io.seald.seald_sdk_internals.mobile_sdk
+                        .CreateAccountOptions()
                 createAccountOpts.signupJWT = signupJWT
                 createAccountOpts.displayName = displayName
                 createAccountOpts.deviceName = deviceName
@@ -268,7 +277,8 @@ class SealdSDK
         ) {
             convertExceptions {
                 val renewKeysOpts =
-                    io.seald.seald_sdk_internals.mobile_sdk.RenewKeysOptions()
+                    io.seald.seald_sdk_internals.mobile_sdk
+                        .RenewKeysOptions()
                 renewKeysOpts.expireAfter = expireAfter.toMillis()
                 if (preparedRenewal == null) {
                     renewKeysOpts.preGeneratedKeys = privateKeys?.preGeneratedKeys ?: generatePrivateKeys().preGeneratedKeys
@@ -319,7 +329,8 @@ class SealdSDK
         ): CreateSubIdentityResponse {
             convertExceptions {
                 val createSubIdentityOpts =
-                    io.seald.seald_sdk_internals.mobile_sdk.CreateSubIdentityOptions()
+                    io.seald.seald_sdk_internals.mobile_sdk
+                        .CreateSubIdentityOptions()
                 createSubIdentityOpts.deviceName = deviceName
                 createSubIdentityOpts.expireAfter = expireAfter.toMillis()
                 createSubIdentityOpts.preGeneratedKeys = privateKeys?.preGeneratedKeys ?: generatePrivateKeys().preGeneratedKeys
@@ -1456,4 +1467,193 @@ class SealdSDK
             withContext(Dispatchers.IO) {
                 return@withContext convertTmrAccesses(tmrJWT, overEncryptionKey, conversionFilters, deleteOnConvert)
             }
+
+        /**
+         * Create a group TMR temporary key, and returns the created GroupTmrTemporaryKey instance.
+         *
+         * @param groupId The Id of the group for which to create a TMR key.
+         * @param authFactor Authentication method of this user, to which SSKS has sent a challenge at the request of your app's server.
+         * @param isAdmin Should this TMR temporary key give the group admin status.
+         * @param rawOverEncryptionKey TMR over-encryption key. This *MUST* be a cryptographically random buffer of 64 bytes.
+         */
+        @JvmOverloads
+        @Throws(SealdException::class)
+        fun createGroupTMRTemporaryKey(
+            groupId: String,
+            authFactor: AuthFactor,
+            rawOverEncryptionKey: ByteArray,
+            isAdmin: Boolean = false,
+        ): GroupTmrTemporaryKey {
+            convertExceptions {
+                val res = mobileSDK.createGroupTMRTemporaryKey(groupId, authFactor.toMobileSdk(), isAdmin, rawOverEncryptionKey)
+                return GroupTmrTemporaryKey.fromMobileSdk(res)
+            }
+        }
+
+        /**
+         * Create a group TMR temporary key, and returns the created GroupTmrTemporaryKey instance.
+         *
+         * @param groupId The Id of the group for which to create a TMR key.
+         * @param authFactor Authentication method of this user, to which SSKS has sent a challenge at the request of your app's server.
+         * @param isAdmin Should this TMR temporary key give the group admin status.
+         * @param rawOverEncryptionKey TMR over-encryption key. This *MUST* be a cryptographically random buffer of 64 bytes.
+         */
+        @JvmOverloads
+        @Throws(SealdException::class)
+        suspend fun createGroupTMRTemporaryKeyAsync(
+            groupId: String,
+            authFactor: AuthFactor,
+            rawOverEncryptionKey: ByteArray,
+            isAdmin: Boolean = false,
+        ): GroupTmrTemporaryKey =
+            withContext(Dispatchers.IO) {
+                return@withContext createGroupTMRTemporaryKey(groupId, authFactor, rawOverEncryptionKey, isAdmin)
+            }
+
+        /**
+         * List group TMR temporary key.
+         *
+         * @param groupId The Id of the group for which to list the TMR keys.
+         * @param page Page number to fetch.
+         * @param all Should list all pages after `page`.
+         */
+        @JvmOverloads
+        @Throws(SealdException::class)
+        fun listGroupTMRTemporaryKeys(
+            groupId: String,
+            page: Int = 1,
+            all: Boolean = false,
+        ): ListedGroupTMRTemporaryKeys {
+            convertExceptions {
+                val res = mobileSDK.listGroupTMRTemporaryKeys(groupId, page.toLong(), all)
+                return ListedGroupTMRTemporaryKeys.fromMobileSdk(res)
+            }
+        }
+
+        /**
+         * List group TMR temporary keys.
+         *
+         * @param groupId The Id of the group for which to list the TMR keys.
+         * @param page Page number to fetch.
+         * @param all Should list all pages after `page`.
+         */
+        @JvmOverloads
+        @Throws(SealdException::class)
+        suspend fun listGroupTMRTemporaryKeysAsync(
+            groupId: String,
+            page: Int = 1,
+            all: Boolean = false,
+        ): ListedGroupTMRTemporaryKeys =
+            withContext(Dispatchers.IO) {
+                return@withContext listGroupTMRTemporaryKeys(groupId, page, all)
+            }
+
+        /**
+         * Delete a group TMR temporary key.
+         *
+         * @param groupId The Id of the group for which to delete a TMR key.
+         * @param temporaryKeyId Id of the TMR key to delete.
+         */
+        @Throws(SealdException::class)
+        fun deleteGroupTMRTemporaryKey(
+            groupId: String,
+            temporaryKeyId: String,
+        ) {
+            convertExceptions {
+                mobileSDK.deleteGroupTMRTemporaryKey(groupId, temporaryKeyId)
+            }
+        }
+
+        /**
+         * Delete a group TMR temporary key.
+         *
+         * @param groupId The Id of the group for which to delete a TMR key.
+         * @param temporaryKeyId Id of the TMR key to delete.
+         */
+        @JvmOverloads
+        @Throws(SealdException::class)
+        suspend fun deleteGroupTMRTemporaryKeyAsync(
+            groupId: String,
+            temporaryKeyId: String,
+        ) = withContext(Dispatchers.IO) {
+            return@withContext deleteGroupTMRTemporaryKey(groupId, temporaryKeyId)
+        }
+
+        /**
+         * Search group TMR temporary keys that can be used with the TMR JWT.
+         *
+         * @param tmrJWT TMR JWT to use.
+         * @param options Option to filter the search results.
+         */
+        @JvmOverloads
+        @Throws(SealdException::class)
+        fun searchGroupTMRTemporaryKeys(
+            tmrJWT: String,
+            options: SearchGroupTMRTemporaryKeysOpts = SearchGroupTMRTemporaryKeysOpts(),
+        ): ListedGroupTMRTemporaryKeys {
+            convertExceptions {
+                val res = mobileSDK.searchGroupTMRTemporaryKeys(tmrJWT, options.toMobileSdk())
+                return ListedGroupTMRTemporaryKeys.fromMobileSdk(res)
+            }
+        }
+
+        /**
+         * Search group TMR temporary keys that can be used with the TMR JWT.
+         *
+         * @param tmrJWT TMR JWT to use.
+         * @param options Option to filter the search results.
+         */
+        @JvmOverloads
+        @Throws(SealdException::class)
+        suspend fun searchGroupTMRTemporaryKeysAsync(
+            tmrJWT: String,
+            options: SearchGroupTMRTemporaryKeysOpts = SearchGroupTMRTemporaryKeysOpts(),
+        ): ListedGroupTMRTemporaryKeys =
+            withContext(Dispatchers.IO) {
+                return@withContext searchGroupTMRTemporaryKeys(tmrJWT, options)
+            }
+
+        /**
+         * Convert a group TMR temporary key to become a group member.
+         *
+         * @param groupId The Id of the group for which to convert a TMR key.
+         * @param temporaryKeyId Id of the TMR temporary key to convert.
+         * @param tmrJWT TMR JWT to use.
+         * @param rawOverEncryptionKey TMR over-encryption key. This *MUST* be a cryptographically random buffer of 64 bytes.
+         * @param deleteOnConvert Whether or not to delete the TMR temporary key after conversion.
+         */
+        @JvmOverloads
+        @Throws(SealdException::class)
+        fun convertGroupTMRTemporaryKey(
+            groupId: String,
+            temporaryKeyId: String,
+            tmrJWT: String,
+            rawOverEncryptionKey: ByteArray,
+            deleteOnConvert: Boolean = false,
+        ) {
+            convertExceptions {
+                mobileSDK.convertGroupTMRTemporaryKey(groupId, temporaryKeyId, tmrJWT, rawOverEncryptionKey, deleteOnConvert)
+            }
+        }
+
+        /**
+         * Convert a group TMR temporary key to become a group member.
+         *
+         * @param groupId The Id of the group for which to convert a TMR key.
+         * @param temporaryKeyId Id of the TMR temporary key to convert.
+         * @param tmrJWT TMR JWT to use.
+         * @param rawOverEncryptionKey TMR over-encryption key. This *MUST* be a cryptographically random buffer of 64 bytes.
+         * @param deleteOnConvert Whether or not to delete the TMR temporary key after conversion.
+         */
+        @JvmOverloads
+        @Throws(SealdException::class)
+        suspend fun convertGroupTMRTemporaryKeyAsync(
+            groupId: String,
+            temporaryKeyId: String,
+            tmrJWT: String,
+            rawOverEncryptionKey: ByteArray,
+            deleteOnConvert: Boolean = false,
+        ) = withContext(Dispatchers.IO) {
+            return@withContext convertGroupTMRTemporaryKey(groupId, temporaryKeyId, tmrJWT, rawOverEncryptionKey, deleteOnConvert)
+        }
     }

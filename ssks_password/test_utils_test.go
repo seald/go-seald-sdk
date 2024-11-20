@@ -2,10 +2,10 @@ package ssks_password
 
 import (
 	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/sdk"
+	"github.com/seald/go-seald-sdk/test_utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/sdk"
-	"go-seald-sdk/test_utils"
 	"math/rand"
 	"time"
 )

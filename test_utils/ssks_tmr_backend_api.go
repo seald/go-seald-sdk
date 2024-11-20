@@ -3,9 +3,9 @@ package test_utils
 import (
 	"encoding/json"
 	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/api_helper"
+	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/api_helper"
-	"go-seald-sdk/common_models"
 	"os"
 	"time"
 )

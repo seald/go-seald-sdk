@@ -21,11 +21,8 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   if [[ -z "$line" ]]; then
     # empty line, nothing to do
     :
-  elif [[ "$line" == *"Error discovering license URL: getting file URL in library go-seald-sdk:"* ]]; then
+  elif [[ "$line" == *"module github.com/seald/go-seald-sdk has empty version, defaults to HEAD. The license URL may be incorrect. Please verify!"* ]]; then
     # this is the main go SDK package itself: nothing special to do, just ignore
-    :
-  elif [[ "$line" == *"Failed to find license for go-seald-sdk/"* ]]; then
-    # this is one of our own internal packages: nothing special to do, just ignore
     :
   elif [[ "$line" == *"contains non-Go code that can't be inspected for further dependencies"* ]]; then
     # this is expected, can ignore
@@ -86,15 +83,13 @@ echo -e "Seald SDK for mobile ${PACKAGE_VERSION} is made using these Open Source
 # Read CSV line by line
 while IFS=, read -r package_name license_url license_type; do
   echo "Handling ${package_name}..."
-  if [[ "$license_url" == "Unknown" ]]; then
-    if [[ "$package_name" == "go-seald-sdk" ]]; then
-      echo "  Main package, ignoring."
-    elif [[ "$package_name" == "go-seald-sdk/"* ]]; then
-      echo "  Internal package, ignoring."
-    else
-      echo "Unknown license for package $package_name"
-      exit 1
-    fi
+  if [[ "$package_name" == "github.com/seald/go-seald-sdk" ]]; then
+    echo "  Main package, ignoring."
+  elif [[ "$package_name" == "github.com/seald/go-seald-sdk/"* ]]; then
+    echo "  Internal package, ignoring."
+  elif [[ "$license_url" == "Unknown" ]]; then
+    echo "Unknown license for package $package_name"
+    exit 1
   elif [[ "$license_url" == "https://"* ]]; then
     echo -e "==== ${package_name} ====\n" >> dependencies_licenses.txt
     if [[ "$license_url" == "https://github.com/"* ]]; then

@@ -1,8 +1,8 @@
 package mobile_sdk
 
 import (
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/sdk"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk"
 )
 
 func sliceToStringArray(slice []string) *StringArray {
@@ -391,4 +391,76 @@ func (array *MobileEncryptionSessionArray) getSlice() []*sdk.EncryptionSession {
 
 func mobileEncryptionSessionArrayFromCommon(array []*sdk.EncryptionSession) *MobileEncryptionSessionArray {
 	return &MobileEncryptionSessionArray{items: array}
+}
+
+type GroupTMRTemporaryKey struct {
+	KeyId          string
+	GroupId        string
+	Created        int64
+	IsAdmin        bool
+	CreatedById    string
+	AuthFactorType string
+}
+
+func groupTMRTemporaryKeyFromCommon(s *sdk.GroupTMRTemporaryKey) *GroupTMRTemporaryKey {
+	if s == nil {
+		return nil
+	}
+	return &GroupTMRTemporaryKey{
+		KeyId:          s.Id,
+		GroupId:        s.GroupId,
+		Created:        s.Created.Unix(),
+		IsAdmin:        s.IsAdmin,
+		CreatedById:    s.CreatedById,
+		AuthFactorType: s.AuthFactorType,
+	}
+}
+
+type GroupTMRTemporaryKeyArray struct {
+	gTMRTK []*sdk.GroupTMRTemporaryKey
+}
+
+func (gTMRTKArray *GroupTMRTemporaryKeyArray) Add(gTMRTK *sdk.GroupTMRTemporaryKey) *GroupTMRTemporaryKeyArray {
+	gTMRTKArray.gTMRTK = append(gTMRTKArray.gTMRTK, gTMRTK)
+	return gTMRTKArray
+}
+func (gTMRTKArray *GroupTMRTemporaryKeyArray) Get(i int) *GroupTMRTemporaryKey {
+	return groupTMRTemporaryKeyFromCommon(gTMRTKArray.gTMRTK[i])
+}
+func (gTMRTKArray *GroupTMRTemporaryKeyArray) Size() int {
+	return len(gTMRTKArray.gTMRTK)
+}
+
+type ListedGroupTMRTemporaryKeys struct {
+	NbPage int
+	Keys   *GroupTMRTemporaryKeyArray
+}
+
+func groupListTMRTemporaryKeyFromCommon(nativeR *sdk.ListedGroupTMRTemporaryKeys) *ListedGroupTMRTemporaryKeys {
+	if nativeR == nil {
+		return nil
+	}
+	mobileKeys := &GroupTMRTemporaryKeyArray{}
+	for _, k := range nativeR.Keys {
+		mobileKeys.Add(k)
+	}
+
+	return &ListedGroupTMRTemporaryKeys{NbPage: nativeR.NbPage, Keys: mobileKeys}
+}
+
+type SearchGroupTMRTemporaryKeysOpts struct {
+	GroupId string
+	Page    int
+	All     bool
+}
+
+func (s *SearchGroupTMRTemporaryKeysOpts) toCommon() *sdk.SearchGroupTMRTemporaryKeysOpts {
+	if s == nil {
+		return nil
+	}
+	return &sdk.SearchGroupTMRTemporaryKeysOpts{
+		GroupId: s.GroupId,
+		Page:    s.Page,
+		All:     s.All,
+	}
 }
