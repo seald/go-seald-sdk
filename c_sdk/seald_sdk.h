@@ -1300,6 +1300,173 @@ int SealdSdk_SetGroupAdmins(SealdSdk* sealdSdk, char* groupId, SealdStringArray*
  */
 int SealdSdk_ShouldRenewGroup(SealdSdk* sealdSdk, char* groupId, int* result, SealdError** error);
 
+// Helper SealdGroupTMRTemporaryKey
+
+/**
+ * SealdGroupTMRTemporaryKey holds the information of a group TMR temporary key.
+ */
+typedef struct {
+    /** The id of the group TMR temporary key. */
+    char* Id;
+    /** The id of the group. */
+    char* GroupId;
+    /** Does that key give the admin status. 1 for True. */
+    int IsAdmin;
+    /** Id of the user who created this key. */
+    char* CreatedById;
+    /** Date of creation. */
+    long long Created;
+    /** The type of authentication factor. */
+    char* AuthFactorType;
+} SealdGroupTMRTemporaryKey;
+
+/**
+ * SealdGroupTMRTemporaryKey_Free is a helper to free a SealdGroupTMRTemporaryKey instance and all fields within.
+ *
+ * @param c The SealdGroupTMRTemporaryKey to free.
+ */
+void SealdGroupTMRTemporaryKey_Free(SealdGroupTMRTemporaryKey* c);
+
+
+// Helper SealdGroupTMRTemporaryKeysArray
+
+/**
+ * SealdGroupTMRTemporaryKeysArray holds an array of SealdGroupTMRTemporaryKey instances.
+ */
+typedef struct SealdGroupTMRTemporaryKeysArray SealdGroupTMRTemporaryKeysArray;
+
+/**
+ * SealdGroupTMRTemporaryKeysArray_New instantiates a new SealdGroupTMRTemporaryKeysArray.
+ *
+ * @return The newly created SealdGroupTMRTemporaryKeysArray.
+ */
+SealdGroupTMRTemporaryKeysArray* SealdGroupTMRTemporaryKeysArray_New();
+
+/**
+ * SealdGroupTMRTemporaryKeysArray_Free frees the memory allocated for the SealdGroupTMRTemporaryKeysArray itself, and all SealdGroupTMRTemporaryKey instances contained therein.
+ *
+ * @param array The SealdGroupTMRTemporaryKeysArray to free.
+ */
+void SealdGroupTMRTemporaryKeysArray_Free(SealdGroupTMRTemporaryKeysArray* array);
+
+/**
+ * SealdGroupTMRTemporaryKeysArray_Add adds a given SealdGroupTMRTemporaryKey instance to the array.
+ * SealdGroupTMRTemporaryKeysArray_Add *takes ownership* of the given SealdGroupTMRTemporaryKey.
+ * The caller *must not* use it anymore, and must not call `free` on it.
+ *
+ * @param array The SealdGroupTMRTemporaryKeysArray to add a SealdGroupTMRTemporaryKey instance to.
+ * @param c The SealdGroupTMRTemporaryKey instance to add.
+ */
+void SealdGroupTMRTemporaryKeysArray_Add(SealdGroupTMRTemporaryKeysArray* array, SealdGroupTMRTemporaryKey* gtmrtk);
+
+/**
+ * SealdGroupTMRTemporaryKeysArray_Get returns a reference to the SealdGroupTMRTemporaryKey instance at position i.
+ * The caller *must not* call `free` on it.
+ *
+ * @param array The SealdGroupTMRTemporaryKeysArray from which to retrieve an element.
+ * @param i The position from which we want to retrieve the SealdGroupTMRTemporaryKey instance.
+ * @return The SealdGroupTMRTemporaryKey instance at position i.
+ */
+SealdGroupTMRTemporaryKey* SealdGroupTMRTemporaryKeysArray_Get(SealdGroupTMRTemporaryKeysArray* array, int i);
+
+/**
+ * SealdGroupTMRTemporaryKeysArray_Size returns the size of the given SealdGroupTMRTemporaryKeysArray.
+ *
+ * @param array The SealdGroupTMRTemporaryKeysArray for which to retrieve the size.
+ * @return The size of the given SealdGroupTMRTemporaryKeysArray.
+ */
+int SealdGroupTMRTemporaryKeysArray_Size(SealdGroupTMRTemporaryKeysArray* array);
+
+// Helper SealdSearchGroupTMRTemporaryKeysOpts
+
+/**
+ * SealdSearchGroupTMRTemporaryKeysOpts holds the tmr filters used when searching group TMR temporary keys.
+ */
+typedef struct {
+    /** Return only the TMR temporary keys that give access to this groupId.  */
+    char* GroupId;
+    /**  Page to return.  */
+    int Page;
+    /**  Should return all pages after `Page`. 0 for False. 1 for True.  */
+    int All;
+} SealdSearchGroupTMRTemporaryKeysOpts;
+
+/**
+ * SealdSearchGroupTMRTemporaryKeysOpts_Free is a helper to free a SealdSearchGroupTMRTemporaryKeysOpts instance and all fields within.
+ *
+ * @param filters The SealdSearchGroupTMRTemporaryKeysOpts to free.
+ */
+void SealdSearchGroupTMRTemporaryKeysOpts_Free(SealdSearchGroupTMRTemporaryKeysOpts* filters);
+
+/**
+ * Create a group TMR temporary key, and returns the created SealdGroupTMRTemporaryKey instance.
+ *
+ * @param sealdSdk The SealdSdk instance.
+ * @param groupId The Id of the group for which to create a TMR key.
+ * @param authFactorType The type of authentication factor. Can be "EM" or "SMS".
+ * @param authFactorValue The value of authentication factor.
+ * @param isAdmin Should this TMR temporary key give the group admin status. 1 for admin, 0 otherwise.
+ * @param rawOverEncryptionKey The raw encryption key to use. This *MUST* be a cryptographically random buffer of 64 bytes.
+ * @param rawOverEncryptionKeyLen The length of rawOverEncryptionKey.
+ * @param result A pointer where to store the created SealdGroupTMRTemporaryKey instance.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdSdk_CreateGroupTMRTemporaryKey(SealdSdk* sealdSdk, char* groupId, char* authFactorType, char* authFactorValue, int isAdmin, unsigned char* rawOverEncryptionKey, int rawOverEncryptionKeyLen, SealdGroupTMRTemporaryKey** result, SealdError** error);
+
+/**
+ * List group TMR temporary keys.
+ *
+ * @param sealdSdk The SealdSdk instance.
+ * @param groupId The Id of the group for which to list TMR keys.
+ * @param page Page number to fetch.
+ * @param all Should list all pages after `page`.
+ * @param nbPageFound Number of pages found
+ * @param result A pointer to a SealdGroupTMRTemporaryKeysArray where to store the result.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdSdk_ListGroupTMRTemporaryKeys(SealdSdk* sealdSdk, char* groupId, int page, int all, int* nbPageFound, SealdGroupTMRTemporaryKeysArray** result, SealdError** error);
+
+/**
+ * Delete a group TMR temporary key.
+ *
+ * @param sealdSdk The SealdSdk instance.
+ * @param groupId The Id of the group concerned by the TMR key.
+ * @param temporaryKeyId Id of the TMR key to delete.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdSdk_DeleteGroupTMRTemporaryKey(SealdSdk* sealdSdk, char* groupId, char* temporaryKeyId, SealdError** error);
+
+/**
+ * Convert a group TMR temporary key to become a group member.
+ *
+ * @param sealdSdk The SealdSdk instance.
+ * @param groupId The Id of the group concerned by the TMR key.
+ * @param temporaryKeyId Id of the TMR temporary key to convert
+ * @param tmrJWT TMR JWT to use
+ * @param rawOverEncryptionKey The raw encryption key to use. This *MUST* be a cryptographically random buffer of 64 bytes.
+ * @param rawOverEncryptionKeyLen The length of rawOverEncryptionKey.
+ * @param deleteOnConvert Should the temporary key be deleted after conversion.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdSdk_ConvertGroupTMRTemporaryKey(SealdSdk* sealdSdk, char* groupId, char* temporaryKeyId, char* tmrJWT, unsigned char* rawOverEncryptionKey, int rawOverEncryptionKeyLen, int deleteOnConvert, SealdError** error);
+
+/**
+ * Search group TMR temporary keys that can be used with the TMR JWT.
+ *
+ * @param sealdSdk The SealdSdk instance.
+ * @param tmrJWT TMR JWT to use.
+ * @param opts Option to filter the search results.
+ * @param nbPageFound Number of pages found.
+ * @param result A pointer to a SealdGroupTMRTemporaryKeysArray where to store the result.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdSdk_SearchGroupTMRTemporaryKeys(SealdSdk* sealdSdk, char* tmrJWT, SealdSearchGroupTMRTemporaryKeysOpts* opts, int* nbPageFound, SealdGroupTMRTemporaryKeysArray** keysList, SealdError** error);
+
 /* EncryptionSession */
 
 /**

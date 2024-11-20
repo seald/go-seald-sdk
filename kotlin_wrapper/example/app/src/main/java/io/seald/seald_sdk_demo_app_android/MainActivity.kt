@@ -37,7 +37,8 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         StrictMode.setThreadPolicy(
-            StrictMode.ThreadPolicy.Builder()
+            StrictMode.ThreadPolicy
+                .Builder()
                 .detectDiskReads()
                 .detectDiskWrites()
                 .detectAll()
@@ -45,7 +46,8 @@ class MainActivity : AppCompatActivity() {
                 .build(),
         )
         StrictMode.setVmPolicy(
-            StrictMode.VmPolicy.Builder()
+            StrictMode.VmPolicy
+                .Builder()
                 .detectLeakedSqlLiteObjects()
                 .detectLeakedClosableObjects()
                 .penaltyLog()
@@ -221,16 +223,17 @@ class MainActivity : AppCompatActivity() {
                 )
 
             // The app backend creates an SSKS authentication session.
-            // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false, but we force auth because we want to convert TMR Accesses.
+            // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false, but we force auth because we want to convert TMR accesses.
             val authSession =
-                yourCompanyDummyBackend.challengeSend(
-                    user1AccountInfo.userId,
-                    tmrAuthFactor,
-                    createUser = true,
-                    forceAuth = true,
-                    // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
-                    fakeOtp = true,
-                ).await()
+                yourCompanyDummyBackend
+                    .challengeSend(
+                        user1AccountInfo.userId,
+                        tmrAuthFactor,
+                        createUser = true,
+                        forceAuth = true,
+                        // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
+                        fakeOtp = true,
+                    ).await()
             assertEquals(authSession.mustAuthenticate, true)
 
             // Retrieve a JWT associated with the authentication factor from SSKS
@@ -593,6 +596,43 @@ class MainActivity : AppCompatActivity() {
             // For badPositionCheck, position cannot be asserted as it is not set when the hash is not found.
             assert(badPositionCheck.lastPosition == 2)
 
+            // Group TMR temporary keys
+
+            // First, create a group to test on. sdk1 create a TMR temporary key to this group, sdk2 will join.
+            val groupTMRName = "group-TMR"
+            val groupTMRMembers = arrayOf(user1AccountInfo.userId)
+            val groupTMRAdmins = arrayOf(user1AccountInfo.userId)
+            val groupTMRId = sdk1.createGroupAsync(groupTMRName, groupTMRMembers, groupTMRAdmins)
+
+            // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+            val gTMRRawOverEncryptionKey = randomByteArray(64)
+
+            // We defined a two man rule recipient earlier. We will use it again.
+            // The authentication factor is `tmrAuthFactor`.
+            // Also we already have the TMR JWT associated with it: `tmrJWT.token`
+
+            val gTMRCreated = sdk1.createGroupTMRTemporaryKey(groupTMRId, tmrAuthFactor, gTMRRawOverEncryptionKey, isAdmin = true)
+            assert(gTMRCreated.authFactorType == "EM")
+            assert(gTMRCreated.isAdmin)
+            assert(gTMRCreated.groupId == groupTMRId)
+
+            val gTMRList = sdk1.listGroupTMRTemporaryKeys(groupTMRId)
+            assert(gTMRList.nbPage == 1)
+            assert(gTMRList.gTMRTKeys.size == 1)
+            assert(gTMRList.gTMRTKeys[0].id == gTMRCreated.id)
+            assert(gTMRList.gTMRTKeys[0].groupId == gTMRCreated.groupId)
+            assert(gTMRList.gTMRTKeys[0].isAdmin)
+
+            val gTMRSearch = sdk1.searchGroupTMRTemporaryKeys(tmrJWT.token)
+            assert(gTMRSearch.nbPage == 1)
+            assert(gTMRSearch.gTMRTKeys.size == 1)
+            assert(gTMRSearch.gTMRTKeys[0].id == gTMRCreated.id)
+            assert(gTMRSearch.gTMRTKeys[0].groupId == gTMRCreated.groupId)
+            assert(gTMRSearch.gTMRTKeys[0].isAdmin)
+
+            sdk2.convertGroupTMRTemporaryKey(groupTMRId, gTMRCreated.id, tmrJWT.token, gTMRRawOverEncryptionKey)
+            sdk1.deleteGroupTMRTemporaryKey(groupTMRId, gTMRCreated.id)
+
             // Heartbeat can be used to check if proxies and firewalls are configured properly so that the app can reach Seald's servers.
             sdk1.heartbeatAsync()
 
@@ -753,14 +793,15 @@ class MainActivity : AppCompatActivity() {
             // The app backend creates an SSKS authentication session to save the identity.
             // This is the first time that this email is storing an identity, so the returned `must_authenticate` is false.
             val authSessionSave =
-                yourCompanyDummyBackend.challengeSend(
-                    userId,
-                    authFactor,
-                    createUser = true,
-                    forceAuth = false,
-                    // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
-                    fakeOtp = true,
-                ).await()
+                yourCompanyDummyBackend
+                    .challengeSend(
+                        userId,
+                        authFactor,
+                        createUser = true,
+                        forceAuth = false,
+                        // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
+                        fakeOtp = true,
+                    ).await()
             assertEquals(authSessionSave.mustAuthenticate, false)
             // The response to the signup call should include `authSessionSave.sessionId` and `rawTMRSymKey`
 
@@ -779,14 +820,15 @@ class MainActivity : AppCompatActivity() {
             // At first sign-in, your backend creates another SSKS session to retrieve the identity.
             // The identity is already saved, so `must_authenticate` is true.
             val authSessionRetrieve =
-                yourCompanyDummyBackend.challengeSend(
-                    userId,
-                    authFactor,
-                    createUser = true,
-                    forceAuth = false,
-                    // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
-                    fakeOtp = true,
-                ).await()
+                yourCompanyDummyBackend
+                    .challengeSend(
+                        userId,
+                        authFactor,
+                        createUser = true,
+                        forceAuth = false,
+                        // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
+                        fakeOtp = true,
+                    ).await()
             assertEquals(authSessionRetrieve.mustAuthenticate, true)
 
             // The app can then retrieving identity. Challenge is necessary for this.
@@ -820,14 +862,15 @@ class MainActivity : AppCompatActivity() {
             // For later sign-in, this new saved identity can be retrieve in the same way:
             // Once the user is authed against your backend, your backend send the challenge
             val authSessionRetrieve2 =
-                yourCompanyDummyBackend.challengeSend(
-                    userId,
-                    authFactor,
-                    createUser = false,
-                    forceAuth = false,
-                    // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
-                    fakeOtp = true,
-                ).await()
+                yourCompanyDummyBackend
+                    .challengeSend(
+                        userId,
+                        authFactor,
+                        createUser = false,
+                        forceAuth = false,
+                        // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
+                        fakeOtp = true,
+                    ).await()
             assertEquals(authSessionRetrieve2.mustAuthenticate, true)
             val retrievedSecondKey =
                 ssksPlugin.retrieveIdentityAsync(
@@ -848,14 +891,15 @@ class MainActivity : AppCompatActivity() {
                     logLevel = -1,
                 )
             val authSessionRetrieve3 =
-                yourCompanyDummyBackend.challengeSend(
-                    userId,
-                    authFactor,
-                    createUser = false,
-                    forceAuth = false,
-                    // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
-                    fakeOtp = true,
-                ).await()
+                yourCompanyDummyBackend
+                    .challengeSend(
+                        userId,
+                        authFactor,
+                        createUser = false,
+                        forceAuth = false,
+                        // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
+                        fakeOtp = true,
+                    ).await()
             assert(authSessionRetrieve3.mustAuthenticate)
             val inst2Retrieve =
                 ssksPluginInst2.retrieveIdentityAsync(

@@ -2,12 +2,12 @@ package sdk
 
 import (
 	"encoding/base64"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk/sigchain"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/sdk/sigchain"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/utils"
 	"strings"
 	"sync"
 	"time"

@@ -3,10 +3,10 @@ package sdk
 import (
 	"encoding/json"
 	"github.com/allan-simon/go-singleinstance"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/utils"
 	"os"
 	"path/filepath"
 	"runtime"

@@ -9,11 +9,11 @@ package main
 import "C"
 import (
 	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/ssks_password"
+	"github.com/seald/go-seald-sdk/ssks_tmr"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/ssks_password"
-	"go-seald-sdk/ssks_tmr"
-	"go-seald-sdk/utils"
 	"sync"
 	"unsafe"
 )

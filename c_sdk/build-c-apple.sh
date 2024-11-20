@@ -78,7 +78,7 @@ export GOOS="darwin"
 export GOARCH="arm64"
 export CC=$(xcrun --sdk macosx --find clang)
 export CGO_CFLAGS="--sysroot=${MACOS_SDK_PATH} -arch arm64 -mmacosx-version-min=${MACOS_MIN_VERSION}"
-export CGO_LDFLAGS="--sysroot=${MACOS_SDK_PATH} -arch arm64 -extldflags \"-mmacosx-version-min=${MACOS_MIN_VERSION}\""
+export CGO_LDFLAGS="--sysroot=${MACOS_SDK_PATH} -arch arm64 -mmacosx-version-min=${MACOS_MIN_VERSION}"
 go build -buildmode=c-shared -o ${FRAMEWORK_MACOS_PATH}/${FRAMEWORK_NAME}_arm64
 install_name_tool -id @rpath/${FRAMEWORK_NAME}.framework/${FRAMEWORK_NAME} ${FRAMEWORK_MACOS_PATH}/${FRAMEWORK_NAME}_arm64 # Need to use install_path to change the internal install_name of the library to point to the path within the framework that it is going to have
 rm ${FRAMEWORK_MACOS_PATH}/${FRAMEWORK_NAME}_arm64.h # cleanup
@@ -88,7 +88,7 @@ export GOOS="darwin"
 export GOARCH="amd64"
 export CC=$(xcrun --sdk macosx --find clang)
 export CGO_CFLAGS="--sysroot=${MACOS_SDK_PATH} -arch x86_64 -mmacosx-version-min=${MACOS_MIN_VERSION}"
-export CGO_LDFLAGS="--sysroot=${MACOS_SDK_PATH} -arch x86_64 -extldflags \"-mmacosx-version-min=${MACOS_MIN_VERSION}\""
+export CGO_LDFLAGS="--sysroot=${MACOS_SDK_PATH} -arch x86_64 -mmacosx-version-min=${MACOS_MIN_VERSION}"
 go build -buildmode=c-shared -o ${FRAMEWORK_MACOS_PATH}/${FRAMEWORK_NAME}_x86_64
 install_name_tool -id @rpath/${FRAMEWORK_NAME}.framework/${FRAMEWORK_NAME} ${FRAMEWORK_MACOS_PATH}/${FRAMEWORK_NAME}_x86_64 # Need to use install_path to change the internal install_name of the library to point to the path within the framework that it is going to have
 rm ${FRAMEWORK_MACOS_PATH}/${FRAMEWORK_NAME}_x86_64.h # cleanup

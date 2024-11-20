@@ -2003,6 +2003,9 @@ class SealdSdk {
     final int resultCode = _bindings.SealdSdk_CheckSigchainHash(_ptr.pointer(),
         nativeUserId, nativeExpectedHash, position, result, err);
 
+    calloc.free(nativeUserId);
+    calloc.free(nativeExpectedHash);
+
     if (resultCode != 0) {
       calloc.free(result);
       throw SealdException._fromCPtr(err);
@@ -2075,6 +2078,7 @@ class SealdSdk {
         result,
         err);
 
+    calloc.free(nativeTmrJWT);
     calloc.free(nativeOverEncryptionKey);
     _bindings.SealdTmrAccessesConvertFilters_Free(nativeFilters);
 
@@ -2113,5 +2117,334 @@ class SealdSdk {
           "conversionFilters": conversionFilters,
           "deleteOnConvert": deleteOnConvert
         });
+  }
+
+  /// Create a group TMR temporary key, and returns the created SealdGroupTMRTemporaryKey instance.
+  ///
+  /// [groupId] The Id of the group for which to create a TMR key.
+  /// [authFactorType] The type of authentication factor. Can be "EM" or "SMS".
+  /// [authFactorValue] The value of authentication factor.
+  /// [rawOverEncryptionKey] The raw encryption key to use. This *MUST* be a cryptographically random buffer of 64 bytes.
+  /// [isAdmin] Should this TMR temporary key give the group admin status.
+  /// Returns a SealdGroupTMRTemporaryKey instance.
+  SealdGroupTMRTemporaryKey createGroupTMRTemporaryKey(
+      String groupId,
+      String authFactorType,
+      String authFactorValue,
+      Uint8List rawOverEncryptionKey,
+      {bool isAdmin = false}) {
+    if (_closed) {
+      throw SealdException(
+          code: "INSTANCE_CLOSED",
+          id: "FLUTTER_INSTANCE_CLOSED",
+          description: "Instance already closed.");
+    }
+    final Pointer<Utf8> nativeGroupId = groupId.toNativeUtf8();
+    final Pointer<Utf8> nativeAuthFactorType = authFactorType.toNativeUtf8();
+    final Pointer<Utf8> nativeAuthFactorValue = authFactorValue.toNativeUtf8();
+    final int isAdminInt = isAdmin ? 1 : 0;
+    // Dart FFI forces us to copy the data from Uint8List to a newly allocated Pointer<Uint8>
+    final Pointer<Uint8> nativeRawOverEncryptionKey =
+        calloc<Uint8>(rawOverEncryptionKey.length);
+    final pointerListRawOverEncryptionKey =
+        nativeRawOverEncryptionKey.asTypedList(rawOverEncryptionKey.length);
+    pointerListRawOverEncryptionKey.setAll(0, rawOverEncryptionKey);
+
+    final Pointer<Pointer<NativeSealdGroupTMRTemporaryKey>> result =
+        calloc<Pointer<NativeSealdGroupTMRTemporaryKey>>();
+    final Pointer<Pointer<NativeSealdError>> err =
+        calloc<Pointer<NativeSealdError>>();
+
+    final int resultCode = _bindings.SealdSdk_CreateGroupTMRTemporaryKey(
+        _ptr.pointer(),
+        nativeGroupId,
+        nativeAuthFactorType,
+        nativeAuthFactorValue,
+        isAdminInt,
+        nativeRawOverEncryptionKey,
+        rawOverEncryptionKey.length,
+        result,
+        err);
+
+    calloc.free(nativeGroupId);
+    calloc.free(nativeAuthFactorType);
+    calloc.free(nativeAuthFactorValue);
+    calloc.free(nativeRawOverEncryptionKey);
+
+    if (resultCode != 0) {
+      calloc.free(result);
+      throw SealdException._fromCPtr(err);
+    } else {
+      final SealdGroupTMRTemporaryKey gTMRtempKey =
+          SealdGroupTMRTemporaryKey._fromC(result.value);
+      calloc.free(result);
+      calloc.free(err);
+      return gTMRtempKey;
+    }
+  }
+
+  /// Create a group TMR temporary key, and returns the created SealdGroupTMRTemporaryKey instance.
+  ///
+  /// [groupId] The Id of the group for which to create a TMR key.
+  /// [authFactorType] The type of authentication factor. Can be "EM" or "SMS".
+  /// [authFactorValue] The value of authentication factor.
+  /// [rawOverEncryptionKey] The raw encryption key to use. This *MUST* be a cryptographically random buffer of 64 bytes.
+  /// [isAdmin] Should this TMR temporary key give the group admin status.
+  /// Returns a SealdGroupTMRTemporaryKey instance.
+  Future<SealdGroupTMRTemporaryKey> createGroupTMRTemporaryKeyAsync(
+      String groupId,
+      String authFactorType,
+      String authFactorValue,
+      Uint8List rawOverEncryptionKey,
+      {bool isAdmin = false}) {
+    return compute(
+        (Map<String, dynamic> args) => createGroupTMRTemporaryKey(
+            args["groupId"],
+            args["authFactorType"],
+            args["authFactorValue"],
+            args["rawOverEncryptionKey"],
+            isAdmin: args["isAdmin"]),
+        {
+          "groupId": groupId,
+          "authFactorType": authFactorType,
+          "authFactorValue": authFactorValue,
+          "rawOverEncryptionKey": rawOverEncryptionKey,
+          "isAdmin": isAdmin
+        });
+  }
+
+  /// List group TMR temporary keys.
+  ///
+  /// [groupId] The Id of the group for which to list TMR keys.
+  /// [page] Page number to fetch.
+  /// [all] Should list all pages after `page`.
+  /// Returns a SealdListedGroupTMRTemporaryKey instance holding the found temporary keys.
+  SealdListedGroupTMRTemporaryKey listGroupTMRTemporaryKeys(String groupId,
+      {int page = 1, bool all = false}) {
+    if (_closed) {
+      throw SealdException(
+          code: "INSTANCE_CLOSED",
+          id: "FLUTTER_INSTANCE_CLOSED",
+          description: "Instance already closed.");
+    }
+    final Pointer<Utf8> nativeGroupId = groupId.toNativeUtf8();
+    final int allInt = all ? 1 : 0;
+
+    final Pointer<Int> nbPageFound = calloc<Int>();
+    final Pointer<Pointer<NativeSealdGroupTMRTemporaryKeysArray>> result =
+        calloc<Pointer<NativeSealdGroupTMRTemporaryKeysArray>>();
+    final Pointer<Pointer<NativeSealdError>> err =
+        calloc<Pointer<NativeSealdError>>();
+
+    final int resultCode = _bindings.SealdSdk_ListGroupTMRTemporaryKeys(
+        _ptr.pointer(), nativeGroupId, page, allInt, nbPageFound, result, err);
+
+    calloc.free(nativeGroupId);
+
+    if (resultCode != 0) {
+      calloc.free(result);
+      throw SealdException._fromCPtr(err);
+    } else {
+      final SealdListedGroupTMRTemporaryKey gTMRtempKeys =
+          SealdListedGroupTMRTemporaryKey._fromC(result.value, nbPageFound);
+      calloc.free(result);
+      calloc.free(nbPageFound);
+      calloc.free(err);
+      return gTMRtempKeys;
+    }
+  }
+
+  /// List group TMR temporary keys.
+  ///
+  /// [groupId] The Id of the group for which to list TMR keys.
+  /// [page] Page number to fetch.
+  /// [all] Should list all pages after `page`.
+  /// Returns a SealdListedGroupTMRTemporaryKey instance holding the found temporary keys.
+  Future<SealdListedGroupTMRTemporaryKey> listGroupTMRTemporaryKeysAsync(
+      String groupId,
+      {int page = 1,
+      bool all = false}) {
+    return compute(
+        (Map<String, dynamic> args) => listGroupTMRTemporaryKeys(
+            args["groupId"],
+            page: args["page"],
+            all: args["all"]),
+        {"groupId": groupId, "page": page, "all": all});
+  }
+
+  /// Search group TMR temporary keys that can be used with the TMR JWT.
+  ///
+  /// [tmrJWT] TMR JWT to use.
+  /// [opts] Option to filter the search results.
+  /// Returns a SealdListedGroupTMRTemporaryKey instance holding the found temporary keys.
+  SealdListedGroupTMRTemporaryKey searchGroupTMRTemporaryKeys(String tmrJWT,
+      {SealdSearchGroupTMRTemporaryKeysOpts? opts}) {
+    if (_closed) {
+      throw SealdException(
+          code: "INSTANCE_CLOSED",
+          id: "FLUTTER_INSTANCE_CLOSED",
+          description: "Instance already closed.");
+    }
+    final Pointer<Utf8> nativeTmrJWT = tmrJWT.toNativeUtf8();
+    final Pointer<NativeSealdSearchGroupTMRTemporaryKeysOpts> nativeOpts =
+        opts?._toC() ?? nullptr;
+
+    final Pointer<Int> nbPageFound = calloc<Int>();
+    final Pointer<Pointer<NativeSealdGroupTMRTemporaryKeysArray>> result =
+        calloc<Pointer<NativeSealdGroupTMRTemporaryKeysArray>>();
+    final Pointer<Pointer<NativeSealdError>> err =
+        calloc<Pointer<NativeSealdError>>();
+
+    final int resultCode = _bindings.SealdSdk_SearchGroupTMRTemporaryKeys(
+        _ptr.pointer(), nativeTmrJWT, nativeOpts, nbPageFound, result, err);
+
+    calloc.free(nativeTmrJWT);
+    _bindings.SealdSearchGroupTMRTemporaryKeysOpts_Free(nativeOpts);
+
+    if (resultCode != 0) {
+      calloc.free(result);
+      throw SealdException._fromCPtr(err);
+    } else {
+      final SealdListedGroupTMRTemporaryKey gTMRtempKeys =
+          SealdListedGroupTMRTemporaryKey._fromC(result.value, nbPageFound);
+      calloc.free(result);
+      calloc.free(nbPageFound);
+      calloc.free(err);
+      return gTMRtempKeys;
+    }
+  }
+
+  /// Search group TMR temporary keys that can be used with the TMR JWT.
+  ///
+  /// [tmrJWT] TMR JWT to use.
+  /// [opts] Option to filter the search results.
+  /// Returns a SealdListedGroupTMRTemporaryKey instance holding the found temporary keys.
+  Future<SealdListedGroupTMRTemporaryKey> searchGroupTMRTemporaryKeysAsync(
+      String tmrJWT,
+      {SealdSearchGroupTMRTemporaryKeysOpts? opts}) {
+    return compute(
+        (Map<String, dynamic> args) =>
+            searchGroupTMRTemporaryKeys(args["tmrJWT"], opts: args["opts"]),
+        {"tmrJWT": tmrJWT, "opts": opts});
+  }
+
+  /// Convert a group TMR temporary key to become a group member.
+  ///
+  /// [groupId] The Id of the group for which to convert a TMR key.
+  /// [temporaryKeyId] The Id of the temporary key to convert.
+  /// [tmrJWT] TMR JWT to use.
+  /// [rawOverEncryptionKey] The raw encryption key to use. This *MUST* be a cryptographically random buffer of 64 bytes.
+  /// [deleteOnConvert] Should the key be deleted after conversion.
+  void convertGroupTMRTemporaryKey(String groupId, String temporaryKeyId,
+      String tmrJWT, Uint8List rawOverEncryptionKey,
+      {bool deleteOnConvert = false}) {
+    if (_closed) {
+      throw SealdException(
+          code: "INSTANCE_CLOSED",
+          id: "FLUTTER_INSTANCE_CLOSED",
+          description: "Instance already closed.");
+    }
+    final Pointer<Utf8> nativeGroupId = groupId.toNativeUtf8();
+    final Pointer<Utf8> nativeTemporaryKeyId = temporaryKeyId.toNativeUtf8();
+    final Pointer<Utf8> nativeTmrJWT = tmrJWT.toNativeUtf8();
+    final int deleteOnConvertInt = deleteOnConvert ? 1 : 0;
+    // Dart FFI forces us to copy the data from Uint8List to a newly allocated Pointer<Uint8>
+    final Pointer<Uint8> nativeRawOverEncryptionKey =
+        calloc<Uint8>(rawOverEncryptionKey.length);
+    final pointerListRawOverEncryptionKey =
+        nativeRawOverEncryptionKey.asTypedList(rawOverEncryptionKey.length);
+    pointerListRawOverEncryptionKey.setAll(0, rawOverEncryptionKey);
+
+    final Pointer<Pointer<NativeSealdError>> err =
+        calloc<Pointer<NativeSealdError>>();
+
+    final int resultCode = _bindings.SealdSdk_ConvertGroupTMRTemporaryKey(
+        _ptr.pointer(),
+        nativeGroupId,
+        nativeTemporaryKeyId,
+        nativeTmrJWT,
+        nativeRawOverEncryptionKey,
+        rawOverEncryptionKey.length,
+        deleteOnConvertInt,
+        err);
+
+    calloc.free(nativeGroupId);
+    calloc.free(nativeTemporaryKeyId);
+    calloc.free(nativeTmrJWT);
+    calloc.free(nativeRawOverEncryptionKey);
+
+    if (resultCode != 0) {
+      throw SealdException._fromCPtr(err);
+    } else {
+      calloc.free(err);
+    }
+  }
+
+  /// Convert a group TMR temporary key to become a group member.
+  ///
+  /// [groupId] The Id of the group for which to convert a TMR key.
+  /// [temporaryKeyId] The Id of the temporary key to convert.
+  /// [tmrJWT] TMR JWT to use.
+  /// [rawOverEncryptionKey] The raw encryption key to use. This *MUST* be a cryptographically random buffer of 64 bytes.
+  /// [deleteOnConvert] Should the temporary key be deleted after conversion.
+  Future<void> convertGroupTMRTemporaryKeyAsync(String groupId,
+      String temporaryKeyId, String tmrJWT, Uint8List rawOverEncryptionKey,
+      {bool deleteOnConvert = false}) {
+    return compute(
+        (Map<String, dynamic> args) => convertGroupTMRTemporaryKey(
+            args["groupId"],
+            args["temporaryKeyId"],
+            args["tmrJWT"],
+            args["rawOverEncryptionKey"],
+            deleteOnConvert: args["deleteOnConvert"]),
+        {
+          "groupId": groupId,
+          "temporaryKeyId": temporaryKeyId,
+          "tmrJWT": tmrJWT,
+          "rawOverEncryptionKey": rawOverEncryptionKey,
+          "deleteOnConvert": deleteOnConvert
+        });
+  }
+
+  /// Delete a group TMR temporary key.
+  ///
+  /// [groupId] The Id of the group for which to delete a TMR key.
+  /// [temporaryKeyId] The Id of the temporary key to delete.
+  void deleteGroupTMRTemporaryKey(String groupId, String temporaryKeyId) {
+    if (_closed) {
+      throw SealdException(
+          code: "INSTANCE_CLOSED",
+          id: "FLUTTER_INSTANCE_CLOSED",
+          description: "Instance already closed.");
+    }
+    final Pointer<Utf8> nativeGroupId = groupId.toNativeUtf8();
+    final Pointer<Utf8> nativeTemporaryKeyId = temporaryKeyId.toNativeUtf8();
+
+    final Pointer<Pointer<NativeSealdError>> err =
+        calloc<Pointer<NativeSealdError>>();
+
+    final int resultCode = _bindings.SealdSdk_DeleteGroupTMRTemporaryKey(
+        _ptr.pointer(), nativeGroupId, nativeTemporaryKeyId, err);
+
+    calloc.free(nativeGroupId);
+    calloc.free(nativeTemporaryKeyId);
+
+    if (resultCode != 0) {
+      throw SealdException._fromCPtr(err);
+    } else {
+      calloc.free(err);
+    }
+  }
+
+  /// Delete a group TMR temporary key.
+  ///
+  /// [groupId] The Id of the group for which to delete a TMR key.
+  /// [temporaryKeyId] The Id of the temporary key to delete.
+  Future<void> deleteGroupTMRTemporaryKeyAsync(
+      String groupId, String temporaryKeyId) {
+    return compute(
+        (Map<String, dynamic> args) =>
+            deleteGroupTMRTemporaryKey(args["groupId"], args["temporaryKeyId"]),
+        {"groupId": groupId, "temporaryKeyId": temporaryKeyId});
   }
 }

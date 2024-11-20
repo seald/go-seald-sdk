@@ -3,9 +3,9 @@ package messages
 import (
 	"encoding/base64"
 	"encoding/json"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/utils"
 )
 
 var (

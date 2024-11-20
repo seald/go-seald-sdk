@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/exported_identity"
+	"github.com/seald/go-seald-sdk/sdk/sigchain"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/exported_identity"
-	"go-seald-sdk/sdk/sigchain"
-	"go-seald-sdk/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"time"
 )
@@ -569,6 +569,7 @@ func (state *State) updateCurrentDeviceUnlocked() error {
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
+	// The search call already checks that the sigchain matches known devices
 	// get current device from sigchain
 	currentDeviceSigchain, found := checkResult.KnownKeys[currentDevice.DeviceId]
 	if !found {

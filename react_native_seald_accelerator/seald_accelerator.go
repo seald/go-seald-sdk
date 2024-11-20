@@ -2,10 +2,10 @@ package react_native_seald_accelerator
 
 import (
 	"bytes"
+	"github.com/seald/go-seald-sdk/encrypt_decrypt_file"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/encrypt_decrypt_file"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/utils"
 	"os"
 	"path/filepath"
 )

@@ -44,5 +44,16 @@ describe('groups', function () {
     // create another session for the group
     const session2 = await sdk.createEncryptionSession({ sealdIds: [group.id] }, { encryptForSelf: false })
     await fs.writeFile('./test_artifacts/from_js/groups/session_id2', session2.sessionId, { encoding: 'utf8' })
+
+    const rand = (await sdk.sscrypto.utils.randomBytesAsync(10)).toString('hex')
+    const tmrEmail = `go-cross-test-${rand}@domain.tld`
+    const authFactor = { type: 'EM', value: tmrEmail }
+
+    const rawOverEncryptionKey = await sdk.utils.generateB64EncodedSymKey()
+
+    const  gTMRTK = await sdk.createGroupTMRTemporaryKey(group.id, { isAdmin: true, authFactor, rawOverEncryptionKey })
+    await fs.writeFile('./test_artifacts/from_js/groups/tmr_temp_key_EM', tmrEmail, { encoding: 'utf8' })
+    await fs.writeFile('./test_artifacts/from_js/groups/tmr_temp_key_keyId', gTMRTK.id, { encoding: 'utf8' })
+    await fs.writeFile('./test_artifacts/from_js/groups/tmr_temp_key_OverEncKey', rawOverEncryptionKey, { encoding: 'base64' })
   })
 })

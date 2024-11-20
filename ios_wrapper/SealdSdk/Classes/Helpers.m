@@ -620,3 +620,83 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
                                                        converted:stringArrayToArray(nativeResp.converted)];
 }
 @end
+
+@implementation SealdGroupTmrTemporaryKey
+- (instancetype) initWithKeyId:(NSString*)keyId
+                       groupId:(NSString*)groupId
+                       isAdmin:(BOOL)isAdmin
+                   createdById:(NSString*)createdById
+                       created:(NSTimeInterval)created
+                authFactorType:(NSString*)authFactorType
+{
+    self = [super init];
+    if (self) {
+        _keyId = keyId;
+        _groupId = groupId;
+        _isAdmin = isAdmin;
+        _createdById = createdById;
+        _created = &created;
+        _authFactorType = authFactorType;
+    }
+    return self;
+}
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkGroupTMRTemporaryKey*)nativeResp
+{
+    SealdGroupTmrTemporaryKey* resp = [[SealdGroupTmrTemporaryKey alloc] initWithKeyId:nativeResp.keyId
+                                                                               groupId:nativeResp.groupId
+                                                                               isAdmin:nativeResp.isAdmin
+                                                                           createdById:nativeResp.createdById
+                                                                               created:nativeResp.created
+                                                                        authFactorType:nativeResp.authFactorType];
+    return resp;
+}
++ (NSArray<SealdGroupTmrTemporaryKey*>*) fromMobileSdkArray:(SealdSdkInternalsMobile_sdkGroupTMRTemporaryKeyArray*)nativeArray
+{
+    NSMutableArray<SealdGroupTmrTemporaryKey*>* localArray = [NSMutableArray arrayWithCapacity:[nativeArray size]];
+    for (int i = 0; i < [nativeArray size]; i++) {
+        [localArray addObject:[SealdGroupTmrTemporaryKey fromMobileSdk:[nativeArray get:i]]];
+    }
+    return localArray;
+}
+@end
+
+@implementation SealdListedGroupTMRTemporaryKeys
+- (instancetype) initWithNbPage:(NSInteger)nbPage
+                           keys:(NSArray<SealdGroupTmrTemporaryKey*>*)keys
+{
+    self = [super init];
+    if (self) {
+        _nbPage = nbPage;
+        _keys = keys;
+    }
+    return self;
+}
++ (SealdListedGroupTMRTemporaryKeys*) fromMobileSdk:(SealdSdkInternalsMobile_sdkListedGroupTMRTemporaryKeys*)nativeListResponse
+{
+    NSArray<SealdGroupTmrTemporaryKey*>* localArray = [SealdGroupTmrTemporaryKey fromMobileSdkArray:nativeListResponse.keys];
+    return [[SealdListedGroupTMRTemporaryKeys alloc] initWithNbPage:(NSInteger)nativeListResponse.nbPage keys:localArray];
+}
+@end
+
+@implementation SealdSearchGroupTMRTemporaryKeys
+- (instancetype) initWithGroupId:(NSString*)groupId
+                            page:(NSInteger)page
+                             all:(BOOL)all
+{
+    self = [super init];
+    if (self) {
+        _groupId = groupId;
+        _page = page;
+        _all = all;
+    }
+    return self;
+}
+- (SealdSdkInternalsMobile_sdkSearchGroupTMRTemporaryKeysOpts*) toMobileSdk
+{
+    SealdSdkInternalsMobile_sdkSearchGroupTMRTemporaryKeysOpts* res = [[SealdSdkInternalsMobile_sdkSearchGroupTMRTemporaryKeysOpts alloc] init];
+    res.groupId = self.groupId;
+    res.page = self.page;
+    res.all = self.all;
+    return res;
+}
+@end

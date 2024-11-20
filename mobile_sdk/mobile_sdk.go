@@ -3,12 +3,12 @@ package mobile_sdk
 
 import (
 	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/asymkey"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/sdk"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/asymkey"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/sdk"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/utils"
 	"time"
 )
 
@@ -340,6 +340,51 @@ func (mSDK MobileSDK) ShouldRenewGroup(groupId string) (bool, error) {
 		return false, utils.ToSerializableError(tracerr.Wrap(err))
 	}
 	return res, nil
+}
+
+func (mSDK MobileSDK) CreateGroupTMRTemporaryKey(groupId string, authFactor *AuthFactor, isAdmin bool, rawOverEncryptionKey []byte) (*GroupTMRTemporaryKey, error) {
+	res, err := mSDK.sdk.CreateGroupTMRTemporaryKey(groupId, authFactor.toCommon(), isAdmin, rawOverEncryptionKey)
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+
+	return groupTMRTemporaryKeyFromCommon(res), nil
+}
+
+func (mSDK MobileSDK) ListGroupTMRTemporaryKeys(groupId string, page int, all bool) (*ListedGroupTMRTemporaryKeys, error) {
+	res, err := mSDK.sdk.ListGroupTMRTemporaryKeys(groupId, page, all)
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+
+	return groupListTMRTemporaryKeyFromCommon(res), nil
+}
+
+func (mSDK MobileSDK) DeleteGroupTMRTemporaryKey(groupId string, temporaryKeyId string) error {
+	err := mSDK.sdk.DeleteGroupTMRTemporaryKey(groupId, temporaryKeyId)
+	if err != nil {
+		return utils.ToSerializableError(tracerr.Wrap(err))
+	}
+
+	return nil
+}
+
+func (mSDK MobileSDK) SearchGroupTMRTemporaryKeys(groupId string, opts *SearchGroupTMRTemporaryKeysOpts) (*ListedGroupTMRTemporaryKeys, error) {
+	res, err := mSDK.sdk.SearchGroupTMRTemporaryKeys(groupId, opts.toCommon())
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+
+	return groupListTMRTemporaryKeyFromCommon(res), nil
+}
+
+func (mSDK MobileSDK) ConvertGroupTMRTemporaryKey(groupId string, temporaryKeyId string, tmrJWT string, rawOverEncryptionKey []byte, deleteOnConvert bool) error {
+	err := mSDK.sdk.ConvertGroupTMRTemporaryKey(groupId, temporaryKeyId, tmrJWT, rawOverEncryptionKey, deleteOnConvert)
+	if err != nil {
+		return utils.ToSerializableError(tracerr.Wrap(err))
+	}
+
+	return nil
 }
 
 // EncryptionSession

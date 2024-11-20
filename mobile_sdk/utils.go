@@ -1,9 +1,9 @@
 package mobile_sdk
 
 import (
+	"github.com/seald/go-seald-sdk/sdk"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/sdk"
-	"go-seald-sdk/utils"
 )
 
 func ParseSessionIdFromFile(encryptedFilePath string) (string, error) {

@@ -4,12 +4,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/encrypt_decrypt_file"
+	"github.com/seald/go-seald-sdk/messages"
+	"github.com/seald/go-seald-sdk/symmetric_key"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
-	"go-seald-sdk/encrypt_decrypt_file"
-	"go-seald-sdk/messages"
-	"go-seald-sdk/symmetric_key"
-	"go-seald-sdk/utils"
 )
 
 var (

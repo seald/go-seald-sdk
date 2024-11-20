@@ -25,7 +25,9 @@ class SealdSSKSPasswordPlugin constructor(
      * @suppress
      */
     init {
-        val initOpts = io.seald.seald_sdk_internals.mobile_sdk.SsksPasswordInitializeOptions()
+        val initOpts =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .SsksPasswordInitializeOptions()
         initOpts.ssksURL = ssksURL
         initOpts.appId = appId
         initOpts.instanceName = instanceName
@@ -33,7 +35,9 @@ class SealdSSKSPasswordPlugin constructor(
         initOpts.logLevel = logLevel
         initOpts.logNoColor = logNoColor
 
-        mobileSSKSPassword = io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk.newSSKSPasswordPlugin(initOpts)
+        mobileSSKSPassword =
+            io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk
+                .newSSKSPasswordPlugin(initOpts)
     }
 
     /**

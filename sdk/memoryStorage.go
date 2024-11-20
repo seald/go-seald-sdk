@@ -1,8 +1,8 @@
 package sdk
 
 import (
+	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/common_models"
 )
 
 // MemoryStorage is an implementation of Database, which stores the data in memory only.

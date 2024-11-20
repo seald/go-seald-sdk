@@ -10,7 +10,9 @@ import kotlinx.coroutines.*
  * @property sessionId The ID of this encryptionSession. Read-only.
  * @property retrievalDetails Details about how this session was retrieved: through a group, a proxy, or directly. Read-only.
  */
-class EncryptionSession(encryptionSession: io.seald.seald_sdk_internals.mobile_sdk.MobileEncryptionSession) {
+class EncryptionSession(
+    encryptionSession: io.seald.seald_sdk_internals.mobile_sdk.MobileEncryptionSession,
+) {
     private val es: io.seald.seald_sdk_internals.mobile_sdk.MobileEncryptionSession
     val retrievalDetails: EncryptionSessionRetrievalDetails
 
@@ -28,11 +30,10 @@ class EncryptionSession(encryptionSession: io.seald.seald_sdk_internals.mobile_s
     internal companion object {
         internal fun fromMobileSdkArray(
             array: io.seald.seald_sdk_internals.mobile_sdk.MobileEncryptionSessionArray,
-        ): Array<EncryptionSession> {
-            return Array(
+        ): Array<EncryptionSession> =
+            Array(
                 size = array.size().toInt(),
             ) { i -> EncryptionSession(array.get(i.toLong())) }
-        }
     }
 
     /**

@@ -2,8 +2,8 @@ package ssks_password
 
 import (
 	"encoding/json"
+	"github.com/seald/go-seald-sdk/api_helper"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/api_helper"
 )
 
 type apiClient struct {

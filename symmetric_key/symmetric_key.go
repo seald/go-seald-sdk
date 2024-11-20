@@ -7,8 +7,8 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"fmt"
+	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"go-seald-sdk/utils"
 )
 
 var (

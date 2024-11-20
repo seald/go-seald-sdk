@@ -7,18 +7,26 @@
 //
 
 import Foundation
-import JWT
-import CryptoKit
+import JWTKit
 
 class JWTBuilder {
     let JWTSharedSecretId: String
     let JWTSharedSecret: String
-    let JWTAlgorithm: JWTAlgorithm
+    let keys: JWTKeyCollection
 
     init(JWTSharedSecretId: String, JWTSharedSecret: String) {
         self.JWTSharedSecretId = JWTSharedSecretId
         self.JWTSharedSecret = JWTSharedSecret
-        self.JWTAlgorithm = JWTAlgorithmFactory.algorithm(byName: "HS256")
+        self.keys = JWTKeyCollection()
+
+        // Add the HMAC signing key to the collection
+        Task {
+            await keys.add(
+                hmac: HMACKey(stringLiteral: JWTSharedSecret),
+                digestAlgorithm: .sha256,
+                kid: JWKIdentifier(string: JWTSharedSecretId)
+            )
+        }
     }
 
     enum JWTPermission: String {
@@ -30,37 +38,47 @@ class JWTBuilder {
         case addConnector = "4"
     }
 
-    func signupJWT() -> String {
-        let now = Date()
+    struct SignupPayload: JWTPayload {
+        let iss: String
+        let jti: String
+        let iat: Date
+        let join_team: Bool // swiftlint:disable:this identifier_name
+        let scopes: String
 
-        let headers = ["typ": "JWT"]
-        let payload = ["iss": JWTSharedSecretId,
-                       "jti": UUID().uuidString,
-                       "iat": NSNumber(value: now.timeIntervalSince1970),
-                       "join_team": true,
-                       "scopes": JWTPermission.joinTeam.rawValue] as [String: Any]
-        let token = JWT.encodePayload(
-            payload,
-            withSecret: JWTSharedSecret,
-            withHeaders: headers,
-            algorithm: JWTAlgorithm)
-        return token!
+        func verify(using key: some JWTAlgorithm) throws {}
     }
 
-    func connectorJWT(customUserId: String, appId: String) -> String {
-        let now = Date()
+    struct ConnectorPayload: JWTPayload {
+        let iss: String
+        let jti: String
+        let iat: Date
+        let connector_add: [String: String] // swiftlint:disable:this identifier_name
+        let scopes: String
 
-        let headers = ["typ": "JWT"]
-        let payload = ["iss": JWTSharedSecretId,
-                       "jti": UUID().uuidString,
-                       "iat": NSNumber(value: now.timeIntervalSince1970),
-                       "connector_add": ["type": "AP", "value": "\(customUserId)@\(appId)"],
-                       "scopes": JWTPermission.addConnector.rawValue] as [String: Any]
-        let token = JWT.encodePayload(
-            payload,
-            withSecret: JWTSharedSecret,
-            withHeaders: headers,
-            algorithm: JWTAlgorithm)
-        return token!
+        func verify(using key: some JWTAlgorithm) throws {}
+    }
+
+    func signupJWT() async throws -> String {
+        let payload = SignupPayload(
+            iss: JWTSharedSecretId,
+            jti: UUID().uuidString,
+            iat: Date(),
+            join_team: true,
+            scopes: JWTPermission.joinTeam.rawValue
+        )
+
+        return try await keys.sign(payload)
+    }
+
+    func connectorJWT(customUserId: String, appId: String) async throws -> String {
+        let payload = ConnectorPayload(
+            iss: JWTSharedSecretId,
+            jti: UUID().uuidString,
+            iat: Date(),
+            connector_add: ["type": "AP", "value": "\(customUserId)@\(appId)"],
+            scopes: JWTPermission.addConnector.rawValue
+        )
+
+        return try await keys.sign(payload)
     }
 }

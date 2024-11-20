@@ -6,7 +6,10 @@ import io.jsonwebtoken.security.Keys
 import java.util.*
 import javax.crypto.SecretKey
 
-class JWTBuilder(jwtSharedSecretId: String, jwtSharedSecret: String) {
+class JWTBuilder(
+    jwtSharedSecretId: String,
+    jwtSharedSecret: String,
+) {
     private val jwtSharedSecretId: String
     private val jwtSharedSecret: SecretKey
 
@@ -15,7 +18,9 @@ class JWTBuilder(jwtSharedSecretId: String, jwtSharedSecret: String) {
         this.jwtSharedSecret = Keys.hmacShaKeyFor(jwtSharedSecret.toByteArray())
     }
 
-    enum class JWTPermission(val perm: Int) {
+    enum class JWTPermission(
+        val perm: Int,
+    ) {
         ALL(-1),
         ANONYMOUS_CREATE_MESSAGE(0),
         ANONYMOUS_FIND_KEY(1),
@@ -28,7 +33,8 @@ class JWTBuilder(jwtSharedSecretId: String, jwtSharedSecret: String) {
         val date = Date()
         val expiryDate = Date(date.time + 2 * 60 * 60 * 1000)
 
-        return Jwts.builder()
+        return Jwts
+            .builder()
             .setHeaderParam("alg", "HS256")
             .setHeaderParam("typ", "JWT")
             .claim("join_team", true)
@@ -48,7 +54,8 @@ class JWTBuilder(jwtSharedSecretId: String, jwtSharedSecret: String) {
         val date = Date()
         val expiryDate = Date(date.time + 2 * 60 * 60 * 1000)
 
-        return Jwts.builder()
+        return Jwts
+            .builder()
             .setHeaderParam("alg", "HS256")
             .setHeaderParam("typ", "JWT")
             .claim("scopes", JWTPermission.ADD_CONNECTOR)

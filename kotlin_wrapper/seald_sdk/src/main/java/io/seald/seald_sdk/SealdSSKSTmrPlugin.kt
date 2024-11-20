@@ -25,7 +25,9 @@ class SealdSSKSTmrPlugin constructor(
      * @suppress
      */
     init {
-        val initOpts = io.seald.seald_sdk_internals.mobile_sdk.SsksTMRInitializeOptions()
+        val initOpts =
+            io.seald.seald_sdk_internals.mobile_sdk
+                .SsksTMRInitializeOptions()
         initOpts.ssksURL = ssksURL
         initOpts.appId = appId
         initOpts.instanceName = instanceName
@@ -33,7 +35,9 @@ class SealdSSKSTmrPlugin constructor(
         initOpts.logLevel = logLevel
         initOpts.logNoColor = logNoColor
 
-        mobileSSKSTMR = io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk.newSSKSTMRPlugin(initOpts)
+        mobileSSKSTMR =
+            io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk
+                .newSSKSTMRPlugin(initOpts)
     }
 
     /**
