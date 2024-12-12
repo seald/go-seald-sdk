@@ -1,5 +1,7 @@
 package common_models
 
+import "io"
+
 type EncryptedFileHeader struct {
 	Version   string `bson:"v"`
 	MessageId string `bson:"mid"`
@@ -13,6 +15,22 @@ type ClearFile struct {
 	SessionId string
 	// FileContent is the content of the decrypted file.
 	FileContent []byte
+}
+
+// ClearFileReader represents a decrypted file.
+type ClearFileReader struct {
+	// Filename is the filename of the decrypted file.
+	Filename string
+	// SessionId is the ID of the EncryptionSession to which this file belongs.
+	SessionId string
+	// Size is the size of the decrypted file.
+	Size int64
+	// FileContent is the content of the decrypted file.
+	FileContent io.Reader
+}
+
+func (file *ClearFileReader) Read(p []byte) (n int, err error) {
+	return file.FileContent.Read(p)
 }
 
 type ClearPath struct {

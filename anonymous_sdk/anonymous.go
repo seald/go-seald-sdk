@@ -141,7 +141,7 @@ func (sdk AnonymousSDK) encrypt(encryptionToken string, getKeysToken string, rec
 		return "", nil, tracerr.Wrap(err)
 	}
 
-	encrypted, err := encrypt_decrypt_file.EncryptFile(clearFile, filename, msg.Id, symKey)
+	encrypted, err := encrypt_decrypt_file.EncryptBytes(clearFile, filename, msg.Id, symKey)
 	if err != nil {
 		return "", nil, tracerr.Wrap(err)
 	}

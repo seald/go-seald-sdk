@@ -1125,7 +1125,7 @@
 }
 
 - (SealdGetSigchainResponse*) getSigchainHashWithUserId:(const NSString*)userId
-                                               position:(const long)position
+                                               position:(const NSInteger)position
                                                   error:(NSError*_Nullable*)error
 {
     NSError* localErr = nil;
@@ -1138,7 +1138,7 @@
 }
 
 - (void) getSigchainHashAsyncWithUserId:(const NSString*)userId
-                               position:(const long)position
+                               position:(const NSInteger)position
                       completionHandler:(void (^)(SealdGetSigchainResponse* encryptionSession, NSError* error))completionHandler
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -1151,7 +1151,7 @@
 
 - (SealdCheckSigchainResponse*) checkSigchainHashWithUserId:(const NSString*)userId
                                                expectedHash:(const NSString*)expectedHash
-                                                   position:(const long)position
+                                                   position:(const NSInteger)position
                                                       error:(NSError*_Nullable*)error
 {
     NSError* localErr = nil;
@@ -1168,7 +1168,7 @@
 
 - (void) checkSigchainHashAsyncWithUserId:(const NSString*)userId
                              expectedHash:(const NSString*)expectedHash
-                                 position:(const long)position
+                                 position:(const NSInteger)position
                         completionHandler:(void (^)(SealdCheckSigchainResponse* response, NSError* error))completionHandler
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{

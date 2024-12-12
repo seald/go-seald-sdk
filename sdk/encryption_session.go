@@ -797,7 +797,7 @@ func (encryptionSession *EncryptionSession) DecryptMessage(encryptedMessage stri
 
 // EncryptFile encrypts a clear-text file into an encrypted file, for the recipients of this session.
 func (encryptionSession *EncryptionSession) EncryptFile(clearFile []byte, filename string) ([]byte, error) {
-	sealdFile, err := encrypt_decrypt_file.EncryptFile(clearFile, filename, encryptionSession.Id, encryptionSession.Key)
+	sealdFile, err := encrypt_decrypt_file.EncryptBytes(clearFile, filename, encryptionSession.Id, encryptionSession.Key)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
@@ -806,7 +806,7 @@ func (encryptionSession *EncryptionSession) EncryptFile(clearFile []byte, filena
 
 // DecryptFile decrypts an encrypted file into the corresponding clear-text file.
 func (encryptionSession *EncryptionSession) DecryptFile(encryptedFile []byte) (*common_models.ClearFile, error) {
-	clearFile, err := encrypt_decrypt_file.DecryptFile(encryptedFile, encryptionSession.Key)
+	clearFile, err := encrypt_decrypt_file.DecryptBytes(encryptedFile, encryptionSession.Id, encryptionSession.Key)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
@@ -835,7 +835,7 @@ func (encryptionSession *EncryptionSession) EncryptFileFromPath(clearFilePath st
 // If a file already exist with that name, a numeric suffix will be added (up to 99).
 func (encryptionSession *EncryptionSession) DecryptFileFromPath(encryptedFilePath string) (string, error) {
 	encryptionSession.state.logger.Debug().Str("encryptedFilePath", encryptedFilePath).Msg("DecryptFileFromPath decrypting...")
-	clearFilePath, err := encrypt_decrypt_file.DecryptFileFromPath(encryptedFilePath, encryptionSession.Key)
+	clearFilePath, err := encrypt_decrypt_file.DecryptFileFromPath(encryptedFilePath, encryptionSession.Id, encryptionSession.Key)
 	if err != nil {
 		return "", tracerr.Wrap(err)
 	}
