@@ -84,4 +84,59 @@ func TestBeardApiClient_CreateAccount(t *testing.T) {
 	assert.Equal(t, "BUSINESS", status.Level)
 	assert.True(t, status.Active)
 	assert.Equal(t, []int{3}, status.Options)
+
+	t.Run("createEncryptionSession", func(t *testing.T) {
+		account1, err := createTestAccount("sdk_session_retrieve_direct1")
+		require.NoError(t, err)
+		currentDevice1 := account1.storage.currentDevice.get()
+		t.Run("can create", func(t *testing.T) {
+			var tokens []encryptedMessageKey
+			tokens = append(tokens, encryptedMessageKey{Token: "foobar", CreatedForKey: currentDevice1.DeviceId, CreatedForKeyHash: currentDevice1.EncryptionPrivateKey.Public().GetHash()})
+
+			recipientsMap := make(map[string]*RecipientRights)
+			recipientsMap[currentDevice1.UserId] = &RecipientRights{}
+
+			_, err = account1.apiClient.createMessage(&createMessageRequest{
+				Tokens:   tokens,
+				NotForMe: false,
+				Rights:   recipientsMap,
+			})
+			require.NoError(t, err)
+		})
+
+		t.Run("EMK error", func(t *testing.T) {
+			fakeId := "5a221722-36c4-11ee-be56-0242ac120002"
+			var tokens []encryptedMessageKey
+			recipientsMap := make(map[string]*RecipientRights)
+			tokens = append(tokens, encryptedMessageKey{Token: "foobar", CreatedForKey: fakeId, CreatedForKeyHash: currentDevice1.EncryptionPrivateKey.Public().GetHash()})
+			recipientsMap[currentDevice1.UserId] = &RecipientRights{}
+
+			resp, err := account1.apiClient.createMessage(&createMessageRequest{
+				Tokens:   tokens,
+				NotForMe: false,
+				Rights:   recipientsMap,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, 1, len(resp.FailedCreatedForKey))
+			assert.Equal(t, fakeId, resp.FailedCreatedForKey[0])
+		})
+
+		t.Run("serializer errors", func(t *testing.T) {
+			var tokens []encryptedMessageKey
+			recipientsMap := make(map[string]*RecipientRights)
+			for i := 0; i < 101; i++ {
+				tokens = append(tokens, encryptedMessageKey{Token: "foobar", CreatedForKey: currentDevice1.DeviceId, CreatedForKeyHash: currentDevice1.EncryptionPrivateKey.Public().GetHash()})
+				recipientsMap[currentDevice1.UserId] = &RecipientRights{}
+			}
+			resp, err := account1.apiClient.createMessage(&createMessageRequest{
+				Tokens:   tokens,
+				NotForMe: false,
+				Rights:   recipientsMap,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, 1, len(resp.AddKeySerializerErrors.Tokens))
+			assert.Equal(t, "Cannot accept more than 100 keys", resp.AddKeySerializerErrors.Tokens[0])
+		})
+
+	})
 }

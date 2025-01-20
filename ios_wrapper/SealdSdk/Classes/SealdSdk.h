@@ -899,7 +899,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @return A SealdGetSigchainResponse instance.
  */
 - (SealdGetSigchainResponse*) getSigchainHashWithUserId:(const NSString*)userId
-                                               position:(const long)position
+                                               position:(const NSInteger)position
                                                   error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error))) __attribute__((swift_async_name("getSigchainHashWithUserId(userId:position:)")));
 /**
  * Get a user's sigchain transaction hash at index `position`.
@@ -909,7 +909,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdGetSigchainResponse` instance containing the hash, and a `NSError*` that indicates if any error occurred.
  */
 - (void) getSigchainHashAsyncWithUserId:(const NSString*)userId
-                               position:(const long)position
+                               position:(const NSInteger)position
                       completionHandler:(void (^)(SealdGetSigchainResponse* response, NSError*_Nullable error))completionHandler __attribute__((swift_async_name("getSigchainHashAsync(withUserId:position:)")));
 
 /**
@@ -923,7 +923,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (SealdCheckSigchainResponse*) checkSigchainHashWithUserId:(const NSString*)userId
                                                expectedHash:(const NSString*)expectedHash
-                                                   position:(const long)position
+                                                   position:(const NSInteger)position
                                                       error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 /**
  * Verify if a given hash is included in the recipient's sigchain. Use the `position` option to check the hash of a specific sigchain transaction.
@@ -935,7 +935,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void) checkSigchainHashAsyncWithUserId:(const NSString*)userId
                              expectedHash:(const NSString*)expectedHash
-                                 position:(const long)position
+                                 position:(const NSInteger)position
                         completionHandler:(void (^)(SealdCheckSigchainResponse* response, NSError*_Nullable error))completionHandler;
 
 /**

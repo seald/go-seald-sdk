@@ -298,7 +298,7 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
 }
 + (SealdMassReencryptResponse*) fromMobileSdk:(SealdSdkInternalsMobile_sdkMassReencryptResponse*)d
 {
-    return [[SealdMassReencryptResponse alloc] initWithReencrypted:(NSInteger)d.reencrypted failed:(NSInteger)d.failed];
+    return [[SealdMassReencryptResponse alloc] initWithReencrypted:d.reencrypted failed:d.failed];
 }
 @end
 
@@ -458,7 +458,7 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
 
 @implementation SealdGetSigchainResponse
 - (instancetype) initWithSigchainHash:(NSString*)sigchainHash
-                             position:(long)position
+                             position:(NSInteger)position
 {
     self = [super init];
     if (self) {
@@ -475,8 +475,8 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
 
 @implementation SealdCheckSigchainResponse
 - (instancetype) initWithFound:(BOOL)found
-                      position:(long)position
-                  lastPosition:(long)lastPosition
+                      position:(NSInteger)position
+                  lastPosition:(NSInteger)lastPosition
 {
     self = [super init];
     if (self) {
@@ -674,7 +674,7 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
 + (SealdListedGroupTMRTemporaryKeys*) fromMobileSdk:(SealdSdkInternalsMobile_sdkListedGroupTMRTemporaryKeys*)nativeListResponse
 {
     NSArray<SealdGroupTmrTemporaryKey*>* localArray = [SealdGroupTmrTemporaryKey fromMobileSdkArray:nativeListResponse.keys];
-    return [[SealdListedGroupTMRTemporaryKeys alloc] initWithNbPage:(NSInteger)nativeListResponse.nbPage keys:localArray];
+    return [[SealdListedGroupTMRTemporaryKeys alloc] initWithNbPage:nativeListResponse.nbPage keys:localArray];
 }
 @end
 

@@ -385,10 +385,10 @@ typedef NS_ENUM (NSInteger, SealdEncryptionSessionRetrievalFlow) {
 /** The sigchain hash. */
 @property (atomic, strong, readonly) NSString* sigchainHash;
 /** The position of the associated hash in the sigchain */
-@property (atomic, readonly) long position;
+@property (atomic, readonly) NSInteger position;
 /** \cond */
 - (instancetype) initWithSigchainHash:(NSString*)sigchainHash
-                             position:(long)position;
+                             position:(NSInteger)position;
 + (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkGetSigchainResponse*)nativeResp;
 /** \endcond */
 @end
@@ -403,13 +403,13 @@ typedef NS_ENUM (NSInteger, SealdEncryptionSessionRetrievalFlow) {
 /** Whether or not the hash was found in the user's sigchain. */
 @property (atomic, assign, readonly) BOOL found;
 /** The position in the sigchain where the expected hash was found */
-@property (atomic, readonly) long position;
+@property (atomic, readonly) NSInteger position;
 /** The number of transaction in the sigchain */
-@property (atomic, readonly) long lastPosition;
+@property (atomic, readonly) NSInteger lastPosition;
 /** \cond */
 - (instancetype) initWithFound:(BOOL)hash
-                      position:(long)position
-                  lastPosition:(long)lastPosition;
+                      position:(NSInteger)position
+                  lastPosition:(NSInteger)lastPosition;
 + (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkCheckSigchainResponse*)nativeResp;
 /** \endcond */
 @end
