@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+const Version = utils.Version
+
 type MobileSDK struct {
 	sdk *sdk.State
 }
@@ -389,8 +391,11 @@ func (mSDK MobileSDK) ConvertGroupTMRTemporaryKey(groupId string, temporaryKeyId
 
 // EncryptionSession
 
-func (mSDK MobileSDK) CreateEncryptionSession(recipients *RecipientsWithRightsArray, useCache bool) (*MobileEncryptionSession, error) {
-	es, err := mSDK.sdk.CreateEncryptionSession(recipients.getSlice(), useCache)
+func (mSDK MobileSDK) CreateEncryptionSession(recipients *RecipientsWithRightsArray, metadata string, useCache bool) (*MobileEncryptionSession, error) {
+	es, err := mSDK.sdk.CreateEncryptionSession(
+		recipients.getSlice(),
+		sdk.CreateEncryptionSessionOptions{UseCache: useCache, Metadata: metadata},
+	)
 	if err != nil {
 		return nil, utils.ToSerializableError(tracerr.Wrap(err))
 	}

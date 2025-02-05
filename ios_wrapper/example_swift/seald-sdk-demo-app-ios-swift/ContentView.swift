@@ -165,7 +165,11 @@ func testSealdSDK() async -> Bool {
             SealdRecipientWithRights(recipientId: user1AccountInfo.userId),
             SealdRecipientWithRights(recipientId: user2AccountInfo.userId),
             SealdRecipientWithRights(recipientId: groupId)]
-        let es1SDK1 = try await sdk1.createEncryptionSessionAsync(withRecipients: recipients, useCache: false)
+        let es1SDK1 = try await sdk1.createEncryptionSessionAsync(
+            withRecipients: recipients,
+            metadata: "test-swift-session1",
+            useCache: false
+        )
         assert(es1SDK1.retrievalDetails.flow == SealdEncryptionSessionRetrievalFlow.created)
 
         // Using two-man-rule accesses
@@ -257,6 +261,7 @@ func testSealdSDK() async -> Bool {
             SealdRecipientWithRights(recipientId: user1AccountInfo.userId),
             SealdRecipientWithRights(recipientId: user3AccountInfo.userId)
         ],
+            metadata: "test-swift-session2",
             useCache: false
         )
         try await es1SDK1.addProxySessionAsync(proxySession1.sessionId)
@@ -267,6 +272,7 @@ func testSealdSDK() async -> Bool {
             SealdRecipientWithRights(recipientId: user1AccountInfo.userId),
             SealdRecipientWithRights(recipientId: user2AccountInfo.userId)
         ],
+            metadata: "test-swift-session3",
             useCache: false
         )
         try await es1SDK1.addProxySessionAsync(proxySession2.sessionId)
@@ -487,6 +493,7 @@ func testSealdSDK() async -> Bool {
             withRecipients: [SealdRecipientWithRights(
                 recipientId: user1AccountInfo.userId
             )],
+            metadata: "test-swift-session4",
             useCache: false)
         let anotherMessage = "nobody should read that!"
         let secondEncryptedMessage = try await es2SDK1.encryptMessageAsync(anotherMessage)
@@ -494,11 +501,13 @@ func testSealdSDK() async -> Bool {
             withRecipients: [SealdRecipientWithRights(
                 recipientId: user1AccountInfo.userId
             )],
+            metadata: "test-swift-session5",
             useCache: false)
         let es4SDK1 = try await sdk1.createEncryptionSessionAsync(
             withRecipients: [SealdRecipientWithRights(
                 recipientId: user1AccountInfo.userId
             )],
+            metadata: nil, // testing with nil metadata
             useCache: false)
 
         // user1 can retrieveMultiple
@@ -975,6 +984,8 @@ struct ContentView: View {
 
     var body: some View {
         VStack {
+            Text("version: \(SealdSdkVersion)")
+                .padding()
             Text("test SDK: \(statusSdk)")
                 .padding()
             Text("test SSKS Password: \(statusSsksPassword)")

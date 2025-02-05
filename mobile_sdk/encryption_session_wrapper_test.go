@@ -29,7 +29,7 @@ func TestMobileEncryptionSession(t *testing.T) {
 
 	t.Run("Creator default right", func(t *testing.T) {
 		defautlRightsRecipient := (&RecipientsWithRightsArray{}).Add(&RecipientWithRights{RecipientId: sdk1UserInfo.UserId}).Add(sdk2Recipient)
-		mES, err := sdk1.CreateEncryptionSession(defautlRightsRecipient, false)
+		mES, err := sdk1.CreateEncryptionSession(defautlRightsRecipient, "test-mobile-1", false)
 		require.NoError(t, err)
 
 		// sdk1UserInfo
@@ -40,7 +40,7 @@ func TestMobileEncryptionSession(t *testing.T) {
 	})
 
 	t.Run("AddRecipient", func(t *testing.T) {
-		mES, err := sdk1.CreateEncryptionSession(&RecipientsWithRightsArray{}, true)
+		mES, err := sdk1.CreateEncryptionSession(&RecipientsWithRightsArray{}, "test-mobile-2", true)
 		require.NoError(t, err)
 
 		respAllGood, err := mES.AddRecipients(recipients1and2)
@@ -63,7 +63,7 @@ func TestMobileEncryptionSession(t *testing.T) {
 	})
 
 	t.Run("RevokeRecipients", func(t *testing.T) {
-		mES, err := sdk1.CreateEncryptionSession(recipients1and2, true)
+		mES, err := sdk1.CreateEncryptionSession(recipients1and2, "test-mobile-3", true)
 		require.NoError(t, err)
 
 		respAllGood, err := mES.RevokeRecipients(&StringArray{items: []string{sdk1UserInfo.UserId, sdk2UserInfo.UserId, sdk3UserInfo.UserId}}, nil)
@@ -83,7 +83,7 @@ func TestMobileEncryptionSession(t *testing.T) {
 			}
 		}
 
-		mESOther, err := sdk1.CreateEncryptionSession(recipients1and2, true)
+		mESOther, err := sdk1.CreateEncryptionSession(recipients1and2, "test-mobile-4", true)
 		require.NoError(t, err)
 		revokeOthers, err := mESOther.RevokeOthers()
 		require.NoError(t, err)
@@ -92,9 +92,9 @@ func TestMobileEncryptionSession(t *testing.T) {
 		assert.Equal(t, revokeOthers.Recipients.status[0].Id, sdk2UserInfo.UserId)
 		assert.True(t, revokeOthers.Recipients.status[0].Success)
 
-		mESAll, err := sdk1.CreateEncryptionSession(recipients1and2, true)
+		mESAll, err := sdk1.CreateEncryptionSession(recipients1and2, "test-mobile-5", true)
 		require.NoError(t, err)
-		mESProxy, err := sdk1.CreateEncryptionSession(recipients1and2, true)
+		mESProxy, err := sdk1.CreateEncryptionSession(recipients1and2, "test-mobile-6", true)
 		require.NoError(t, err)
 		err = mESAll.AddProxySession(mESProxy.Id, &RecipientRights{Read: true, Revoke: true, Forward: true})
 		require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestMobileEncryptionSession(t *testing.T) {
 	})
 
 	t.Run("tmr accesses", func(t *testing.T) {
-		mES, err := sdk1.CreateEncryptionSession(recipients1and2, true)
+		mES, err := sdk1.CreateEncryptionSession(recipients1and2, "test-mobile-7", true)
 		require.NoError(t, err)
 
 		overEncryptionKey, err := symmetric_key.Generate()

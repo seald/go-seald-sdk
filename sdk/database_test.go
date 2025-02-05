@@ -83,7 +83,7 @@ func Test_Storage(t *testing.T) {
 	}
 	recipientDevice1 := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
 	recipientDevice2 := &RecipientWithRights{Id: currentDevice2.UserId, Rights: allRights}
-	es, err := sdk.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, true)
+	es, err := sdk.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, CreateEncryptionSessionOptions{UseCache: true})
 	message := "Where did the IT guy go? He ransomeware."
 	sealdMessage, err := es.EncryptMessage(message)
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func Test_Storage(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	es2, err := sdk.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, true)
+	es2, err := sdk.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, CreateEncryptionSessionOptions{UseCache: true})
 	require.NoError(t, err)
 
 	// Now, database has a user with: 2 privateKeys, 2 encryptionSessions, 1 connector, 2 contacts, 1 group

@@ -275,6 +275,7 @@ Future<bool> testSealdSdk() async {
     ];
     final SealdEncryptionSession es1SDK1 =
         await sdk1.createEncryptionSessionAsync(recipientsES1,
+            metadata: "test-flutter-session1",
             useCache: false); // user1, user2, and group as recipients
     assertEqual(es1SDK1.retrievalDetails.flow,
         SealdEncryptionSessionRetrievalFlow.created);
@@ -359,19 +360,22 @@ Future<bool> testSealdSdk() async {
       SealdRecipientWithRights(
         id: user3AccountInfo.userId,
       )
-    ]);
+    ], metadata: "test-flutter-session2");
     await es1SDK1.addProxySessionAsync(proxySession1.id);
 
     // user1 needs to be a recipient of this session in order to be able to add it as a proxy session
     final SealdEncryptionSession proxySession2 =
-        await sdk1.createEncryptionSessionAsync([
-      SealdRecipientWithRights(
-        id: user1AccountInfo.userId,
-      ),
-      SealdRecipientWithRights(
-        id: user2AccountInfo.userId,
-      )
-    ]);
+        await sdk1.createEncryptionSessionAsync(
+      [
+        SealdRecipientWithRights(
+          id: user1AccountInfo.userId,
+        ),
+        SealdRecipientWithRights(
+          id: user2AccountInfo.userId,
+        )
+      ],
+      metadata: "test-flutter-session3",
+    );
     await es1SDK1.addProxySessionAsync(proxySession2.id);
 
     // The SealdEncryptionSession object can encrypt and decrypt for user1
@@ -616,15 +620,18 @@ Future<bool> testSealdSdk() async {
         id: user1AccountInfo.userId,
       )
     ];
-    final SealdEncryptionSession es2SDK1 = await sdk1
-        .createEncryptionSessionAsync(recipientsES234, useCache: false);
+    final SealdEncryptionSession es2SDK1 =
+        await sdk1.createEncryptionSessionAsync(recipientsES234,
+            metadata: "test-flutter-session4", useCache: false);
     const String anotherMessage = "nobody should read that!";
     final String secondEncryptedMessage =
         await es2SDK1.encryptMessageAsync(anotherMessage);
-    final SealdEncryptionSession es3SDK1 = await sdk1
-        .createEncryptionSessionAsync(recipientsES234, useCache: false);
-    final SealdEncryptionSession es4SDK1 = await sdk1
-        .createEncryptionSessionAsync(recipientsES234, useCache: false);
+    final SealdEncryptionSession es3SDK1 =
+        await sdk1.createEncryptionSessionAsync(recipientsES234,
+            metadata: "test-flutter-session5", useCache: false);
+    final SealdEncryptionSession es4SDK1 =
+        await sdk1.createEncryptionSessionAsync(recipientsES234,
+            useCache: false); // test without metadata
 
     // user1 can retrieveMultiple
     final List<SealdEncryptionSession> encryptionSessions = await sdk1
@@ -1084,6 +1091,12 @@ class _MyAppState extends State<MyApp> {
             child: Column(
               children: [
                 const BlinkingWidget(),
+                spacerSmall,
+                Text(
+                  'version: $sealdSdkVersion',
+                  style: textStyle,
+                  textAlign: TextAlign.left,
+                ),
                 spacerSmall,
                 FutureBuilder<bool>(
                   future: sdkTestResult,

@@ -134,7 +134,7 @@ BOOL testSealdSDK(void)
              [[SealdRecipientWithRights alloc] initWithRecipientId:user1AccountInfo.userId],
              [[SealdRecipientWithRights alloc] initWithRecipientId:user2AccountInfo.userId],
              [[SealdRecipientWithRights alloc] initWithRecipientId:groupId], nil];
-        SealdEncryptionSession* es1SDK1 = [sdk1 createEncryptionSessionWithRecipients:recipients useCache:NO error:&error];
+        SealdEncryptionSession* es1SDK1 = [sdk1 createEncryptionSessionWithRecipients:recipients metadata:@"test-objc-session1" useCache:NO error:&error];
         NSCAssert(error == nil, error.localizedDescription);
         NSCAssert(es1SDK1.retrievalDetails.flow == SealdEncryptionSessionRetrievalCreated, @"unexpected flow");
 
@@ -202,6 +202,7 @@ BOOL testSealdSDK(void)
                                                                 [[SealdRecipientWithRights alloc] initWithRecipientId:user3AccountInfo.userId],
                                                                 nil];
         SealdEncryptionSession* proxySession1 = [sdk1 createEncryptionSessionWithRecipients:proxy1Recipients
+                                                                                   metadata:@"test-objc-session2"
                                                                                    useCache:NO
                                                                                       error:&error
                                                 ];
@@ -216,6 +217,7 @@ BOOL testSealdSDK(void)
                                                                 nil];
         // user1 needs to be a recipient of this session in order to be able to add it as a proxy session
         SealdEncryptionSession* proxySession2 = [sdk1 createEncryptionSessionWithRecipients:proxy2Recipients
+                                                                                   metadata:@"test-objc-session3"
                                                                                    useCache:NO
                                                                                       error:&error
                                                 ];
@@ -396,14 +398,14 @@ BOOL testSealdSDK(void)
 
         // Create additional data for user1
         NSArray<SealdRecipientWithRights*>* recipientsES234 = [NSArray arrayWithObject:[[SealdRecipientWithRights alloc] initWithRecipientId:user1AccountInfo.userId]];
-        SealdEncryptionSession* es2SDK1 = [sdk1 createEncryptionSessionWithRecipients:recipientsES234 useCache:NO error:&error];
+        SealdEncryptionSession* es2SDK1 = [sdk1 createEncryptionSessionWithRecipients:recipientsES234 metadata:@"test-objc-session4" useCache:NO error:&error];
         NSCAssert(error == nil, error.localizedDescription);
         NSString* anotherMessage = @"Nobody should read that!";
         NSString* secondEncryptedMessage = [es2SDK1 encryptMessage:anotherMessage error:&error];
         NSCAssert(error == nil, error.localizedDescription);
-        SealdEncryptionSession* es3SDK1 = [sdk1 createEncryptionSessionWithRecipients:recipientsES234 useCache:NO error:&error];
+        SealdEncryptionSession* es3SDK1 = [sdk1 createEncryptionSessionWithRecipients:recipientsES234 metadata:@"test-objc-session5" useCache:NO error:&error];
         NSCAssert(error == nil, error.localizedDescription);
-        SealdEncryptionSession* es4SDK1 = [sdk1 createEncryptionSessionWithRecipients:recipientsES234 useCache:NO error:&error];
+        SealdEncryptionSession* es4SDK1 = [sdk1 createEncryptionSessionWithRecipients:recipientsES234 metadata:nil useCache:NO error:&error]; // testing with nil metadata
         NSCAssert(error == nil, error.localizedDescription);
 
         // user1 can retrieveMultiple
@@ -828,6 +830,7 @@ BOOL testSealdSsksTMR(void)
 - (BOOL)              application:(UIApplication*)application
     didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
 {
+    self.versionLabel = SealdSdkVersion;
     self.testSdkLabel = @"pending...";
     self.testSsksPasswordLabel = @"pending...";
     self.testSsksTmrLabel = @"pending...";

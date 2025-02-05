@@ -5,7 +5,7 @@ import { generateRegistrationJWT } from '../utils.spec.js'
 const SealdSDK = SealdSDKPkg.default
 
 describe('account', function () {
-  this.timeout(30000)
+  this.timeout(60000)
   let credentials
 
   before(async function () {

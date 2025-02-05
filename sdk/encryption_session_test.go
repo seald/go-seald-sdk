@@ -238,7 +238,7 @@ func Test_EncryptionSession(t *testing.T) {
 	t.Run("createEncryptionSession — bad sealdId", func(t *testing.T) {
 		account1, err := createTestAccount("sdk_session_retrieve_direct1")
 		require.NoError(t, err)
-		_, err = account1.CreateEncryptionSession([]*RecipientWithRights{{Id: "5a221722-36c4-11ee-be56-0242ac120002", Rights: allRights}}, false)
+		_, err = account1.CreateEncryptionSession([]*RecipientWithRights{{Id: "5a221722-36c4-11ee-be56-0242ac120002", Rights: allRights}}, CreateEncryptionSessionOptions{UseCache: false})
 		assert.ErrorIs(t, err, ErrorUnknownUserId)
 	})
 
@@ -246,7 +246,7 @@ func Test_EncryptionSession(t *testing.T) {
 		account1, err := createTestAccount("sdk_session_rights_nil")
 		require.NoError(t, err)
 		currentDevice1 := account1.storage.currentDevice.get()
-		_, err = account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}}, false)
+		_, err = account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}}, CreateEncryptionSessionOptions{UseCache: false})
 		require.NoError(t, err)
 	})
 
@@ -266,7 +266,7 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 			currentDevice3 := account3.storage.currentDevice.get()
 
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			// account2 can read, forward, but not revoke. We can't list the ACL, so we just try each right.
@@ -290,7 +290,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Equal(t, map[string]string{currentDevice2.UserId: "ok", currentDevice3.UserId: "ok"}, resp.RevokeAll.UserIds)
 		})
 		t.Run("RetrieveEncryptionSession when user has created the session", func(t *testing.T) {
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			session2, err := account1.RetrieveEncryptionSession(session.Id, false, false, false)
@@ -299,7 +299,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Equal(t, *session.Key, *session2.Key)
 		})
 		t.Run("RetrieveEncryptionSession when user is a recipient", func(t *testing.T) {
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice2}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice2}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			session2, err := account2.RetrieveEncryptionSession(session.Id, false, false, false)
@@ -308,7 +308,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Equal(t, *session.Key, *session2.Key)
 		})
 		t.Run("RetrieveEncryptionSession with multiple recipients", func(t *testing.T) {
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			session2, err := account2.RetrieveEncryptionSession(session.Id, false, false, false)
@@ -322,7 +322,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Equal(t, *session.Key, *session3.Key)
 		})
 		t.Run("RetrieveEncryptionSession fails when user is not a recipient", func(t *testing.T) {
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			session2, err := account2.RetrieveEncryptionSession(session.Id, false, false, false)
@@ -331,7 +331,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.ErrorIs(t, err, ErrorNoTokenForYou)
 		})
 		t.Run("RetrieveEncryptionSession fails for session creator when they are not a recipient", func(t *testing.T) {
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice2}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice2}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			session2, err := account1.RetrieveEncryptionSession(session.Id, false, false, false)
@@ -365,7 +365,7 @@ func Test_EncryptionSession(t *testing.T) {
 		currentDevice := account.storage.currentDevice.get()
 		recipientcurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
 
-		session, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientcurrentDevice}, false)
+		session, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientcurrentDevice}, CreateEncryptionSessionOptions{UseCache: false})
 		require.NoError(t, err)
 
 		message := "Best message ever"
@@ -402,7 +402,7 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 
 			groupRecipient := &RecipientWithRights{Id: groupId, Rights: allRights}
-			session, err := account2.CreateEncryptionSession([]*RecipientWithRights{groupRecipient}, false)
+			session, err := account2.CreateEncryptionSession([]*RecipientWithRights{groupRecipient}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			sessionFail, err := account1.RetrieveEncryptionSession(session.Id, false, false, false)
@@ -429,7 +429,7 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 
 			groupRecipient := &RecipientWithRights{Id: groupId, Rights: allRights}
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{groupRecipient}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{groupRecipient}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			session2, err := account2.RetrieveEncryptionSession(session.Id, false, false, true)
@@ -461,7 +461,7 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 
 			groupRecipient := &RecipientWithRights{Id: groupId, Rights: allRights}
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{groupRecipient}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{groupRecipient}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			session2, err := account2.RetrieveEncryptionSession(session.Id, false, false, true)
@@ -484,10 +484,10 @@ func Test_EncryptionSession(t *testing.T) {
 
 		t.Parallel()
 		t.Run("Retrieve encryption session through a proxy", func(t *testing.T) {
-			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, false)
+			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			sessionFail1, err := account2.RetrieveEncryptionSession(session.Id, false, true, false) // cannot retrieve before proxy is created
@@ -517,10 +517,10 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 
 		t.Run("AddProxySession does not error when proxy already exists", func(t *testing.T) {
-			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, false)
+			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, false)
+			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, CreateEncryptionSessionOptions{UseCache: false})
 			require.NoError(t, err)
 
 			err = session.AddProxySession(proxySession.Id, allRights) // add proxy to session
@@ -553,10 +553,13 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// create session for both group and user2
-			es1, err := account1.CreateEncryptionSession([]*RecipientWithRights{
-				{Id: groupId, Rights: &RecipientRights{Read: true, Forward: true, Revoke: true}},                 // group has all rights
-				{Id: currentDevice2.UserId, Rights: &RecipientRights{Read: true, Forward: false, Revoke: false}}, // User2 only has Read
-			}, true)
+			es1, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{
+					{Id: groupId, Rights: &RecipientRights{Read: true, Forward: true, Revoke: true}},                 // group has all rights
+					{Id: currentDevice2.UserId, Rights: &RecipientRights{Read: true, Forward: false, Revoke: false}}, // User2 only has Read
+				},
+				CreateEncryptionSessionOptions{UseCache: true},
+			)
 			require.NoError(t, err)
 
 			// user2 can retrieve session directly
@@ -572,16 +575,22 @@ func Test_EncryptionSession(t *testing.T) {
 
 		t.Run("direct & proxy", func(t *testing.T) {
 			// create proxy session
-			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{
-				{Id: currentDevice1.UserId, Rights: allRights},
-				{Id: currentDevice2.UserId, Rights: allRights},
-			}, true)
+			proxySession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{
+					{Id: currentDevice1.UserId, Rights: allRights},
+					{Id: currentDevice2.UserId, Rights: allRights},
+				},
+				CreateEncryptionSessionOptions{UseCache: true},
+			)
 			require.NoError(t, err)
 
 			// create session for user2 & proxy
-			es1, err := account1.CreateEncryptionSession([]*RecipientWithRights{
-				{Id: currentDevice2.UserId, Rights: &RecipientRights{Read: true, Forward: false, Revoke: false}}, // User2 only has Read
-			}, true)
+			es1, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{
+					{Id: currentDevice2.UserId, Rights: &RecipientRights{Read: true, Forward: false, Revoke: false}}, // User2 only has Read
+				},
+				CreateEncryptionSessionOptions{UseCache: true},
+			)
 			require.NoError(t, err)
 			err = es1.AddProxySession(proxySession.Id, allRights)
 			require.NoError(t, err)
@@ -608,13 +617,22 @@ func Test_EncryptionSession(t *testing.T) {
 
 		t.Parallel()
 		t.Run("Retrieve multiple encryption sessions", func(t *testing.T) {
-			session1, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			session1, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
-			session2, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			session2, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
-			session3, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			session3, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			retrievedSessions, err := account2.RetrieveMultipleEncryptionSessions(
@@ -653,13 +671,22 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 
 		t.Run("Retrieve multiple encryption sessions via proxy", func(t *testing.T) {
-			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			proxySession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
-			session1, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}}, false)
+			session1, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
-			session2, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}}, false)
+			session2, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// Add proxy to sessions
@@ -707,10 +734,16 @@ func Test_EncryptionSession(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			session1, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: groupId}}, false)
+			session1, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: groupId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
-			session2, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: groupId}}, false)
+			session2, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: groupId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// Retrieve multiple sessions via group membership with lookupGroup flag set to true
@@ -741,10 +774,16 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 
 		t.Run("Retrieve multiple encryption sessions from cache", func(t *testing.T) {
-			session1, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			session1, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
-			session2, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			session2, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// First retrieval - expect not to be from cache
@@ -829,7 +868,10 @@ func Test_EncryptionSession(t *testing.T) {
 
 		t.Run("Retrieve multiple encryption sessions with mixed methods", func(t *testing.T) {
 			// Setup proxy session
-			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			proxySession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// Setup group
@@ -844,16 +886,28 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// Create sessions
-			directSession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			directSession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
-			cacheSession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}}, false)
+			cacheSession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}, {Id: currentDevice2.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
-			groupSession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: groupId}}, false)
+			groupSession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: groupId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
-			proxiedSession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId}}, false)
+			proxiedSession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId}},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = proxiedSession.AddProxySession(proxySession.Id, nil)
 			require.NoError(t, err)
@@ -909,7 +963,10 @@ func Test_EncryptionSession(t *testing.T) {
 		t.Parallel()
 		t.Run("AddRecipients allows user to retrieve session", func(t *testing.T) {
 			// Create a session without account2 nor account2
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 and account3 cannot retrieve the session
@@ -940,7 +997,10 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 		t.Run("AddRecipients does not error when user is already allowed", func(t *testing.T) {
 			// Create a session with account2
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1, recipientDevice2},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// Calling AddRecipients to double-allow account2
@@ -964,7 +1024,10 @@ func Test_EncryptionSession(t *testing.T) {
 		t.Parallel()
 		t.Run("RevokeRecipients prevents user from retrieving session", func(t *testing.T) {
 			// Create a session with account2
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1, recipientDevice2},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 can retrieve the session
@@ -987,9 +1050,15 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 		t.Run("RevokeRecipients with proxySessions", func(t *testing.T) {
 			// Create a proxySession and a session
-			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, false)
+			proxySession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1, recipientDevice2},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = session.AddProxySession(proxySession.Id, &RecipientRights{Read: true, Forward: true, Revoke: false})
 			require.NoError(t, err)
@@ -1016,7 +1085,10 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 		t.Run("RevokeRecipients does not error when user is not recipient", func(t *testing.T) {
 			// Create a session without account2
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// Calling revokeRecipients to double-revoke account2 (no error, but response will be "ko")
@@ -1027,7 +1099,10 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 		t.Run("RevokeRecipients with invalid userIds as input", func(t *testing.T) {
 			// Create a session
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// Calling revokeRecipients with bad inputs
@@ -1055,7 +1130,10 @@ func Test_EncryptionSession(t *testing.T) {
 		t.Parallel()
 		t.Run("RevokeOthers prevents user from retrieving session", func(t *testing.T) {
 			// Create a session with account2
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1, recipientDevice2},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 can retrieve the session
@@ -1084,9 +1162,15 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 		t.Run("RevokeOthers with proxySessions", func(t *testing.T) {
 			// Create a proxySession and a session
-			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, false)
+			proxySession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1, recipientDevice2},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = session.AddProxySession(proxySession.Id, &RecipientRights{Read: true, Forward: true, Revoke: false})
 			require.NoError(t, err)
@@ -1126,7 +1210,10 @@ func Test_EncryptionSession(t *testing.T) {
 		t.Parallel()
 		t.Run("RevokeAll prevents users from retrieving session", func(t *testing.T) {
 			// Create a session with account2
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1, recipientDevice2},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 can retrieve the session
@@ -1155,9 +1242,15 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 		t.Run("RevokeAll with proxySessions", func(t *testing.T) {
 			// Create a proxySession and a session
-			proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2}, false)
+			proxySession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1, recipientDevice2},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = session.AddProxySession(proxySession.Id, &RecipientRights{Read: true, Forward: true, Revoke: false})
 			require.NoError(t, err)
@@ -1190,7 +1283,10 @@ func Test_EncryptionSession(t *testing.T) {
 		require.NoError(t, err)
 		currentDevice := account.storage.currentDevice.get()
 		recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
-		session, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, false)
+		session, err := account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
 		require.NoError(t, err)
 		clearData := "Some cats are actually allergic to humans"
 
@@ -1206,7 +1302,10 @@ func Test_EncryptionSession(t *testing.T) {
 		require.NoError(t, err)
 		currentDevice := account.storage.currentDevice.get()
 		recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
-		session, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, false)
+		session, err := account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
 		require.NoError(t, err)
 		clearData := []byte("There was a successful Tinder match in Antarctica in 2014.")
 		clearFileName := "myFile.txt"
@@ -1245,7 +1344,10 @@ func Test_EncryptionSession(t *testing.T) {
 		require.NoError(t, err)
 		currentDevice := account.storage.currentDevice.get()
 		recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
-		session, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, false)
+		session, err := account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
 		require.NoError(t, err)
 
 		encryptedFilePath, err := session.EncryptFileFromPath(testFilePath)
@@ -1293,7 +1395,10 @@ func Test_EncryptionSession(t *testing.T) {
 		recipientDevice3 := &RecipientWithRights{Id: currentDevice3.UserId, Rights: allRights}
 
 		assert.Equal(t, 0, account1.storage.encryptionSessionsCache.len())
-		esAcc1, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientDevice1, recipientDevice2, recipientDevice3}, true)
+		esAcc1, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientDevice1, recipientDevice2, recipientDevice3},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
 		assert.Equal(t, 1, account1.storage.encryptionSessionsCache.len())
 		assert.Equal(t, EncryptionSessionRetrievalCreated, esAcc1.RetrievalDetails.Flow)
@@ -1403,15 +1508,24 @@ func Test_EncryptionSession(t *testing.T) {
 		recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
 
 		// Create sessions and check they are in cache
-		_, err = account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, true)
+		_, err = account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
-		_, err = account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, true)
+		_, err = account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
 		assert.Equal(t, 2, account.storage.encryptionSessionsCache.len())
 
 		// After a wait longer than TTL, create another session, and check cache has not been auto-cleaned
 		time.Sleep(1300 * time.Millisecond)
-		es3, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, true)
+		es3, err := account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
 		assert.Equal(t, 3, account.storage.encryptionSessionsCache.len()) // cache has not been cleaned of old sessions yet
 
@@ -1440,9 +1554,15 @@ func Test_EncryptionSession(t *testing.T) {
 		recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
 
 		// Create sessions and check they are in cache
-		_, err = account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, true)
+		_, err = account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
-		_, err = account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, true)
+		_, err = account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
 		assert.Equal(t, 2, account.storage.encryptionSessionsCache.len())
 
@@ -1492,9 +1612,15 @@ func Test_EncryptionSession(t *testing.T) {
 
 		// create sessions for group
 		groupRecipient := &RecipientWithRights{Id: groupId, Rights: allRights}
-		es1, err := account1.CreateEncryptionSession([]*RecipientWithRights{groupRecipient}, true)
+		es1, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{groupRecipient},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
-		es2, err := account1.CreateEncryptionSession([]*RecipientWithRights{groupRecipient}, true)
+		es2, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{groupRecipient},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
 
 		// canary api to count api calls
@@ -1574,16 +1700,25 @@ func Test_EncryptionSession(t *testing.T) {
 		currentDevice2 := account2.storage.currentDevice.get()
 
 		// create proxy session
-		proxySession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}, {Id: currentDevice2.UserId, Rights: allRights}}, true)
+		proxySession, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}, {Id: currentDevice2.UserId, Rights: allRights}},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
 
 		// create proxied sessions
-		es1, err := account1.CreateEncryptionSession([]*RecipientWithRights{}, true)
+		es1, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
 		err = es1.AddProxySession(proxySession.Id, allRights)
 		require.NoError(t, err)
 
-		es2, err := account1.CreateEncryptionSession([]*RecipientWithRights{}, true)
+		es2, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{},
+			CreateEncryptionSessionOptions{UseCache: true},
+		)
 		require.NoError(t, err)
 		err = es2.AddProxySession(proxySession.Id, allRights)
 		require.NoError(t, err)
@@ -1682,7 +1817,10 @@ func Test_EncryptionSession(t *testing.T) {
 			userTmrId := accountTMR.storage.currentDevice.get().UserId
 
 			// create a session
-			ogSession, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, true)
+			ogSession, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}},
+				CreateEncryptionSessionOptions{UseCache: true},
+			)
 			require.NoError(t, err)
 
 			recipients := []*TmrRecipientWithRights{{
@@ -1786,10 +1924,16 @@ func Test_EncryptionSession(t *testing.T) {
 			var esAcc2 []*EncryptionSession
 			// create a session
 			for i := 0; i < 12; i++ {
-				sessionAcc1, err := account1.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}}, true)
+				sessionAcc1, err := account1.CreateEncryptionSession(
+					[]*RecipientWithRights{{Id: currentDevice1.UserId, Rights: allRights}},
+					CreateEncryptionSessionOptions{UseCache: true},
+				)
 				require.NoError(t, err)
 				esAcc1 = append(esAcc1, sessionAcc1)
-				sessionAcc2, err := account2.CreateEncryptionSession([]*RecipientWithRights{{Id: currentDevice2.UserId, Rights: allRights}}, true)
+				sessionAcc2, err := account2.CreateEncryptionSession(
+					[]*RecipientWithRights{{Id: currentDevice2.UserId, Rights: allRights}},
+					CreateEncryptionSessionOptions{UseCache: true},
+				)
 				require.NoError(t, err)
 				esAcc2 = append(esAcc2, sessionAcc2)
 
@@ -1973,7 +2117,10 @@ func Test_EncryptionSession(t *testing.T) {
 			recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
 
 			// create a session, with a message and a file
-			session, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, false)
+			session, err := account.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientCurrentDevice},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(testArtifactsDir, "session_id"), []byte(session.Id), 0o700)
 			require.NoError(t, err)
@@ -1993,7 +2140,10 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// create another session (with new key), with a message and a file
-			session2, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, false)
+			session2, err := account.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientCurrentDevice},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(testArtifactsDir, "session_id2"), []byte(session2.Id), 0o700)
 			require.NoError(t, err)
@@ -2007,11 +2157,17 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// create proxy session and session openable via proxy
-			proxySession, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, false)
+			proxySession, err := account.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientCurrentDevice},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(testArtifactsDir, "proxysession_id"), []byte(proxySession.Id), 0o700)
 			require.NoError(t, err)
-			proxiedSession, err := account.CreateEncryptionSession([]*RecipientWithRights{}, false)
+			proxiedSession, err := account.CreateEncryptionSession(
+				[]*RecipientWithRights{},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = proxiedSession.AddProxySession(proxySession.Id, allRights)
 			require.NoError(t, err)

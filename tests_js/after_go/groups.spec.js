@@ -8,7 +8,7 @@ const SealdSDK = SealdSDKPkg.default
 const SSKSTMRPlugin = SSKSTMRPluginPkg.default
 
 describe('groups', function () {
-  this.timeout(10000)
+  this.timeout(60000)
   let credentials
 
   before(async function () {

@@ -9,6 +9,7 @@ import (
 	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -151,4 +152,21 @@ func GetRandomString(length int) string {
 	}
 	str := hex.EncodeToString(b)
 	return str[0:length]
+}
+
+// ReadAll reads all data from the provided io.Reader, similarly to io.ReadAll, but in chunks of the specified size.
+func ReadAll(r io.Reader, chunkSize int) ([]byte, error) {
+	var b []byte
+	for {
+		b_ := make([]byte, chunkSize)
+		n, err := r.Read(b_)
+		b_ = b_[:n]
+		b = append(b, b_...)
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
+			return b, err
+		}
+	}
 }

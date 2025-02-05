@@ -5,3 +5,4 @@ tmp/
 pubring.kbx
 local.properties
 /doc
+/build

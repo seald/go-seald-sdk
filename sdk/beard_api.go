@@ -403,7 +403,13 @@ type createMessageRequest struct {
 }
 
 type createMessageResponse struct {
-	Message string `json:"message"`
+	Message                string                  `json:"message"`
+	FailedCreatedForKey    []string                `json:"failed_created_for_key"`
+	SucceededCreatedForKey []string                `json:"succeeded_created_for_key"`
+	AddKeySerializerErrors *addKeySerializerErrors `json:"add_key_serializer_errors"`
+}
+type addKeySerializerErrors struct {
+	Tokens []string `json:"tokens"`
 }
 
 func (apiClient *beardApiClient) createMessage(request *createMessageRequest) (*createMessageResponse, error) {

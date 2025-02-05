@@ -7,7 +7,7 @@ let package = Package(
     products: [
         .library(
             name: "SealdSdk",
-            targets: ["SealdSdk"]),
+            targets: ["SealdSdk"])
     ],
     targets: [
         .target(
@@ -19,6 +19,6 @@ let package = Package(
         .binaryTarget(
             name: "SealdSdkInternals",
             path: "SealdSdk/Frameworks/SealdSdkInternals.xcframework"
-        ),
+        )
     ]
 )

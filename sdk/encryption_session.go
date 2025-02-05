@@ -29,6 +29,10 @@ var (
 	ErrorRetrieveEncryptionSessionInvalidMessageId = utils.NewSealdError("RETRIEVE_ENCRYPTION_SESSION_INVALID_MESSAGE_ID", "invalid message id")
 	// ErrorUnknownUserId is returned when a given recipient id is unknown.
 	ErrorUnknownUserId = utils.NewSealdError("UNKNOWN_USER_ID", "recipients unknown user id")
+	// ErrorAddKeySerializer is returned when failing to create EMKs for all recipients
+	ErrorAddKeySerializer = utils.NewSealdError("ErrorAddKeySerializer", "Failed to create message for all recipients")
+	// ErrorFailedCreated is returned when failing to create an EMK for a recipient
+	ErrorFailedCreated = utils.NewSealdError("ErrorFailedCreated", "Failed to create message for a recipient")
 	// ErrorRetrieveEncryptionSessionByTmrAccessNotFound is returned when no TMR access was found.
 	ErrorRetrieveEncryptionSessionByTmrAccessNotFound = utils.NewSealdError("TMR_ACCESS_NOT_FOUND", "Could not find requested TMR access")
 	// ErrorRetrieveEncryptionSessionByTmrAccessTooManyAccesses  is returned when expecting one TMR access, but multiple accesses are found.
@@ -81,11 +85,16 @@ func (state *State) encryptMessageKey(key *symmetric_key.SymKey, recipients []st
 	return &encryptMessageKeyOutput{tokens, notForMe}, nil
 }
 
+type CreateEncryptionSessionOptions struct {
+	UseCache bool
+	Metadata string
+}
+
 // CreateEncryptionSession creates an encryption session, and returns the associated EncryptionSession instance,
 // with which you can then encrypt / decrypt multiple messages.
 // Warning : if you want to be able to retrieve the session later,
 // you must put your own UserId in the recipients argument.
-func (state *State) CreateEncryptionSession(recipientsWithRights []*RecipientWithRights, useCache bool) (*EncryptionSession, error) {
+func (state *State) CreateEncryptionSession(recipientsWithRights []*RecipientWithRights, options CreateEncryptionSessionOptions) (*EncryptionSession, error) {
 	recipientsIds, recipientsRightsMap := getRecipientIdsAndMap(recipientsWithRights)
 	state.logger.Trace().Interface("recipients", recipientsIds).Msg("Calling CreateEncryptionSession")
 	state.locks.currentDeviceLock.RLock()
@@ -116,13 +125,21 @@ func (state *State) CreateEncryptionSession(recipientsWithRights []*RecipientWit
 		Tokens:   keys.Keys,
 		NotForMe: keys.NotForMe,
 		Rights:   recipientsRightsMap,
+		MetaData: options.Metadata,
 	})
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
 
+	if len(response.FailedCreatedForKey) > 0 {
+		return nil, tracerr.Wrap(ErrorFailedCreated)
+	}
+	if response.AddKeySerializerErrors != nil && len(response.AddKeySerializerErrors.Tokens) > 0 {
+		return nil, tracerr.Wrap(ErrorAddKeySerializer)
+	}
+
 	retrievalDetails := EncryptionSessionRetrievalDetails{Flow: EncryptionSessionRetrievalCreated}
-	if utils.SliceIncludes(recipientsIds, currentDevice.UserId) && useCache {
+	if utils.SliceIncludes(recipientsIds, currentDevice.UserId) && options.UseCache {
 		state.storage.encryptionSessionsCache.Set(response.Message, *key, retrievalDetails)
 		err = state.saveEncryptionSessions()
 		if err != nil {
@@ -797,7 +814,7 @@ func (encryptionSession *EncryptionSession) DecryptMessage(encryptedMessage stri
 
 // EncryptFile encrypts a clear-text file into an encrypted file, for the recipients of this session.
 func (encryptionSession *EncryptionSession) EncryptFile(clearFile []byte, filename string) ([]byte, error) {
-	sealdFile, err := encrypt_decrypt_file.EncryptFile(clearFile, filename, encryptionSession.Id, encryptionSession.Key)
+	sealdFile, err := encrypt_decrypt_file.EncryptBytes(clearFile, filename, encryptionSession.Id, encryptionSession.Key)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
@@ -806,7 +823,7 @@ func (encryptionSession *EncryptionSession) EncryptFile(clearFile []byte, filena
 
 // DecryptFile decrypts an encrypted file into the corresponding clear-text file.
 func (encryptionSession *EncryptionSession) DecryptFile(encryptedFile []byte) (*common_models.ClearFile, error) {
-	clearFile, err := encrypt_decrypt_file.DecryptFile(encryptedFile, encryptionSession.Key)
+	clearFile, err := encrypt_decrypt_file.DecryptBytes(encryptedFile, encryptionSession.Id, encryptionSession.Key)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
@@ -835,7 +852,7 @@ func (encryptionSession *EncryptionSession) EncryptFileFromPath(clearFilePath st
 // If a file already exist with that name, a numeric suffix will be added (up to 99).
 func (encryptionSession *EncryptionSession) DecryptFileFromPath(encryptedFilePath string) (string, error) {
 	encryptionSession.state.logger.Debug().Str("encryptedFilePath", encryptedFilePath).Msg("DecryptFileFromPath decrypting...")
-	clearFilePath, err := encrypt_decrypt_file.DecryptFileFromPath(encryptedFilePath, encryptionSession.Key)
+	clearFilePath, err := encrypt_decrypt_file.DecryptFileFromPath(encryptedFilePath, encryptionSession.Id, encryptionSession.Key)
 	if err != nil {
 		return "", tracerr.Wrap(err)
 	}

@@ -50,7 +50,10 @@ func TestState_MassReencrypt(t *testing.T) {
 	var sessions []*EncryptionSession
 
 	for i := 0; i < 110; i++ {
-		es, err := device1.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, false)
+		es, err := device1.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
 		require.NoError(t, err)
 		sessions = append(sessions, es)
 	}
@@ -61,7 +64,10 @@ func TestState_MassReencrypt(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < 110; i++ {
-		es, err := device1.CreateEncryptionSession([]*RecipientWithRights{recipientCurrentDevice}, false)
+		es, err := device1.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
 		require.NoError(t, err)
 		sessions = append(sessions, es)
 	}

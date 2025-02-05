@@ -1,13 +1,11 @@
 package sdk
 
 import (
-	"bytes"
 	"encoding/json"
 	"github.com/seald/go-seald-sdk/asymkey"
 	"github.com/seald/go-seald-sdk/encrypt_decrypt_file"
 	"github.com/seald/go-seald-sdk/messages"
 	"github.com/ztrue/tracerr"
-	"os"
 )
 
 func generateKey(keySize int, keyChan chan *asymkey.PrivateKey, errChan chan error) {
@@ -46,16 +44,7 @@ func generateKeyPair(keySize int) (*asymkey.PrivateKey, *asymkey.PrivateKey, err
 
 // ParseSessionIdFromFile takes the path to an encrypted file, and returns the session id.
 func ParseSessionIdFromFile(encryptedFilePath string) (string, error) {
-	file, err := os.Open(encryptedFilePath)
-	if err != nil {
-		return "", tracerr.Wrap(err)
-	}
-	mid, err := encrypt_decrypt_file.ParseFileHeader(file)
-	if err != nil {
-		_ = file.Close() // ignore err as we will already return one
-		return "", tracerr.Wrap(err)
-	}
-	err = file.Close()
+	mid, err := encrypt_decrypt_file.ParseFileHeaderFromPath(encryptedFilePath)
 	if err != nil {
 		return "", tracerr.Wrap(err)
 	}
@@ -64,8 +53,7 @@ func ParseSessionIdFromFile(encryptedFilePath string) (string, error) {
 
 // ParseSessionIdFromBytes takes an encrypted file as bytes, and returns the session id.
 func ParseSessionIdFromBytes(fileBytes []byte) (string, error) {
-	fileReader := bytes.NewReader(fileBytes)
-	mid, err := encrypt_decrypt_file.ParseFileHeader(fileReader)
+	mid, _, err := encrypt_decrypt_file.ParseFileHeaderBytes(fileBytes)
 	if err != nil {
 		return "", tracerr.Wrap(err)
 	}

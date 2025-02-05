@@ -6,6 +6,11 @@ import java.security.spec.PKCS8EncodedKeySpec
 import java.time.Duration
 import java.util.Base64
 
+/**
+ * The version of the Seald SDK.
+ */
+const val SEALD_SDK_VERSION = io.seald.seald_sdk_internals.mobile_sdk.Mobile_sdk.Version
+
 internal fun getRsaKey(size: Int = 4096): String {
     // Generate the RSA key pair
     val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
@@ -688,6 +693,7 @@ class SealdSDK
          * Warning : if you want to be able to retrieve the session later,
          * you must put your own UserId in the [recipients] argument.
          * @param recipients The Seald IDs with the associated rights of users to retrieve this session.
+         * @param metadata Arbitrary metadata string, not encrypted, for later reference. Max 1024 characters long.
          * @param useCache Whether or not to use the cache (if enabled globally).
          * @return The created [EncryptionSession].
          * @throws SealdException
@@ -696,10 +702,11 @@ class SealdSDK
         @Throws(SealdException::class)
         fun createEncryptionSession(
             recipients: Array<RecipientWithRights>,
+            metadata: String? = null,
             useCache: Boolean = true,
         ): EncryptionSession {
             convertExceptions {
-                val es = mobileSDK.createEncryptionSession(RecipientWithRights.toMobileSdkArray(recipients), useCache)
+                val es = mobileSDK.createEncryptionSession(RecipientWithRights.toMobileSdkArray(recipients), metadata, useCache)
                 return EncryptionSession(es)
             }
         }
@@ -710,6 +717,7 @@ class SealdSDK
          * Warning : if you want to be able to retrieve the session later,
          * you must put your own UserId in the [recipients] argument.
          * @param recipients The Seald IDs with the associated rights of users to retrieve this session.
+         * @param metadata Arbitrary metadata string, not encrypted, for later reference. Max 1024 characters long.
          * @param useCache Whether or not to use the cache (if enabled globally).
          * @return The created [EncryptionSession].
          * @throws SealdException
@@ -718,10 +726,11 @@ class SealdSDK
         @Throws(SealdException::class)
         suspend fun createEncryptionSessionAsync(
             recipients: Array<RecipientWithRights>,
+            metadata: String? = null,
             useCache: Boolean = true,
         ): EncryptionSession =
             withContext(Dispatchers.Default) {
-                return@withContext createEncryptionSession(recipients, useCache)
+                return@withContext createEncryptionSession(recipients, metadata, useCache)
             }
 
         /**

@@ -30,6 +30,11 @@ func sdkToGo(cSdk *C.SealdSdk) *sdk.State {
 
 var sealdSdkRefMap = sync.Map{}
 
+//export SealdSdk_Version
+func SealdSdk_Version() *C.char {
+	return C.CString(utils.Version)
+}
+
 //export SealdSdk_Initialize
 func SealdSdk_Initialize(options *C.SealdInitializeOptions, result **C.SealdSdk, err_ **C.SealdError) C.int {
 	sdkOpts, err := initializeOptionsToGo(options)
@@ -371,8 +376,14 @@ func SealdSdk_ConvertGroupTMRTemporaryKey(sealdSdk *C.SealdSdk, groupId *C.char,
 // EncryptionSession
 
 //export SealdSdk_CreateEncryptionSession
-func SealdSdk_CreateEncryptionSession(sealdSdk *C.SealdSdk, recipients *C.SealdRecipientsWithRightsArray, useCache C.int, result **C.SealdEncryptionSession, err_ **C.SealdError) C.int {
-	es, err := sdkToGo(sealdSdk).CreateEncryptionSession(recipientsWithRightsArrayToGo(recipients).getSlice(), int(useCache) != 0)
+func SealdSdk_CreateEncryptionSession(sealdSdk *C.SealdSdk, recipients *C.SealdRecipientsWithRightsArray, metadata *C.char, useCache C.int, result **C.SealdEncryptionSession, err_ **C.SealdError) C.int {
+	es, err := sdkToGo(sealdSdk).CreateEncryptionSession(
+		recipientsWithRightsArrayToGo(recipients).getSlice(),
+		sdk.CreateEncryptionSessionOptions{
+			UseCache: int(useCache) != 0,
+			Metadata: C.GoString(metadata),
+		},
+	)
 	if err != nil {
 		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
 		return C.int(-1)

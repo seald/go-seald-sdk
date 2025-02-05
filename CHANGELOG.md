@@ -1,10 +1,28 @@
+# 0.9.0 : 2025/02/05
+- @all: \[enhancement\] Encryption / Decryption from file paths now streams the data in chunks, to avoid having to load the entire file in-memory, and for better performance.
+- @go: \[**breaking change**\] Change some internal function names and signatures, mainly in `encrypt_decrypt_file`, and change some errors.
+- @go: \[**breaking change**\] Second argument of `createEncryptionSession` is now of type `CreateEncryptionSessionOptions`, and includes `metadata` argument to be able to add an arbitrary metadata string .
+- @android: \[new feature\] Add optional `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.
+- @ios: \[**breaking change**\] Add `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.
+- @c: \[**breaking change**\] Add `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.
+- @flutter: \[new feature\] Add optional `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.
+- @go: \[**breaking change**\] Remove code for obsolete React-Native Accelerator package.
+- @c: \[new feature\] Add `SealdSdk_Version()` to get the current SDK version.
+- @flutter: \[new feature\] Add `sealdSdkVersion` to get the current SDK version.
+- @ios: \[new feature\] Add `SealdSdkVersion` to get the current SDK version.
+- @android: \[new feature\] Add `SEALD_SDK_VERSION` to get the current SDK version.
+- @ios: \[*breaking change**\] Change the types of some method arguments from `long` to `NSInteger`.
+- @android: \[bug fix\] Fix a bug that sometimes caused crashes on Android.
+- @all: \[enhancement\] Update dependencies
+
+
 # 0.8.0 : 2024/11/20
 - @flutter: \[**breaking change**\] Correctly specify minimum Flutter version as `3.10.0`. Version `0.7.0` was already incompatible with Flutter versions older than `3.10.0`, it just was not specified in `pubspec.yaml`.
-- @go:  \[**breaking change**\] In Anonymous SDK, add ability to encrypt for TMR Recipients. This changes the arguments of the `AnonymousSDK.encrypt` function.
+- @go: \[**breaking change**\] In Anonymous SDK, add ability to encrypt for TMR Recipients. This changes the arguments of the `AnonymousSDK.encrypt` function.
 - @ios: \[new feature\] The Seald SDK for iOS is now also available through Swift Package Manager, at `https://github.com/seald/seald-sdk-ios`.
 - @all: \[new feature\] Add group TMR temporary keys functions to join a group using TMR. `CreateGroupTMRTemporaryKey`, `ListGroupTMRTemporaryKeys`,`DeleteGroupTMRTemporaryKey`, `ConvertGroupTMRTemporaryKey` and `SearchGroupTMRTemporaryKeys`.
 - @all: \[enhancement\] Update dependencies
-- @go:  \[bug fix\] Fix package name in `go.mod` so the Go SDK can be imported by other projects
+- @go: \[bug fix\] Fix package name in `go.mod` so the Go SDK can be imported by other projects
 
 
 # 0.7.1 : 2024/09/12

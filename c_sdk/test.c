@@ -452,7 +452,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdRecipientsWithRightsArray_AddWithDefaultRights(recipients, createAccountResult2->UserId);
     SealdRecipientsWithRightsArray_AddWithDefaultRights(recipients, groupId);
     SealdEncryptionSession* es1SDK1 = NULL;
-    errCode = SealdSdk_CreateEncryptionSession(sdk1, recipients, 1, &es1SDK1, &err);
+    errCode = SealdSdk_CreateEncryptionSession(sdk1, recipients, "test-c-session1", 1, &es1SDK1, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     SealdRecipientsWithRightsArray_Free(recipients);
     SealdEncryptionSessionRetrievalDetails* es1SDK1RetrievalDetails = SealdEncryptionSession_RetrievalDetails(es1SDK1);
@@ -545,7 +545,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdRecipientsWithRightsArray_AddWithDefaultRights(proxyRecipients1, createAccountResult1->UserId);
     SealdRecipientsWithRightsArray_AddWithDefaultRights(proxyRecipients1, createAccountResult3->UserId);
     SealdEncryptionSession* proxySession1 = NULL;
-    errCode = SealdSdk_CreateEncryptionSession(sdk1, proxyRecipients1, 1, &proxySession1, &err);
+    errCode = SealdSdk_CreateEncryptionSession(sdk1, proxyRecipients1, "test-c-session2", 1, &proxySession1, &err);
     SealdRecipientsWithRightsArray_Free(proxyRecipients1);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     char* proxySession1Id = SealdEncryptionSession_Id(proxySession1);
@@ -558,7 +558,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdRecipientsWithRightsArray_AddWithDefaultRights(proxyRecipients2, createAccountResult1->UserId);
     SealdRecipientsWithRightsArray_AddWithDefaultRights(proxyRecipients2, createAccountResult2->UserId);
     SealdEncryptionSession* proxySession2 = NULL;
-    errCode = SealdSdk_CreateEncryptionSession(sdk1, proxyRecipients2, 1, &proxySession2, &err);
+    errCode = SealdSdk_CreateEncryptionSession(sdk1, proxyRecipients2, "test-c-session3", 1, &proxySession2, &err);
     SealdRecipientsWithRightsArray_Free(proxyRecipients2);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     char* proxySession2Id = SealdEncryptionSession_Id(proxySession2);
@@ -871,17 +871,17 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdRecipientsWithRightsArray* recipients234 = SealdRecipientsWithRightsArray_New();
     SealdRecipientsWithRightsArray_AddWithDefaultRights(recipients234, createAccountResult1->UserId);
     SealdEncryptionSession* es2SDK1 = NULL;
-    errCode = SealdSdk_CreateEncryptionSession(sdk1, recipients234, 1, &es2SDK1, &err);
+    errCode = SealdSdk_CreateEncryptionSession(sdk1, recipients234, "test-c-session4", 1, &es2SDK1, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     char* anotherMessage = "Nobody should read that!";
     char* secondEncryptedMessage = NULL;
     errCode = SealdEncryptionSession_EncryptMessage(es2SDK1, anotherMessage, &secondEncryptedMessage, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     SealdEncryptionSession* es3SDK1 = NULL;
-    errCode = SealdSdk_CreateEncryptionSession(sdk1, recipients234, 1, &es3SDK1, &err);
+    errCode = SealdSdk_CreateEncryptionSession(sdk1, recipients234, "test-c-session5", 1, &es3SDK1, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     SealdEncryptionSession* es4SDK1 = NULL;
-    errCode = SealdSdk_CreateEncryptionSession(sdk1, recipients234, 1, &es4SDK1, &err);
+    errCode = SealdSdk_CreateEncryptionSession(sdk1, recipients234, NULL, 1, &es4SDK1, &err); // testing with NULL metadata
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     SealdRecipientsWithRightsArray_Free(recipients234);
 
@@ -1485,6 +1485,10 @@ int testSealdSsksTMR(TestCredentials* testCredentials) {
 int main() {
     curl_global_init(CURL_GLOBAL_ALL);
     int errCode = 0;
+
+    char* version = SealdSdk_Version();
+    printf("Version: %s\n", version);
+    free(version);
 
     TestCredentials* testCredentials = get_test_credentials();
     printf("Read test credentials:\n- apiURL: %s\n- appId: %s\n- JWTSharedSecretId: %s\n- JWTSharedSecret: %s\n", testCredentials->apiURL, testCredentials->appId, testCredentials->JWTSharedSecretId, testCredentials->JWTSharedSecret);

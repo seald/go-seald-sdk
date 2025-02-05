@@ -146,7 +146,7 @@ go build -buildmode=c-shared -buildvcs=false -o build/lib_seald_sdk.so .
 
 To build the tests, the following library are needed:
 ```bash
-libjwt-dev libcjson-dev # dev name might vary if you're not using a good OS.
+libjwt-dev libcjson-dev libcurl # dev name might vary if you're not using a good OS.
 ```
 
 Before running the C tests, you must create a `test_credentials.json` on the root of the repository.

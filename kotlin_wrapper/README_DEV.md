@@ -21,7 +21,10 @@ This will produce the AAR at the path `kotlin_wrapper/seald_sdk/build/outputs/aa
 From the `example` folder, with an emulator running or a device connected to ADB:
 
 ```bash
+cd example
+
 # Copy the AAR built previously
+mkdir -p ./app/libs
 cp ../seald_sdk/build/outputs/aar/seald_sdk-release.aar ./app/libs/seald_sdk-release.aar
 
 # Install

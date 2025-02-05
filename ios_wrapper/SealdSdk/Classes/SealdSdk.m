@@ -9,6 +9,12 @@
 #import "SealdSdk.h"
 #import <Security/Security.h>
 
+NSString*_Nonnull SealdSdkVersion = nil;
+
+__attribute__((constructor)) static void initializeSealdSdkVersion(void) {
+    SealdSdkVersion = SealdSdkInternalsMobile_sdkVersion;
+}
+
 @implementation SealdSdk
 - (instancetype) initWithApiUrl:(const NSString*)apiUrl
                           appId:(const NSString*)appId
@@ -642,11 +648,15 @@
 
 // EncryptionSession
 - (SealdEncryptionSession*) createEncryptionSessionWithRecipients:(const NSArray<SealdRecipientWithRights*>*)recipients
+                                                         metadata:(const NSString*_Nullable)metadata
                                                          useCache:(const BOOL)useCache
                                                             error:(NSError*_Nullable*)error
 {
     NSError* localErr = nil;
-    SealdSdkInternalsMobile_sdkMobileEncryptionSession* es = [sdkInstance createEncryptionSession:[SealdRecipientWithRights toMobileSdkArray:(NSArray<SealdRecipientWithRights*>*)recipients] useCache:useCache error:&localErr];
+    SealdSdkInternalsMobile_sdkMobileEncryptionSession* es = [sdkInstance createEncryptionSession:[SealdRecipientWithRights toMobileSdkArray:(NSArray<SealdRecipientWithRights*>*)recipients]
+                                                                                         metadata:(NSString*)metadata
+                                                                                         useCache:useCache
+                                                                                            error:&localErr];
     if (localErr) {
         _SealdInternal_ConvertError(localErr, error);
         return nil;
@@ -655,12 +665,16 @@
 }
 
 - (void) createEncryptionSessionAsyncWithRecipients:(const NSArray<SealdRecipientWithRights*>*)recipients
+                                           metadata:(const NSString*_Nullable)metadata
                                            useCache:(const BOOL)useCache
                                   completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError* error))completionHandler
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSError* localErr = nil;
-        SealdEncryptionSession* res = [self createEncryptionSessionWithRecipients:recipients useCache:useCache error:&localErr];
+        SealdEncryptionSession* res = [self createEncryptionSessionWithRecipients:recipients
+                                                                         metadata:metadata
+                                                                         useCache:useCache
+                                                                            error:&localErr];
 
         completionHandler(res, localErr);
     });
@@ -1125,7 +1139,7 @@
 }
 
 - (SealdGetSigchainResponse*) getSigchainHashWithUserId:(const NSString*)userId
-                                               position:(const long)position
+                                               position:(const NSInteger)position
                                                   error:(NSError*_Nullable*)error
 {
     NSError* localErr = nil;
@@ -1138,7 +1152,7 @@
 }
 
 - (void) getSigchainHashAsyncWithUserId:(const NSString*)userId
-                               position:(const long)position
+                               position:(const NSInteger)position
                       completionHandler:(void (^)(SealdGetSigchainResponse* encryptionSession, NSError* error))completionHandler
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -1151,7 +1165,7 @@
 
 - (SealdCheckSigchainResponse*) checkSigchainHashWithUserId:(const NSString*)userId
                                                expectedHash:(const NSString*)expectedHash
-                                                   position:(const long)position
+                                                   position:(const NSInteger)position
                                                       error:(NSError*_Nullable*)error
 {
     NSError* localErr = nil;
@@ -1168,7 +1182,7 @@
 
 - (void) checkSigchainHashAsyncWithUserId:(const NSString*)userId
                              expectedHash:(const NSString*)expectedHash
-                                 position:(const long)position
+                                 position:(const NSInteger)position
                         completionHandler:(void (^)(SealdCheckSigchainResponse* response, NSError* error))completionHandler
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{

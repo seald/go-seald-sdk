@@ -15,6 +15,10 @@ test_output/
 /test_artifacts
 /.build/
 seald-sdk-*.aar
+.go_mod_cache
+.gradle_home
+gradle_home
+.pub_cache
 
 # use as test directories
 tmp/

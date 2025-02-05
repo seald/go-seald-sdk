@@ -191,7 +191,10 @@ func Test_Groups(t *testing.T) {
 			recipientGroup := &RecipientWithRights{Id: groupId, Rights: allRights}
 
 			// Create a session for the group
-			sessionWithKey1, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+			sessionWithKey1, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientGroup},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// Renew group key multiple times
@@ -209,7 +212,10 @@ func Test_Groups(t *testing.T) {
 			require.NoError(t, err)
 
 			// Create a session for the group with the new key
-			sessionWithKey4, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+			sessionWithKey4, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientGroup},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 cannot decrypt
@@ -368,7 +374,10 @@ func Test_Groups(t *testing.T) {
 			recipientGroup := &RecipientWithRights{Id: groupId, Rights: allRights}
 
 			// Create a session for the group
-			session, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientGroup},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 can decrypt
@@ -479,7 +488,10 @@ func Test_Groups(t *testing.T) {
 			recipientGroup := &RecipientWithRights{Id: groupId, Rights: allRights}
 
 			// Create a session for the group
-			sessionA, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+			sessionA, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientGroup},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 can decrypt
@@ -510,7 +522,10 @@ func Test_Groups(t *testing.T) {
 			require.NoError(t, err)
 
 			// Create a new session for the group
-			sessionB, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+			sessionB, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientGroup},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 can decrypt the new session
@@ -590,7 +605,10 @@ func Test_Groups(t *testing.T) {
 			recipientGroup := &RecipientWithRights{Id: groupId, Rights: allRights}
 
 			// Create a session for the group
-			sessionA, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+			sessionA, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientGroup},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 can decrypt
@@ -625,7 +643,10 @@ func Test_Groups(t *testing.T) {
 			require.NoError(t, err)
 
 			// Create a new session for the group
-			sessionB, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+			sessionB, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientGroup},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 
 			// account2 can decrypt the new session
@@ -904,7 +925,10 @@ func Test_Groups(t *testing.T) {
 
 		// Create a session for the group
 		recipientGroup := &RecipientWithRights{Id: groupId, Rights: allRights}
-		sessionWithKey, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+		sessionWithKey, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientGroup},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
 		require.NoError(t, err)
 
 		// Create a group TMR temporary key to join the group
@@ -1057,7 +1081,10 @@ func Test_Groups(t *testing.T) {
 
 		// Create a session for the group before all
 		recipientGroup := &RecipientWithRights{Id: groupId, Rights: allRights}
-		session1, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+		session1, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientGroup},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
 		require.NoError(t, err)
 
 		// renew group a first time, BEFORE the GroupTmrTks
@@ -1067,7 +1094,10 @@ func Test_Groups(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create another session after this renew
-		session2, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+		session2, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientGroup},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
 		require.NoError(t, err)
 
 		// Create 2 group TMR temporary keys to join the group
@@ -1092,7 +1122,10 @@ func Test_Groups(t *testing.T) {
 		require.NoError(t, err)
 
 		// create a third session after the second renew
-		session3, err := account1.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+		session3, err := account1.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientGroup},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
 		require.NoError(t, err)
 
 		// account3 can convert gtmrKey, and retrieve all sessions
@@ -1213,7 +1246,10 @@ func Test_Groups(t *testing.T) {
 			recipientGroup := &RecipientWithRights{Id: groupId, Rights: allRights}
 
 			// create a session for the group
-			session, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+			session, err := account.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientGroup},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(testArtifactsDir, "session_id"), []byte(session.Id), 0o700)
 			require.NoError(t, err)
@@ -1225,7 +1261,10 @@ func Test_Groups(t *testing.T) {
 			require.NoError(t, err)
 
 			// create another session for the group
-			session2, err := account.CreateEncryptionSession([]*RecipientWithRights{recipientGroup}, false)
+			session2, err := account.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientGroup},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(testArtifactsDir, "session_id2"), []byte(session2.Id), 0o700)
 			require.NoError(t, err)

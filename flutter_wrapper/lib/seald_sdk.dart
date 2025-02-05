@@ -18,6 +18,16 @@ part 'ssks_password.dart';
 
 part 'utils.dart';
 
+/// The version of the Seald SDK.
+///
+/// {@category Utils}
+final String sealdSdkVersion = (() {
+  final Pointer<Utf8> v = _bindings.SealdSdk_Version();
+  final String res = v.toDartString();
+  calloc.free(v);
+  return res;
+})();
+
 /// This is the main class for the Seald SDK. It represents an instance of the Seald SDK.
 /// This must be instantiated from the root isolate, or you must pass the `rootIsolateToken` argument.
 ///
@@ -992,7 +1002,8 @@ class SealdSdk {
   // This means we need to transfer a _TransferablePointer
   _TransferablePointer<NativeSealdEncryptionSession> _createEncryptionSession(
       List<SealdRecipientWithRights> recipients,
-      {bool useCache = true}) {
+      {String? metadata,
+      bool useCache = true}) {
     if (_closed) {
       throw SealdException(
           code: "INSTANCE_CLOSED",
@@ -1001,6 +1012,7 @@ class SealdSdk {
     }
     final Pointer<NativeSealdRecipientsWithRightsArray> nativeRecipients =
         SealdRecipientWithRights._toCArray(recipients);
+    final Pointer<Utf8> nativeMetadata = metadata?.toNativeUtf8() ?? nullptr;
     final int useCacheInt = useCache ? 1 : 0;
     final Pointer<Pointer<NativeSealdEncryptionSession>> result =
         calloc<Pointer<NativeSealdEncryptionSession>>();
@@ -1008,9 +1020,15 @@ class SealdSdk {
         calloc<Pointer<NativeSealdError>>();
 
     final int resultCode = _bindings.SealdSdk_CreateEncryptionSession(
-        _ptr.pointer(), nativeRecipients, useCacheInt, result, err);
+        _ptr.pointer(),
+        nativeRecipients,
+        nativeMetadata,
+        useCacheInt,
+        result,
+        err);
 
     _bindings.SealdRecipientsWithRightsArray_Free(nativeRecipients);
+    calloc.free(nativeMetadata);
 
     if (resultCode != 0) {
       calloc.free(result);
@@ -1030,13 +1048,16 @@ class SealdSdk {
   /// you must put your own Seald ID in the [recipients] argument.
   ///
   /// [recipients] - The Seald IDs of users who should be able to retrieve this session.
+  /// [metadata] - Arbitrary metadata string, not encrypted, for later reference. Max 1024 characters long.
   /// [useCache] - Whether or not to use the cache (if enabled globally).
   /// Returns the created SealdEncryptionSession instance.
   SealdEncryptionSession createEncryptionSession(
       List<SealdRecipientWithRights> recipients,
-      {bool useCache = true}) {
-    return SealdEncryptionSession._fromC(
-        _createEncryptionSession(recipients, useCache: useCache).pointer());
+      {String? metadata,
+      bool useCache = true}) {
+    return SealdEncryptionSession._fromC(_createEncryptionSession(recipients,
+            metadata: metadata, useCache: useCache)
+        .pointer());
   }
 
   /// Create an encryption session, and returns the associated SealdEncryptionSession instance,
@@ -1045,17 +1066,24 @@ class SealdSdk {
   /// you must put your own Seald ID in the [recipients] argument.
   ///
   /// [recipients] - The Seald IDs of users who should be able to retrieve this session.
+  /// [metadata] - Arbitrary metadata string, not encrypted, for later reference. Max 1024 characters long.
   /// [useCache] - Whether or not to use the cache (if enabled globally).
   /// Returns the created SealdEncryptionSession instance.
   Future<SealdEncryptionSession> createEncryptionSessionAsync(
       List<SealdRecipientWithRights> recipients,
-      {bool useCache = true}) async {
+      {String? metadata,
+      bool useCache = true}) async {
     final _TransferablePointer<NativeSealdEncryptionSession> res =
         await compute(
             (Map<String, dynamic> args) => _createEncryptionSession(
                 args["recipients"],
+                metadata: args["metadata"],
                 useCache: args["useCache"]),
-            {"recipients": recipients, "useCache": useCache});
+            {
+          "recipients": recipients,
+          "metadata": metadata,
+          "useCache": useCache
+        });
     return SealdEncryptionSession._fromC(res.pointer());
   }
 

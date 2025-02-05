@@ -1,5 +1,5 @@
 {
-  "originHash" : "911081218b6f75c26a5ad49529975899f8037657d070036bc758487020b4c1be",
+  "originHash" : "d5d4f28f915230912f5f047418af8fad603633b3dd16a74a52441f57f33087a0",
   "pins" : [
     {
       "identity" : "jwt-kit",
@@ -8,15 +8,6 @@
       "state" : {
         "revision" : "39788cea76b2905595c7493ad0e84214624b32b9",
         "version" : "5.0.1"
-      }
-    },
-    {
-      "identity" : "seald-sdk-ios",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/seald/seald-sdk-ios",
-      "state" : {
-        "revision" : "65408a7cbe20deb88488d955edfa4fedcbbb9bbc",
-        "version" : "0.0.1"
       }
     },
     {

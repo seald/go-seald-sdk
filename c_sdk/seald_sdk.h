@@ -1,6 +1,14 @@
 #ifndef LIB_SEALD_SDK_H
 #define LIB_SEALD_SDK_H
 
+// Version
+
+/**
+ * The version of the Seald SDK.
+ */
+char* SealdSdk_Version();
+
+
 // Helper SealdError
 
 /**
@@ -30,6 +38,7 @@ typedef struct {
  * @param err The SealdError to free.
  */
 void SealdError_Free(SealdError* err);
+
 
 // Helper SealdStringArray
 
@@ -217,8 +226,8 @@ typedef struct {
  */
 void SealdTmrAccessesRetrievalFilters_Free(SealdTmrAccessesRetrievalFilters* filters);
 
-// Helper SealdTmrAccessesConvertFilters
 
+// Helper SealdTmrAccessesConvertFilters
 
 /**
  * SealdTmrAccessesConvertFilters holds the tmr accesses filters used when converting TMR accesses.
@@ -239,8 +248,8 @@ typedef struct {
  */
 void SealdTmrAccessesConvertFilters_Free(SealdTmrAccessesConvertFilters* filters);
 
-// Helper SealdConvertTmrAccessesResult
 
+// Helper SealdConvertTmrAccessesResult
 
 /**
  * SealdConvertTmrAccessesResult is returned when calling SealdSdk_ConvertTmrAccesses,
@@ -263,6 +272,7 @@ typedef struct {
  * @param result The SealdConvertTmrAccessesResult to free.
  */
 void SealdConvertTmrAccessesResult_Free(SealdConvertTmrAccessesResult* result);
+
 
 // Helper SealdAccountInfo
 
@@ -1013,6 +1023,7 @@ int SealdEncryptionSession_AddTmrAccess(SealdEncryptionSession* es, char* authFa
  */
 int SealdEncryptionSession_AddMultipleTmrAccesses(SealdEncryptionSession* es, SealdTmrRecipientsWithRightsArray* recipients, SealdActionStatusArray** result, SealdError** error);
 
+
 // Helper SealdEncryptionSessionArray
 
 /**
@@ -1059,6 +1070,8 @@ SealdEncryptionSession* SealdEncryptionSessionArray_Get(SealdEncryptionSessionAr
  * @return The size of the given SealdEncryptionSessionArray.
  */
 int SealdEncryptionSessionArray_Size(SealdEncryptionSessionArray* array);
+
+
 // Class SDK
 
 /**
@@ -1300,6 +1313,7 @@ int SealdSdk_SetGroupAdmins(SealdSdk* sealdSdk, char* groupId, SealdStringArray*
  */
 int SealdSdk_ShouldRenewGroup(SealdSdk* sealdSdk, char* groupId, int* result, SealdError** error);
 
+
 // Helper SealdGroupTMRTemporaryKey
 
 /**
@@ -1376,6 +1390,7 @@ SealdGroupTMRTemporaryKey* SealdGroupTMRTemporaryKeysArray_Get(SealdGroupTMRTemp
  * @return The size of the given SealdGroupTMRTemporaryKeysArray.
  */
 int SealdGroupTMRTemporaryKeysArray_Size(SealdGroupTMRTemporaryKeysArray* array);
+
 
 // Helper SealdSearchGroupTMRTemporaryKeysOpts
 
@@ -1477,12 +1492,13 @@ int SealdSdk_SearchGroupTMRTemporaryKeys(SealdSdk* sealdSdk, char* tmrJWT, Seald
  *
  * @param sealdSdk The SealdSdk instance.
  * @param recipients The Seald IDs of users who should be able to retrieve this session.
+ * @param metadata Arbitrary metadata string, not encrypted, for later reference. Max 1024 characters long.
  * @param useCache Whether or not to use the cache (if enabled globally). `1` to use cache, `0` to not use it.
  * @param result A pointer where to store the created SealdEncryptionSession instance.
  * @param error A pointer to a SealdError* where details will be stored in case of error.
  * @return Error code: `-1` if an error happened, `0` for success.
  */
-int SealdSdk_CreateEncryptionSession(SealdSdk* sealdSdk, SealdRecipientsWithRightsArray* recipients, int useCache, SealdEncryptionSession** result, SealdError** error);
+int SealdSdk_CreateEncryptionSession(SealdSdk* sealdSdk, SealdRecipientsWithRightsArray* recipients, char* metadata, int useCache, SealdEncryptionSession** result, SealdError** error);
 
 /**
  * Retrieve an encryption session with the `messageId`, and returns the associated
@@ -1730,6 +1746,7 @@ int SealdSdk_CheckSigchainHash(SealdSdk* sealdSdk, char* userId, char* expectedH
  */
 int SealdSdk_ConvertTmrAccesses(SealdSdk* sealdSdk, char* tmrJWT, unsigned char* overEncryptionKey, int overEncryptionKeyLen, SealdTmrAccessesConvertFilters* conversionFilters, int deleteOnConvert, SealdConvertTmrAccessesResult** result, SealdError** error);
 
+
 // Helper SealdSsksTMRPluginInitializeOptions
 
 /**
@@ -1750,6 +1767,7 @@ typedef struct {
     char* Platform;
 } SealdSsksTMRPluginInitializeOptions;
 
+
 // Helper SealdSsksTMRPluginSaveIdentityResponse
 
 /**
@@ -1763,6 +1781,7 @@ typedef struct {
 } SealdSsksTMRPluginSaveIdentityResponse;
 
 void SealdSsksTMRPluginSaveIdentityResponse_Free(SealdSsksTMRPluginSaveIdentityResponse* resp);
+
 
 // Helper SealdSsksTMRPluginRetrieveIdentityResponse
 
@@ -1782,6 +1801,7 @@ typedef struct {
 
 void SealdSsksTMRPluginRetrieveIdentityResponse_Free(SealdSsksTMRPluginRetrieveIdentityResponse* resp);
 
+
 // Helper SealdSsksTMRPluginGetFactorTokenResponse
 
 /**
@@ -1795,6 +1815,7 @@ typedef struct {
 } SealdSsksTMRPluginGetFactorTokenResponse;
 
 void SealdSsksTMRPluginGetFactorTokenResponse_Free(SealdSsksTMRPluginGetFactorTokenResponse* resp);
+
 
 // SealdSsksTMRPlugin
 
@@ -1869,6 +1890,7 @@ int SealdSsksTMRPlugin_RetrieveIdentity(SealdSsksTMRPlugin* tmrPlugin, char* ses
  */
 int SealdSsksTMRPlugin_GetFactorToken(SealdSsksTMRPlugin* tmrPlugin, char* sessionId, char* authFactorType, char* authFactorValue, char* challenge, SealdSsksTMRPluginGetFactorTokenResponse** result, SealdError** error);
 
+
 // Helper SealdSsksPasswordPluginInitializeOptions
 
 /**
@@ -1888,6 +1910,7 @@ typedef struct {
     /** Platform is a name that references the platform on which the SealdSsksPasswordPlugin is running. */
     char* Platform;
 } SealdSsksPasswordPluginInitializeOptions;
+
 
 // SealdSsksPasswordPlugin
 
@@ -1992,6 +2015,7 @@ int SealdSsksPasswordPlugin_RetrieveIdentityFromRawKeys(SealdSsksPasswordPlugin*
  * @return Error code: `-1` if an error happened, `0` for success.
  */
 int SealdSsksPasswordPlugin_ChangeIdentityPassword(SealdSsksPasswordPlugin* passwordPlugin, char* userId, char* currentPassword, char* newPassword, char** result, SealdError** error);
+
 
 // SealdUtils
 

@@ -20,9 +20,11 @@
 
     SEALDSDKAppDelegate* appDelegate = (SEALDSDKAppDelegate*)[[UIApplication sharedApplication] delegate];
 
+    [appDelegate addObserver:self forKeyPath:@"versionLabel" options:NSKeyValueObservingOptionNew context:nil];
     [appDelegate addObserver:self forKeyPath:@"testSsksTmrLabel" options:NSKeyValueObservingOptionNew context:nil];
     [appDelegate addObserver:self forKeyPath:@"testSsksPasswordLabel" options:NSKeyValueObservingOptionNew context:nil];
     [appDelegate addObserver:self forKeyPath:@"testSdkLabel" options:NSKeyValueObservingOptionNew context:nil];
+    self.versionLabel.text = [NSString stringWithFormat:@"version: %@", appDelegate.versionLabel];
     self.testSsksTmrLabel.text = [NSString stringWithFormat:@"test SSKS TMR: %@", appDelegate.testSsksTmrLabel];
     self.testSsksPasswordLabel.text = [NSString stringWithFormat:@"test SSKS Password: %@", appDelegate.testSsksPasswordLabel];;
     self.testSdkLabel.text = [NSString stringWithFormat:@"test SDK: %@", appDelegate.testSdkLabel];
@@ -35,7 +37,9 @@
 {
     dispatch_async(dispatch_get_main_queue(), ^{
         NSString* newStatus = [change objectForKey:NSKeyValueChangeNewKey];
-        if ([keyPath isEqualToString:@"testSsksTmrLabel"]) {
+        if ([keyPath isEqualToString:@"versionLabel"]) {
+            self.versionLabel.text = [NSString stringWithFormat:@"version: %@", newStatus];
+        } else if ([keyPath isEqualToString:@"testSsksTmrLabel"]) {
             self.testSsksTmrLabel.text = [NSString stringWithFormat:@"test SSKS TMR: %@", newStatus];
         } else if ([keyPath isEqualToString:@"testSsksPasswordLabel"]) {
             NSString* newStatus = [change objectForKey:NSKeyValueChangeNewKey];
@@ -50,6 +54,7 @@
 - (void) dealloc
 {
     SEALDSDKAppDelegate* appDelegate = (SEALDSDKAppDelegate*)[[UIApplication sharedApplication] delegate];
+    [appDelegate removeObserver:self forKeyPath:@"versionLabel"];
     [appDelegate removeObserver:self forKeyPath:@"testSsksTmrLabel"];
     [appDelegate removeObserver:self forKeyPath:@"testSsksPasswordLabel"];
     [appDelegate removeObserver:self forKeyPath:@"testSdkLabel"];

@@ -1,8 +1,8 @@
 import org.jetbrains.dokka.gradle.DokkaTask
 
 plugins {
-    id 'org.jetbrains.kotlin.android' version '1.9.10' apply true
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.9.10'
+    id 'org.jetbrains.kotlin.android' version '1.9.25' apply true
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.9.25'
     id 'com.android.library'
     id 'maven-publish'
     id 'signing'

@@ -66,6 +66,13 @@ class MainActivity : AppCompatActivity() {
         val jwtBuilder = JWTBuilder(JWT_SHARED_SECRET_ID, JWT_SHARED_SECRET)
 
         CoroutineScope(Dispatchers.Default).launch {
+            // Version
+            val versionView: TextView = findViewById(R.id.version)
+            withContext(Dispatchers.Main) {
+                versionView.text =
+                    "version: ${SEALD_SDK_VERSION}"
+            }
+
             // SDK
             val sdkResultView: TextView = findViewById(R.id.testSDK)
             withContext(Dispatchers.Main) { sdkResultView.text = "test SDK: Running..." }
@@ -194,7 +201,7 @@ class MainActivity : AppCompatActivity() {
                     RecipientWithRights(user2AccountInfo.userId),
                     RecipientWithRights(groupId),
                 )
-            val es1SDK1 = sdk1.createEncryptionSessionAsync(recipients, useCache = false)
+            val es1SDK1 = sdk1.createEncryptionSessionAsync(recipients, metadata = "test-android-session1", useCache = false)
             assert(es1SDK1.retrievalDetails.flow == EncryptionSessionRetrievalFlow.CREATED)
 
             // Using two-man-rule accesses
@@ -276,6 +283,7 @@ class MainActivity : AppCompatActivity() {
                         RecipientWithRights(user1AccountInfo.userId),
                         RecipientWithRights(user3AccountInfo.userId),
                     ),
+                    metadata = "test-android-session2",
                 )
             es1SDK1.addProxySession(proxySession1.sessionId)
 
@@ -286,6 +294,7 @@ class MainActivity : AppCompatActivity() {
                         RecipientWithRights(user1AccountInfo.userId),
                         RecipientWithRights(user2AccountInfo.userId),
                     ),
+                    metadata = "test-android-session3",
                 )
             es1SDK1.addProxySession(proxySession2.sessionId)
 
@@ -458,11 +467,11 @@ class MainActivity : AppCompatActivity() {
 
             // Create additional data for user1
             val recipientAsync = arrayOf(RecipientWithRights(user1AccountInfo.userId))
-            val es2SDK1 = sdk1.createEncryptionSessionAsync(recipientAsync, true)
+            val es2SDK1 = sdk1.createEncryptionSessionAsync(recipientAsync, metadata = "test-android-session4", useCache = true)
             val anotherMessage = "nobody should read that!"
             val secondEncryptedMessage = es2SDK1.encryptMessageAsync(anotherMessage)
-            val es3SDK1 = sdk1.createEncryptionSessionAsync(recipientAsync, true)
-            val es4SDK1 = sdk1.createEncryptionSessionAsync(recipientAsync, true)
+            val es3SDK1 = sdk1.createEncryptionSessionAsync(recipientAsync, metadata = "test-android-session5", useCache = true)
+            val es4SDK1 = sdk1.createEncryptionSessionAsync(recipientAsync, useCache = true) // test without metadata
 
             // user1 can retrieveMultiple
             val encryptionSessions =

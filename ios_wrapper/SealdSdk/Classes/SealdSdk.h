@@ -21,6 +21,11 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
+ * The version of the Seald SDK.
+ */
+FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
+
+/**
  * This is the main class for the Seald SDK. It represents an instance of the Seald SDK.
  */
 @interface SealdSdk : NSObject {
@@ -469,11 +474,13 @@ NS_ASSUME_NONNULL_BEGIN
  * you must put your own UserId in the `recipients` argument.
  *
  * @param recipients The Seald IDs with the associated rights of users who should be able to retrieve this session.
+ * @param metadata Arbitrary metadata string, not encrypted, for later reference. Max 1024 characters long.
  * @param useCache Whether or not to use the cache (if enabled globally).
  * @param error The error that occurred while creating the session, if any.
  * @return The created SealdEncryptionSession, or null if an error occurred.
  */
 - (SealdEncryptionSession*) createEncryptionSessionWithRecipients:(const NSArray<SealdRecipientWithRights*>*)recipients
+                                                         metadata:(const NSString*_Nullable)metadata
                                                          useCache:(const BOOL)useCache
                                                             error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 
@@ -484,10 +491,12 @@ NS_ASSUME_NONNULL_BEGIN
  * you must put your own UserId in the `recipients` argument.
  *
  * @param recipients The Seald IDs with the associated rights of users who should be able to retrieve this session.
+ * @param metadata Arbitrary metadata string, not encrypted, for later reference. Max 1024 characters long.
  * @param useCache Whether or not to use the cache (if enabled globally).
  * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdEncryptionSession*` containing the created encryption session, and a `NSError*` that indicates if any error occurred.
  */
 - (void) createEncryptionSessionAsyncWithRecipients:(const NSArray<SealdRecipientWithRights*>*)recipients
+                                           metadata:(const NSString*_Nullable)metadata
                                            useCache:(const BOOL)useCache
                                   completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler;
 
@@ -899,7 +908,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @return A SealdGetSigchainResponse instance.
  */
 - (SealdGetSigchainResponse*) getSigchainHashWithUserId:(const NSString*)userId
-                                               position:(const long)position
+                                               position:(const NSInteger)position
                                                   error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error))) __attribute__((swift_async_name("getSigchainHashWithUserId(userId:position:)")));
 /**
  * Get a user's sigchain transaction hash at index `position`.
@@ -909,7 +918,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdGetSigchainResponse` instance containing the hash, and a `NSError*` that indicates if any error occurred.
  */
 - (void) getSigchainHashAsyncWithUserId:(const NSString*)userId
-                               position:(const long)position
+                               position:(const NSInteger)position
                       completionHandler:(void (^)(SealdGetSigchainResponse* response, NSError*_Nullable error))completionHandler __attribute__((swift_async_name("getSigchainHashAsync(withUserId:position:)")));
 
 /**
@@ -923,7 +932,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (SealdCheckSigchainResponse*) checkSigchainHashWithUserId:(const NSString*)userId
                                                expectedHash:(const NSString*)expectedHash
-                                                   position:(const long)position
+                                                   position:(const NSInteger)position
                                                       error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 /**
  * Verify if a given hash is included in the recipient's sigchain. Use the `position` option to check the hash of a specific sigchain transaction.
@@ -935,7 +944,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void) checkSigchainHashAsyncWithUserId:(const NSString*)userId
                              expectedHash:(const NSString*)expectedHash
-                                 position:(const long)position
+                                 position:(const NSInteger)position
                         completionHandler:(void (^)(SealdCheckSigchainResponse* response, NSError*_Nullable error))completionHandler;
 
 /**
