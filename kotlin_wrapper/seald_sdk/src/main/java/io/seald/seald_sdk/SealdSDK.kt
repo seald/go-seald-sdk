@@ -1579,7 +1579,6 @@ class SealdSDK
          * @param groupId The Id of the group for which to delete a TMR key.
          * @param temporaryKeyId Id of the TMR key to delete.
          */
-        @JvmOverloads
         @Throws(SealdException::class)
         suspend fun deleteGroupTMRTemporaryKeyAsync(
             groupId: String,

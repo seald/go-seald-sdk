@@ -4,23 +4,22 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/rs/zerolog"
-	"github.com/seald/go-seald-sdk/anonymous_sdk/api"
 	"github.com/seald/go-seald-sdk/api_helper"
 	"github.com/seald/go-seald-sdk/asymkey"
-	"github.com/seald/go-seald-sdk/encrypt_decrypt_file"
+	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
 	"io"
-	"log"
 	"os"
 	"time"
 )
 
 type AnonymousSDK struct {
 	ApiURL    string
-	ApiClient *api.ApiClient
-	Logger    zerolog.Logger
+	AppId     string
+	ApiClient *ApiClient
+	logger    zerolog.Logger
 }
 
 // AnonymousInitializeOptions is the main options object for initializing the Anonymous SDK instance.
@@ -41,6 +40,8 @@ type AnonymousInitializeOptions struct {
 	LogWriter io.Writer
 }
 
+// CreateAnonymousSDK is the function to use to create an instance of the Anonymous SDK.
+// It receives an AnonymousInitializeOptions object, and returns a State representing the instantiated Anonymous SDK.
 func CreateAnonymousSDK(options *AnonymousInitializeOptions) AnonymousSDK {
 	if options.LogWriter == nil {
 		options.LogWriter = os.Stdout
@@ -59,7 +60,7 @@ func CreateAnonymousSDK(options *AnonymousInitializeOptions) AnonymousSDK {
 	version_ := fmt.Sprintf("sdk-go-anonymous/%s/%s", options.Platform, utils.Version)
 	return AnonymousSDK{
 		ApiURL: options.ApiURL,
-		ApiClient: &api.ApiClient{
+		ApiClient: &ApiClient{
 			ApiClient: *api_helper.NewApiClient(
 				options.ApiURL,
 				[]api_helper.Header{
@@ -69,43 +70,37 @@ func CreateAnonymousSDK(options *AnonymousInitializeOptions) AnonymousSDK {
 				apiLogger,
 			),
 		},
+		logger: instanceLogger,
 	}
 }
 
 type TMRRecipient struct {
-	Type                 string
-	Value                string
+	AuthFactor           *common_models.AuthFactor
 	RawOverEncryptionKey []byte
 }
 
 type Recipients struct {
 	SealdIds      []string
-	TMRRecipients []TMRRecipient
+	TMRRecipients []*TMRRecipient
 }
 
-func (sdk AnonymousSDK) encrypt(encryptionToken string, getKeysToken string, recipients Recipients, clearFile []byte, filename string) (string, []byte, error) {
-	log.Printf("Doing anonymous encrypt %s for %d sealdIds and %d TMR accesses", filename, len(recipients.SealdIds), len(recipients.SealdIds))
-	symKey, err := symmetric_key.Generate()
+func (aSDK *AnonymousSDK) createMessageFromIdsAndToken(encryptionToken string, getKeysToken string, recipients *Recipients, metadata string, messageSymKey *symmetric_key.SymKey) (string, error) {
+	devices, err := aSDK.ApiClient.KeyFindAll(getKeysToken, recipients.SealdIds)
 	if err != nil {
-		return "", nil, tracerr.Wrap(err)
+		return "", tracerr.Wrap(err)
 	}
 
-	devices, err := sdk.ApiClient.KeyFindAll(getKeysToken, recipients.SealdIds)
-	if err != nil {
-		return "", nil, tracerr.Wrap(err)
-	}
-
-	var encryptedMessageKeys []*api.EncryptedMessageKey
+	var encryptedMessageKeys []*EncryptedMessageKey
 	for i := 0; i < len(devices); i++ {
 		deviceKey, err := asymkey.PublicKeyFromB64(devices[i].EncryptionPubKey)
 		if err != nil {
-			return "", nil, tracerr.Wrap(err)
+			return "", tracerr.Wrap(err)
 		}
-		token, err := deviceKey.Encrypt(symKey.Encode())
+		token, err := deviceKey.Encrypt(messageSymKey.Encode())
 		if err != nil {
-			return "", nil, tracerr.Wrap(err)
+			return "", tracerr.Wrap(err)
 		}
-		encryptedMessageKeys = append(encryptedMessageKeys, &api.EncryptedMessageKey{
+		encryptedMessageKeys = append(encryptedMessageKeys, &EncryptedMessageKey{
 			CreatedForKey:     devices[i].Id,
 			CreatedForKeyHash: deviceKey.GetHash(),
 			Token:             base64.StdEncoding.EncodeToString(token),
@@ -113,38 +108,53 @@ func (sdk AnonymousSDK) encrypt(encryptionToken string, getKeysToken string, rec
 	}
 
 	// Handling TMR Accesses
-	var encryptedTMRAccess []*api.TMRMessageKey
+	var encryptedTMRAccess []*TMRMessageKey
 	for i := 0; i < len(recipients.TMRRecipients); i++ {
 		tmrSymKey, err := symmetric_key.Decode(recipients.TMRRecipients[i].RawOverEncryptionKey)
 		if err != nil {
-			return "", nil, tracerr.Wrap(err)
+			return "", tracerr.Wrap(err)
 		}
-		token, err := tmrSymKey.Encrypt(symKey.Encode())
+		token, err := tmrSymKey.Encrypt(messageSymKey.Encode())
 		if err != nil {
-			return "", nil, tracerr.Wrap(err)
+			return "", tracerr.Wrap(err)
 		}
 
-		encryptedTMRAccess = append(encryptedTMRAccess, &api.TMRMessageKey{
-			AuthFactorValue: recipients.TMRRecipients[i].Value,
-			AuthFactorType:  recipients.TMRRecipients[i].Type,
+		encryptedTMRAccess = append(encryptedTMRAccess, &TMRMessageKey{
+			AuthFactorValue: recipients.TMRRecipients[i].AuthFactor.Value,
+			AuthFactorType:  recipients.TMRRecipients[i].AuthFactor.Type,
 			Token:           base64.StdEncoding.EncodeToString(token),
 		})
 	}
 
-	request := &api.MessageCreateRequest{
+	request := &MessageCreateRequest{
 		EncryptedMessageKeys: encryptedMessageKeys,
 		TMRMessageKeys:       encryptedTMRAccess,
-		Metadata:             filename,
-	}
-	msg, err := sdk.ApiClient.MessageCreate(encryptionToken, request)
-	if err != nil {
-		return "", nil, tracerr.Wrap(err)
+		Metadata:             metadata,
 	}
 
-	encrypted, err := encrypt_decrypt_file.EncryptBytes(clearFile, filename, msg.Id, symKey)
+	messageCreated, err := aSDK.ApiClient.MessageCreate(encryptionToken, request)
 	if err != nil {
-		return "", nil, tracerr.Wrap(err)
+		return "", tracerr.Wrap(err)
 	}
 
-	return msg.Id, encrypted, nil
+	return messageCreated.Id, nil
+}
+
+// CreateAnonymousEncryptionSession creates an encryption session, and returns the associated EncryptionSession instance,
+// with which you can then encrypt / decrypt multiple messages.
+func (aSDK *AnonymousSDK) CreateAnonymousEncryptionSession(encryptionToken string, getKeysToken string, recipients *Recipients) (*AnonymousEncryptionSession, error) {
+	// TODO: handle metadata? Also missing for classic ES.
+	sessionSymKey, err := symmetric_key.Generate()
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	messageId, err := aSDK.createMessageFromIdsAndToken(encryptionToken, getKeysToken, recipients, "", sessionSymKey)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	aSDK.logger.Trace().Str("messageId", messageId).Msg("Response from CreateEncryptionSession")
+
+	res := AnonymousEncryptionSession{SessionId: messageId, Key: sessionSymKey, aSDK: aSDK}
+	return &res, nil
 }

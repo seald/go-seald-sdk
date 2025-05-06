@@ -1,4 +1,4 @@
-package api
+package anonymous_sdk
 
 import (
 	"encoding/json"
@@ -158,7 +158,7 @@ type TMRMessageKey struct {
 type MessageCreateRequest struct {
 	EncryptedMessageKeys []*EncryptedMessageKey `json:"encrypted_message_keys"`
 	TMRMessageKeys       []*TMRMessageKey       `json:"tmr_message_keys,omitempty"`
-	Metadata             string                 `json:"metadata"`
+	Metadata             string                 `json:"metadata,omitempty"`
 }
 
 func (apiClient ApiClient) MessageCreate(token string, request *MessageCreateRequest) (*MessageCreateResponse, error) {
@@ -179,27 +179,6 @@ func (apiClient ApiClient) MessageCreate(token string, request *MessageCreateReq
 	}
 
 	var result MessageCreateResponse
-	err = json.Unmarshal(responseBody, &result)
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-	return &result, nil
-}
-
-func (apiClient ApiClient) TestGetAnonymousSDKUser(DebugApiSecret string) (*TestGetAnonymousSDKUserResponse, error) {
-	responseBody, err := apiClient.MakeRequest(
-		"GET",
-		"/devapi/get_anonymous_sdk_user",
-		nil,
-		[]api_helper.Header{{Name: "X-APIVIEW-SECRET", Value: DebugApiSecret}},
-		200,
-	)
-
-	if err != nil {
-		return nil, tracerr.Wrap(err)
-	}
-
-	var result TestGetAnonymousSDKUserResponse
 	err = json.Unmarshal(responseBody, &result)
 	if err != nil {
 		return nil, tracerr.Wrap(err)

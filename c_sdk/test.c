@@ -286,7 +286,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     // either on the server and retrieved from your backend at login,
     // or on the client-side directly and stored in the system's keychain.
     int databaseEncryptionKeyLen = 64;
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
     unsigned char* databaseEncryptionKey = randomBuffer(databaseEncryptionKeyLen);
 
     // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
@@ -472,7 +472,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     char* authFactorValue = malloc(strlen("af_val-") + strlen(afRandString) + strlen("@test.com") + 1);
     sprintf(authFactorValue, "af_val-%s@test.com", afRandString);
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
     int overEncryptionKeyLen = 64;
     unsigned char* overEncryptionKeyBytes = randomBuffer(overEncryptionKeyLen);
 
@@ -1171,7 +1171,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdStringArray_Free(membersGTMR);
     SealdStringArray_Free(adminsGTMR);
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
     int gTMRRawOverEncryptionKeyLen = 64;
     unsigned char* gTMRRawOverEncryptionKeyBytes = randomBuffer(gTMRRawOverEncryptionKeyLen);
 

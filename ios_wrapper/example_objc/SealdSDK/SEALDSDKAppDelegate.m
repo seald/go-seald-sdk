@@ -59,7 +59,7 @@ BOOL testSealdSDK(void)
         // In an actual app, it should be generated at signup,
         // either on the server and retrieved from your backend at login,
         // or on the client-side directly and stored in the system's keychain.
-        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         NSData* databaseEncryptionKey = randomData(64);
 
         // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
@@ -146,7 +146,7 @@ BOOL testSealdSDK(void)
         NSString* authFactorValue = [NSString stringWithFormat:@"tmr-em-objc-%@@test.com", rand];
         SealdTmrAuthFactor* tmrAuthFactor = [[SealdTmrAuthFactor alloc] initWithValue:authFactorValue type:@"EM"];
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         NSData* overEncryptionKey = randomData(64);
 
         SealdTmrRecipientWithRights* tmrRecipient = [[SealdTmrRecipientWithRights alloc] initWithAuthFactor:tmrAuthFactor overEncryptionKey:overEncryptionKey];
@@ -552,7 +552,7 @@ BOOL testSealdSDK(void)
         NSString* groupTMRId = [sdk1 createGroupWithGroupName:@"group-tmr" members:membersGTMR admins:adminsGTMR privateKeys:nil error:&error];
         NSCAssert(error == nil, error.localizedDescription);
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         NSData* gTMRRawOverEncryptionKey = randomData(64);
 
         // We defined a two man rule recipient earlier. We will use it again.

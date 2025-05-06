@@ -28,22 +28,11 @@ describe('anonymous', function () {
       headers: { 'X-APIVIEW-SECRET': credentials.debug_api_secret }
     }).then(r => r.json())
 
-    const encryptionKeyString = await fs.readFile('./test_data/sdk_user_privkey.pem', { encoding: 'utf8' })
-    const encryptionKey = new PrivateKey(convertPEMToDER(encryptionKeyString, 'RSA PRIVATE KEY'))
-    let signingKeyString = await fs.readFile('./test_data/sdk_user_signing_privkey.pem', { encoding: 'utf8' })
-    const signingKey = new PrivateKey(convertPEMToDER(signingKeyString, 'RSA PRIVATE KEY'))
-
-    const backupKey = BSONSerialize({
-      userId: b64UUID(userId),
-      keyId: b64UUID(deviceId),
-      encryptionKey: Buffer.from(encryptionKey.toB64(), 'base64').toString('binary'),
-      signingKey: Buffer.from(signingKey.toB64(), 'base64').toString('binary'),
-      serializedOldEncryptionKeys: [],
-      serializedOldSigningKeys: []
-    })
+    // Import identity
+    const identity = await fs.readFile('./test_artifacts/from_go/anonymous/exported_identity')
     const sdk = SealdSDK({ appId: credentials.app_id, apiURL: credentials.api_url })
     sdk.setLogLevel('debug')
-    await sdk.importIdentity(backupKey)
+    const imported = await sdk.importIdentity(identity)
 
     const encryptedFile = await fs.readFile('./test_artifacts/from_go/anonymous/encrypted_file.seald', { encoding: null })
     const messageId = await fs.readFile('./test_artifacts/from_go/anonymous/message_id', { encoding: 'utf8' })

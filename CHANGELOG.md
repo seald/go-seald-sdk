@@ -1,7 +1,13 @@
+# UNRELEASED
+- @go: \[**breaking change**\] Remove anonymous SDK `Encrypt` function.
+- @go: \[new feature\] Anonymous SDK now can create `AnonymousEncryptionSession`. This session exposes six functions: `EncryptMessage`, `DecryptMessage`, `EncryptFile`, `DecryptFile`, `EncryptFileFromPath`, `DecryptFileFromPath`.
+- @android: \[new feature\] Implement Anonymous SDK.
+
+
 # 0.9.0 : 2025/02/05
 - @all: \[enhancement\] Encryption / Decryption from file paths now streams the data in chunks, to avoid having to load the entire file in-memory, and for better performance.
 - @go: \[**breaking change**\] Change some internal function names and signatures, mainly in `encrypt_decrypt_file`, and change some errors.
-- @go: \[**breaking change**\] Second argument of `createEncryptionSession` is now of type `CreateEncryptionSessionOptions`, and includes `metadata` argument to be able to add an arbitrary metadata string .
+- @go: \[**breaking change**\] Second argument of `createEncryptionSession` is now of type `CreateEncryptionSessionOptions`, and includes `metadata` argument to be able to add an arbitrary metadata string.
 - @android: \[new feature\] Add optional `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.
 - @ios: \[**breaking change**\] Add `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.
 - @c: \[**breaking change**\] Add `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.

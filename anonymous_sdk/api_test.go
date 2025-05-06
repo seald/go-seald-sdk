@@ -1,4 +1,4 @@
-package api
+package anonymous_sdk
 
 import (
 	"github.com/rs/zerolog"
@@ -19,37 +19,39 @@ func TestAnonymousApiClient(t *testing.T) {
 	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli}).With().Timestamp().Str("instance", "testAnonymousAPI").Logger()
 	apiClient := ApiClient{ApiClient: *api_helper.NewApiClient(credentials.ApiUrl, nil, logger)}
 
-	anonymousSDKUser, err := apiClient.TestGetAnonymousSDKUser(credentials.DebugApiSecret)
+	sdkFullUser, err := createTestAccount()
 	require.NoError(t, err)
+	fullUserId := (sdkFullUser.GetCurrentAccountInfo()).UserId
+	fullUserDeviceId := (sdkFullUser.GetCurrentAccountInfo()).DeviceId
 
 	t.Run("KeyFind", func(t *testing.T) {
 		signedToken, err := test_utils.GetJWT(test_utils.Claims{
-			Recipients: []string{anonymousSDKUser.BearduserId},
+			Recipients: []string{fullUserId},
 			Scopes:     []test_utils.JWTPermissionScopes{test_utils.PermissionAnonymousFindKeys},
 		})
 		require.NoError(t, err)
 
-		res, err := apiClient.KeyFind(signedToken, []string{anonymousSDKUser.BearduserId}, 1)
+		res, err := apiClient.KeyFind(signedToken, []string{fullUserId}, 1)
 		require.NoError(t, err)
 
-		resAll, err := apiClient.KeyFindAll(signedToken, []string{anonymousSDKUser.BearduserId})
+		resAll, err := apiClient.KeyFindAll(signedToken, []string{fullUserId})
 		require.NoError(t, err)
 
 		assert.Equal(t, res.Results, resAll)
-		assert.Equal(t, anonymousSDKUser.DeviceId, resAll[0].Id)
+		assert.Equal(t, fullUserDeviceId, resAll[0].Id)
 	})
 
 	t.Run("SigchainFind", func(t *testing.T) {
 		signedToken, err := test_utils.GetJWT(test_utils.Claims{
-			Recipients: []string{anonymousSDKUser.BearduserId},
+			Recipients: []string{fullUserId},
 			Scopes:     []test_utils.JWTPermissionScopes{test_utils.PermissionAnonymousFindSigchain},
 		})
 		require.NoError(t, err)
 
-		res, err := apiClient.SigchainFind(signedToken, anonymousSDKUser.BearduserId, 1)
+		res, err := apiClient.SigchainFind(signedToken, fullUserId, 1)
 		require.NoError(t, err)
 
-		resAll, err := apiClient.SigchainFindAll(signedToken, anonymousSDKUser.BearduserId)
+		resAll, err := apiClient.SigchainFindAll(signedToken, fullUserId)
 		require.NoError(t, err)
 
 		assert.Equal(t, res.Results, resAll)
@@ -57,13 +59,13 @@ func TestAnonymousApiClient(t *testing.T) {
 
 	t.Run("MessageCreate", func(t *testing.T) {
 		signedToken, err := test_utils.GetJWT(test_utils.Claims{
-			Recipients: []string{anonymousSDKUser.BearduserId},
-			Owner:      anonymousSDKUser.BearduserId,
+			Recipients: []string{fullUserId},
+			Owner:      fullUserId,
 			Scopes:     []test_utils.JWTPermissionScopes{test_utils.PermissionAnonymousFindKeys, test_utils.PermissionAnonymousCreateMessage},
 		})
 		require.NoError(t, err)
 
-		devices, err := apiClient.KeyFindAll(signedToken, []string{anonymousSDKUser.BearduserId})
+		devices, err := apiClient.KeyFindAll(signedToken, []string{fullUserId})
 		require.NoError(t, err)
 		assert.Equal(t, 1, len(devices))
 
@@ -77,14 +79,14 @@ func TestAnonymousApiClient(t *testing.T) {
 
 	t.Run("MessageCreate with TMR access", func(t *testing.T) {
 		signedToken, err := test_utils.GetJWT(test_utils.Claims{
-			Recipients:    []string{anonymousSDKUser.BearduserId},
+			Recipients:    []string{fullUserId},
 			TmrRecipients: []test_utils.TMRRecipient{{Value: "email@domain.tld", Type: "EM"}},
-			Owner:         anonymousSDKUser.BearduserId,
+			Owner:         fullUserId,
 			Scopes:        []test_utils.JWTPermissionScopes{test_utils.PermissionAnonymousFindKeys, test_utils.PermissionAnonymousCreateMessage},
 		})
 		require.NoError(t, err)
 
-		devices, err := apiClient.KeyFindAll(signedToken, []string{anonymousSDKUser.BearduserId})
+		devices, err := apiClient.KeyFindAll(signedToken, []string{fullUserId})
 		require.NoError(t, err)
 		assert.Equal(t, 1, len(devices))
 

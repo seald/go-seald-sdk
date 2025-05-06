@@ -959,6 +959,15 @@ func Test_EncryptionSession(t *testing.T) {
 		recipientDevice1 := &RecipientWithRights{Id: currentDevice1.UserId, Rights: allRights}
 		recipientDevice2 := &RecipientWithRights{Id: currentDevice2.UserId, Rights: allRights}
 		recipientDevice3 := &RecipientWithRights{Id: currentDevice3.UserId, Rights: allRights}
+		preGeneratedKeys, err := getPreGeneratedKeys()
+		require.NoError(t, err)
+		groupId, err := account1.CreateGroup(
+			"Test Group - EncryptionSession - AddRecipients",
+			[]string{currentDevice1.UserId, currentDevice2.UserId},
+			[]string{currentDevice1.UserId, currentDevice2.UserId},
+			preGeneratedKeys,
+		)
+		require.NoError(t, err)
 
 		t.Parallel()
 		t.Run("AddRecipients allows user to retrieve session", func(t *testing.T) {
@@ -1008,6 +1017,26 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 			assert.Equal(t, map[string]AddKeysResponse{currentDevice2.DeviceId: {StatusCode: 200}}, resp.Status)
+		})
+
+		t.Run("AddRecipients to a session we just created without being a direct recipient", func(t *testing.T) {
+			// Create a session to which the user only has access through group
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: groupId, Rights: allRights}},
+				CreateEncryptionSessionOptions{UseCache: true},
+			)
+			require.NoError(t, err)
+
+			// Session retrieval flow is "Created"
+			assert.Equal(t, EncryptionSessionRetrievalCreated, session.RetrievalDetails.Flow)
+
+			// Calling AddRecipients on this session
+			// This can cause a problem because the session is not retrieved through a group (it was created),
+			// but we only have access through the group
+			resp, err := session.AddRecipients([]*RecipientWithRights{recipientDevice3})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, map[string]AddKeysResponse{currentDevice3.DeviceId: {StatusCode: 200}}, resp.Status)
 		})
 	})
 
