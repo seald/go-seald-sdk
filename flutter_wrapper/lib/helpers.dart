@@ -443,8 +443,12 @@ enum SealdEncryptionSessionRetrievalFlow {
   viaGroup, // 2
   /// The session was retrieved through a proxy session.
   viaProxy, // 3
+  /// The session was retrieved with a sealdMessage that include the encrypted SymKey. Should never happen.
+  local, // 4
+  /// The session was retrieved through a SymEncKey.
+  viaSymEncKey, // 5
   /// The session was retrieved through a TMR access.
-  viaTmrAccess, // 4
+  viaTmrAccess, // 6
 }
 
 /// SealdEncryptionSessionRetrievalDetails represents the details of how an Encryption Session was retrieved.

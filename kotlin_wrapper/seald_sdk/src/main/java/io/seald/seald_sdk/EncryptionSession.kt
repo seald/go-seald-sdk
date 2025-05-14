@@ -401,4 +401,22 @@ class EncryptionSession(
         withContext(Dispatchers.Default) {
             return@withContext addMultipleTmrAccesses(recipients)
         }
+
+    /**
+     * Serialize the EncryptionSession to a string.
+     * This is for advanced use.
+     * May be used to keep sessions in a cache.
+     * WARNING: a user could use this cache to work around being revoked. Use with caution.
+     * WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+     * to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+     *
+     * @return Returns the serialized encryption session as a String.
+     * @throws SealdException
+     */
+    @Throws(SealdException::class)
+    fun serialize(): String {
+        convertExceptions {
+            return es.serialize()
+        }
+    }
 }

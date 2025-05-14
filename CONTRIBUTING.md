@@ -8,11 +8,11 @@ You can find a `test_credentials.template.json` that shows the expected format.
 
 # Custom Go toolchain
 
-To build on iOS, in order to avoid random crashes of the SDK (`unaligned arguments` errors), you need to build a custom
-Go toolchain, which includes the patch https://go-review.googlesource.com/c/go/+/408395.
+To build for mobile (Android and iOS), in order to avoid random crashes of the SDK (`unaligned arguments` errors),
+you need to build a custom Go toolchain, which includes the patch https://go-review.googlesource.com/c/go/+/408395.
 
 To build this custom toolchain, you must:
-- Pull the golang project ( https://github.com/golang/go/ ) and checkout the correct version (at the time of writing, the `go1.21.5` tag)
+- Pull the golang project ( https://github.com/golang/go/ ) and checkout the correct version (at the time of writing, the `go1.24.3` tag)
 - Modify 2 files:
     - `src/cmd/cgo/out.go` with the same change as in the PR https://go-review.googlesource.com/c/go/+/408395 : adding `__attribute__((aligned(8)))` (warning, the line is not exactly the same as in the PR, it is ~10 lines further)
     - `src/cmd/go/internal/version/version.go` to add `custom-seald-build` on line 81 at the end of the template string (this adds it in the output of `go version`, which is checked in CI to verify that we are using a custom toolchain)

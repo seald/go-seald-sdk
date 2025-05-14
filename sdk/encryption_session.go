@@ -10,6 +10,7 @@ import (
 	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -47,13 +48,13 @@ var (
 
 // The EncryptionSession struct represents an encryption session, with which you can then encrypt / decrypt multiple messages.
 type EncryptionSession struct {
-	state *State
+	state *State `bson:"-"`
 	// Id is the ID of this EncryptionSession.
-	Id string
+	Id string `bson:"id"`
 	// Key represents the SymKey of this EncryptionSession. For advanced use only.
-	Key *symmetric_key.SymKey
+	Key *symmetric_key.SymKey `bson:"key"`
 	// RetrievalDetails stores details about how this session was retrieved: through a group, a proxy, or directly
-	RetrievalDetails EncryptionSessionRetrievalDetails
+	RetrievalDetails EncryptionSessionRetrievalDetails `bson:"retrievalDetails"`
 }
 
 type encryptMessageKeyOutput struct {
@@ -938,4 +939,34 @@ func (encryptionSession *EncryptionSession) AddMultipleTmrAccesses(recipients []
 	}
 
 	return response, nil
+}
+
+// Serialize serializes the EncryptionSession to a string.
+// This is for advanced use.
+// May be used to keep sessions in a cache.
+// WARNING: a user could use this cache to work around being revoked. Use with caution.
+// WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+// to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+func (encryptionSession *EncryptionSession) Serialize() (string, error) {
+	res, err := bson.Marshal(encryptionSession)
+	if err != nil {
+		return "", tracerr.Wrap(err)
+	}
+	return base64.StdEncoding.EncodeToString(res), nil
+}
+
+// DeserializeEncryptionSession deserializes a serialized session.
+// For advanced use.
+func (state *State) DeserializeEncryptionSession(str string) (*EncryptionSession, error) {
+	bsoned, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var session EncryptionSession
+	err = bson.Unmarshal(bsoned, &session)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	session.state = state
+	return &session, nil
 }

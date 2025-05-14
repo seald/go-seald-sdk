@@ -27,6 +27,13 @@ describe('encryption session', function () {
     const sessionId = await fs.readFile('./test_artifacts/from_go/encryption_session/session_id', { encoding: 'utf8' })
     const session = await sdk.retrieveEncryptionSession({ sessionId })
 
+    // can deserialize session
+    const serializedSession = await fs.readFile('./test_artifacts/from_go/encryption_session/serialized_session', { encoding: 'utf8' })
+    const deserializedSession = sdk.utils.deserializeSession(serializedSession)
+    assert.equal(deserializedSession.sessionId, session.sessionId)
+    assert.ok(deserializedSession._sessionSymKey.key.equals(session._sessionSymKey.key))
+    assert.equal(deserializedSession.retrievalDetails.flow, EncryptionSessionRetrievalFlow.created)
+
     // session can decrypt message
     const encryptedMessage = await fs.readFile('./test_artifacts/from_go/encryption_session/encrypted_message', { encoding: 'utf8' })
     const decryptedMessage = await session.decryptMessage(encryptedMessage)

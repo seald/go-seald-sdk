@@ -167,7 +167,7 @@ Future<bool> testSealdSdk() async {
     // In an actual app, it should be generated at signup,
     // either on the server and retrieved from your backend at login,
     // or on the client-side directly and stored in the system's keychain.
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
     Uint8List databaseEncryptionKey = randomBuffer(64);
 
     // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
@@ -287,7 +287,7 @@ Future<bool> testSealdSdk() async {
     String authFactorType = "EM";
     String authFactorValue = "tmr-em-flutter-${randomString(5)}@test.com";
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
     Uint8List overEncryptionKey = randomBuffer(64);
 
     // Add the TMR access
@@ -407,6 +407,16 @@ Future<bool> testSealdSdk() async {
     final SealdClearFile decryptedFileFromBytes =
         await es1SDK1.decryptFileAsync(encryptedFileFromBytes);
     assertListEquals(clearFileBytes, decryptedFileFromBytes.fileContent);
+
+    // Serialize / Deserialize session
+    final String serializedSession = es1SDK1.serialize(); // serialize
+    final SealdEncryptionSession deserializedSession =
+        sdk1.deserializeEncryptionSession(serializedSession); // deserialize
+    assertEqual(deserializedSession.id, es1SDK1.id); // sessionId is as expected
+    final String decryptedMessageFromDeserialized =
+        deserializedSession.decryptMessage(encryptedMessage); // test decryption
+    assertEqual(decryptedMessageFromDeserialized,
+        initialString); // decrypted message is as expected
 
     // Create a test file on disk that we will encrypt/decrypt
     final Directory directory =
@@ -790,7 +800,7 @@ Future<bool> testSealdSdk() async {
         members: [user1AccountInfo.userId],
         admins: [user1AccountInfo.userId]);
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
     Uint8List gTMRRawOverEncryptionKey = randomBuffer(64);
 
     // We defined a two man rule recipient earlier. We will use it again.

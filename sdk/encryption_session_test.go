@@ -359,6 +359,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.ErrorContains(t, err, "illegal base64 data at input byte 0")
 		})
 	})
+
 	t.Run("EncryptionSession — RetrieveEncryptionSession from sealdMessage", func(t *testing.T) {
 		account, err := createTestAccount("sdk_session_retrieve_message")
 		require.NoError(t, err)
@@ -959,6 +960,15 @@ func Test_EncryptionSession(t *testing.T) {
 		recipientDevice1 := &RecipientWithRights{Id: currentDevice1.UserId, Rights: allRights}
 		recipientDevice2 := &RecipientWithRights{Id: currentDevice2.UserId, Rights: allRights}
 		recipientDevice3 := &RecipientWithRights{Id: currentDevice3.UserId, Rights: allRights}
+		preGeneratedKeys, err := getPreGeneratedKeys()
+		require.NoError(t, err)
+		groupId, err := account1.CreateGroup(
+			"Test Group - EncryptionSession - AddRecipients",
+			[]string{currentDevice1.UserId, currentDevice2.UserId},
+			[]string{currentDevice1.UserId, currentDevice2.UserId},
+			preGeneratedKeys,
+		)
+		require.NoError(t, err)
 
 		t.Parallel()
 		t.Run("AddRecipients allows user to retrieve session", func(t *testing.T) {
@@ -1008,6 +1018,26 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 			assert.Equal(t, map[string]AddKeysResponse{currentDevice2.DeviceId: {StatusCode: 200}}, resp.Status)
+		})
+
+		t.Run("AddRecipients to a session we just created without being a direct recipient", func(t *testing.T) {
+			// Create a session to which the user only has access through group
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: groupId, Rights: allRights}},
+				CreateEncryptionSessionOptions{UseCache: true},
+			)
+			require.NoError(t, err)
+
+			// Session retrieval flow is "Created"
+			assert.Equal(t, EncryptionSessionRetrievalCreated, session.RetrievalDetails.Flow)
+
+			// Calling AddRecipients on this session
+			// This can cause a problem because the session is not retrieved through a group (it was created),
+			// but we only have access through the group
+			resp, err := session.AddRecipients([]*RecipientWithRights{recipientDevice3})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, map[string]AddKeysResponse{currentDevice3.DeviceId: {StatusCode: 200}}, resp.Status)
 		})
 	})
 
@@ -2004,6 +2034,29 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 	})
 
+	t.Run("Serialize / Deserialize", func(t *testing.T) {
+		account, err := createTestAccount("sdk_session_serialize_deserialize")
+		require.NoError(t, err)
+
+		currentDevice := account.storage.currentDevice.get()
+		recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
+		session, err := account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
+		require.NoError(t, err)
+
+		serializedSession, err := session.Serialize()
+		require.NoError(t, err)
+
+		deserializedSession, err := account.DeserializeEncryptionSession(serializedSession)
+		require.NoError(t, err)
+
+		assert.Equal(t, session.Id, deserializedSession.Id)
+		assert.Equal(t, session.Key.Encode(), deserializedSession.Key.Encode())
+		assert.Equal(t, session.RetrievalDetails, deserializedSession.RetrievalDetails)
+	})
+
 	t.Run("Compatible with JS", func(t *testing.T) {
 		t.Parallel()
 		t.Run("Import from JS", func(t *testing.T) {
@@ -2024,6 +2077,15 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 			session, err := account.RetrieveEncryptionSession(string(sessionId), false, false, false)
 			require.NoError(t, err)
+
+			// can deserialize session
+			serializedSession, err := os.ReadFile(filepath.Join(testArtifactsDir, "serialized_session"))
+			require.NoError(t, err)
+			deserializedSession, err := account.DeserializeEncryptionSession(string(serializedSession))
+			require.NoError(t, err)
+			assert.Equal(t, session.Id, deserializedSession.Id)
+			assert.Equal(t, session.Key.Encode(), deserializedSession.Key.Encode())
+			assert.Equal(t, EncryptionSessionRetrievalCreated, deserializedSession.RetrievalDetails.Flow)
 
 			// session can decrypt message
 			encryptedMessage, err := os.ReadFile(filepath.Join(testArtifactsDir, "encrypted_message"))
@@ -2116,13 +2178,17 @@ func Test_EncryptionSession(t *testing.T) {
 			currentDevice := account.storage.currentDevice.get()
 			recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
 
-			// create a session, with a message and a file
+			// create a session, and serialize it, with a message and a file
 			session, err := account.CreateEncryptionSession(
 				[]*RecipientWithRights{recipientCurrentDevice},
 				CreateEncryptionSessionOptions{UseCache: false},
 			)
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(testArtifactsDir, "session_id"), []byte(session.Id), 0o700)
+			require.NoError(t, err)
+			serializedSession, err := session.Serialize()
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "serialized_session"), []byte(serializedSession), 0o700)
 			require.NoError(t, err)
 			encryptedMessage, err := session.EncryptMessage("message content")
 			require.NoError(t, err)

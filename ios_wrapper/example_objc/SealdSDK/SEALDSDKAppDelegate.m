@@ -59,7 +59,7 @@ BOOL testSealdSDK(void)
         // In an actual app, it should be generated at signup,
         // either on the server and retrieved from your backend at login,
         // or on the client-side directly and stored in the system's keychain.
-        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         NSData* databaseEncryptionKey = randomData(64);
 
         // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
@@ -146,7 +146,7 @@ BOOL testSealdSDK(void)
         NSString* authFactorValue = [NSString stringWithFormat:@"tmr-em-objc-%@@test.com", rand];
         SealdTmrAuthFactor* tmrAuthFactor = [[SealdTmrAuthFactor alloc] initWithValue:authFactorValue type:@"EM"];
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         NSData* overEncryptionKey = randomData(64);
 
         SealdTmrRecipientWithRights* tmrRecipient = [[SealdTmrRecipientWithRights alloc] initWithAuthFactor:tmrAuthFactor overEncryptionKey:overEncryptionKey];
@@ -244,6 +244,16 @@ BOOL testSealdSDK(void)
         NSString* decryptedMessageFromMess = [es1SDK1RetrieveFromMess decryptMessage:encryptedMessage error:&error];
         NSCAssert(error == nil, error.localizedDescription);
         NSCAssert([decryptedMessageFromMess isEqualToString:initialString], @"decryptedMessageFromMess incorrect");
+
+        // Serialize / Deserialize session
+        NSString* serializedSession = [es1SDK1 serializeWithError:&error]; // serialize
+        NSCAssert(error == nil, error.localizedDescription);
+        SealdEncryptionSession* deserializedSession = [sdk1 deserializeEncryptionSession:serializedSession error:&error]; // deserialize
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([deserializedSession.sessionId isEqualToString:es1SDK1.sessionId], @"bad session id"); // sessionId is as expected
+        NSString* decryptedMessageFromDeserialized = [deserializedSession decryptMessage:encryptedMessage error:&error]; // test decryption
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([decryptedMessageFromDeserialized isEqualToString:initialString], @"decryptedMessageFromDeserialized incorrect"); // decrypted message is as expected
 
         // Create a test file on disk that we will encrypt/decrypt
         NSString* filename = @"testfile.txt";
@@ -552,7 +562,7 @@ BOOL testSealdSDK(void)
         NSString* groupTMRId = [sdk1 createGroupWithGroupName:@"group-tmr" members:membersGTMR admins:adminsGTMR privateKeys:nil error:&error];
         NSCAssert(error == nil, error.localizedDescription);
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         NSData* gTMRRawOverEncryptionKey = randomData(64);
 
         // We defined a two man rule recipient earlier. We will use it again.

@@ -10,13 +10,13 @@
     "after_go": "mocha tests_js/after_go/*.spec.js"
   },
   "dependencies": {
-    "@seald-io/sdk": "0.31.0-beta.5",
-    "@seald-io/sdk-plugin-ssks-2mr": "0.31.0-beta.5",
-    "@seald-io/sdk-plugin-ssks-password": "0.31.0-beta.5",
-    "bson": "^6.7.0",
-    "jose": "^5.3.0",
-    "mocha": "^10.4.0",
+    "@seald-io/sdk": "0.33.0-beta.3",
+    "@seald-io/sdk-plugin-ssks-2mr": "0.33.0-beta.3",
+    "@seald-io/sdk-plugin-ssks-password": "0.33.0-beta.3",
+    "bson": "^6.10.3",
+    "jose": "^5.10.0",
+    "mocha": "^11.2.2",
     "node-fetch": "^2.7.0",
-    "sscrypto": "^1.1.1"
+    "sscrypto": "^1.3.0"
   }
 }

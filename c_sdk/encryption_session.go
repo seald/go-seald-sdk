@@ -208,3 +208,15 @@ func SealdEncryptionSession_AddMultipleTmrAccesses(es *C.SealdEncryptionSession,
 	*result = actionStatusArrayFromAddTmrAccess(resp)
 	return C.int(0)
 }
+
+//export SealdEncryptionSession_Serialize
+func SealdEncryptionSession_Serialize(es *C.SealdEncryptionSession, result **C.char, err_ **C.SealdError) C.int {
+	res, err := encryptionSessionToGo(es).Serialize()
+	if err != nil {
+		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
+		return C.int(-1)
+	}
+
+	*result = C.CString(res)
+	return C.int(0)
+}

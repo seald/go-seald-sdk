@@ -760,8 +760,12 @@ typedef enum {
     SealdEncryptionSessionRetrievalViaGroup, // 2
     /** The session was retrieved through a proxy session. */
     SealdEncryptionSessionRetrievalViaProxy, // 3
+    /** The session was retrieved with a sealdMessage that include the encrypted SymKey. Should never happen. */
+    SealdEncryptionSessionRetrievalLocal, // 4
+    /** The session was retrieved through a SymEncKey. */
+    SealdEncryptionSessionRetrievalViaSymEncKey, // 5
     /** The session was retrieved through a TMR access. */
-    SealdEncryptionSessionRetrievalViaTmrAccess // 4
+    SealdEncryptionSessionRetrievalViaTmrAccess // 6
 } SealdEncryptionSessionRetrievalFlow;
 
 
@@ -1022,6 +1026,21 @@ int SealdEncryptionSession_AddTmrAccess(SealdEncryptionSession* es, char* authFa
  * @return
  */
 int SealdEncryptionSession_AddMultipleTmrAccesses(SealdEncryptionSession* es, SealdTmrRecipientsWithRightsArray* recipients, SealdActionStatusArray** result, SealdError** error);
+
+/**
+ * Serialize the EncryptionSession to a string.
+ * This is for advanced use.
+ * May be used to keep sessions in a cache.
+ * WARNING: a user could use this cache to work around being revoked. Use with caution.
+ * WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+ * to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+ *
+ * @param es The SealdEncryptionSession instance.
+ * @param result A pointer to which to write the resulting serialized encryption session.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdEncryptionSession_Serialize(SealdEncryptionSession* es, char** result, SealdError** error);
 
 
 // Helper SealdEncryptionSessionArray
@@ -1593,6 +1612,18 @@ int SealdSdk_RetrieveEncryptionSessionByTmr(SealdSdk* sealdSdk, char* tmrJWT, ch
  * @return Error code: `-1` if an error happened, `0` for success.
  */
 int SealdSdk_RetrieveMultipleEncryptionSessions(SealdSdk* sealdSdk, SealdStringArray* sessionIds, int useCache, int lookupProxyKey, int lookupGroupKey, SealdEncryptionSessionArray** result, SealdError** error);
+
+/**
+ * Deserialize a serialized session.
+ * For advanced use.
+ *
+ * @param sealdSdk The SealdSdk instance.
+ * @param serializedSession The serialized encryption session to deserialize.
+ * @param result A pointer to which to write the resulting deserialized encryption session.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdSdk_DeserializeEncryptionSession(SealdSdk* sealdSdk, char* serializedSession, SealdEncryptionSession** result, SealdError** error);
 
 /* Connectors */
 

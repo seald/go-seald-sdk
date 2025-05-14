@@ -42,7 +42,7 @@ func testSealdSDK() async -> Bool {
         // In an actual app, it should be generated at signup,
         // either on the server and retrieved from your backend at login,
         // or on the client-side directly and stored in the system's keychain.
-        // WARNING: This should be a cryptographically random buffer of 64 bytes.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         // This random generation is NOT good enough.
         let databaseEncryptionKey = randomData(length: 64)
 
@@ -180,7 +180,7 @@ func testSealdSDK() async -> Bool {
         let userEM = "tmr-em-swift-\(rand)@test.com"
         let tmrAuthFactor = SealdTmrAuthFactor(value: userEM, type: "EM")
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         // This random generation is NOT good enough.
         let overEncryptionKey = randomData(length: 64)
 
@@ -295,6 +295,15 @@ func testSealdSDK() async -> Bool {
         assert(es1SDK1RetrieveFromMess.retrievalDetails.flow == SealdEncryptionSessionRetrievalFlow.direct)
         let decryptedMessageFromMess = try await es1SDK1RetrieveFromMess.decryptMessageAsync(encryptedMessage)
         assert(initialString == decryptedMessageFromMess)
+
+        // Serialize / Deserialize session
+        let serializedSession = try es1SDK1.serialize() // serialize
+        let deserializedSession = try sdk1.deserializeEncryptionSession(serializedSession) // deserialize
+        assert(deserializedSession.sessionId == es1SDK1.sessionId) // sessionId is as expected
+        let decryptedMessageFromDeserialized = try await deserializedSession.decryptMessageAsync(
+            encryptedMessage
+        ) // test decryption
+        assert(decryptedMessageFromDeserialized == initialString) // decrypted message is as expected
 
         // Create a test file on disk that we will encrypt/decrypt
         let filename = "testfile.txt"
@@ -681,7 +690,7 @@ func testSealdSDK() async -> Bool {
             admins: groupTMRAdmins,
             privateKeys: nil)
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         // This random generation is NOT good enough.
         let gTMRRawOverEncryptionKey = randomData(length: 64)
 

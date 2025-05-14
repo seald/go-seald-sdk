@@ -507,8 +507,14 @@ enum class EncryptionSessionRetrievalFlow(
     /** The session was retrieved through a proxy session. */
     VIA_PROXY(3),
 
+    /** The session was retrieved with a sealdMessage that include the encrypted SymKey. Should never happen. */
+    LOCAL(4),
+
+    /** The session was retrieved through a SymEncKey. */
+    VIA_SYM_ENC_KEY(5),
+
     /** The session was retrieved through a TMR access. */
-    VIA_TMR_ACCESS(4),
+    VIA_TMR_ACCESS(6),
     ;
 
     internal companion object {

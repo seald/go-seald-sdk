@@ -706,6 +706,17 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
                                   lookupGroupKey:(const BOOL)lookupGroupKey
                                completionHandler:(void (^)(NSArray<SealdEncryptionSession*>* encryptionSessions, NSError*_Nullable error))completionHandler;
 
+/**
+ * Deserialize a serialized session.
+ * For advanced use.
+ *
+ * @param serializedSession The serialized encryption session to deserialize.
+ * @param error The error that occurred while retrieving the session, if any.
+ * @return The deserialized SealdEncryptionSession, or null if an error occurred.
+ */
+- (SealdEncryptionSession*) deserializeEncryptionSession:(const NSString*_Nonnull)serializedSession
+                                                   error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
 // Connectors
 /**
  * Get all the info for the given connectors to look for, updates the local cache of connectors,

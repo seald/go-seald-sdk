@@ -41,7 +41,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param recipients The Seald IDs with the associated rights of users to add to this session.
  * @param error The error that occurred while adding the recipients, if any.
- * @return A [NSMutableDictionary<NSString*, SealdActionStatus*>*] instance.
+ * @return A `NSMutableDictionary<NSString*, SealdActionStatus*>*` instance.
  */
 - (NSDictionary<NSString*, SealdActionStatus*>*) addRecipients:(const NSArray<SealdRecipientWithRights*>*)recipients
                                                          error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
@@ -51,7 +51,7 @@ NS_ASSUME_NONNULL_BEGIN
  * These recipients will be able to read all encrypted messages of this session.
  *
  * @param recipients The Seald IDs with the associated rights of users to add to this session.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [NSMutableDictionary<NSString*, SealdActionStatus*>*] instance. and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSMutableDictionary<NSString*, SealdActionStatus*>*` instance. and a `NSError*` that indicates if any error occurred.
  */
 - (void) addRecipientsAsync:(const NSArray<SealdRecipientWithRights*>*)recipients
           completionHandler:(void (^)(NSDictionary<NSString*, SealdActionStatus*>* result, NSError*_Nullable error))completionHandler;
@@ -112,7 +112,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param recipientsIds The Seald IDs of users to revoke from this session.
  * @param proxySessionsIds The IDs of proxy sessions to revoke from this session.
  * @param error The error that occurred while revoking, if any.
- * @return A [SealdRevokeResult] instance.
+ * @return A SealdRevokeResult instance.
  */
 - (SealdRevokeResult*) revokeRecipientsIds:(const NSArray<NSString*>*)recipientsIds
                           proxySessionsIds:(const NSArray<NSString*>*)proxySessionsIds
@@ -125,7 +125,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param recipientsIds The Seald IDs of users to revoke from this session.
  * @param proxySessionsIds The IDs of proxy sessions to revoke from this session.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [SealdRevokeResult] instance. and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback take two arguments, a SealdRevokeResult instance. and a `NSError*` that indicates if any error occurred.
  */
 - (void) revokeRecipientsIdsAsync:(const NSArray<NSString*>*)recipientsIds
                  proxySessionsIds:(const NSArray<NSString*>*)proxySessionsIds
@@ -135,14 +135,14 @@ NS_ASSUME_NONNULL_BEGIN
  * Revoke this session entirely.
  *
  * @param error The error that occurred while revoking, if any.
- * @return A [SealdRevokeResult] instance.
+ * @return A `SealdRevokeResult` instance.
  */
 - (SealdRevokeResult*) revokeAll:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 
 /**
  * Revoke this session entirely.
  *
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [SealdRevokeResult] instance. and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdRevokeResult` instance. and a `NSError*` that indicates if any error occurred.
  */
 - (void) revokeAllAsyncWithCompletionHandler:(void (^)(SealdRevokeResult* result, NSError*_Nullable error))completionHandler;
 
@@ -150,14 +150,14 @@ NS_ASSUME_NONNULL_BEGIN
  * Revoke all recipients besides yourself from this session.
  *
  * @param error The error that occurred while revoking, if any.
- * @return A [SealdRevokeResult] instance.
+ * @return A `SealdRevokeResult` instance.
  */
 - (SealdRevokeResult*) revokeOthers:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 
 /**
  * Revoke all recipients besides yourself from this session.
  *
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [SealdRevokeResult] instance. and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdRevokeResult` instance. and a `NSError*` that indicates if any error occurred.
  */
 - (void) revokeOthersAsyncWithCompletionHandler:(void (^)(SealdRevokeResult* result, NSError*_Nullable error))completionHandler;
 
@@ -283,7 +283,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param recipient A TMR recipient with its associated rights.
  * @param error A pointer to a SealdError* where details will be stored in case of error.
- * @return A [NSString*] containing the Id of the created TMR access.
+ * @return A `NSString*` containing the Id of the created TMR access.
  */
 - (NSString*) addTmrAccess:(const SealdTmrRecipientWithRights*)recipient
                      error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
@@ -292,7 +292,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Add a TMR access to this session for the given authentication factor.
  *
  * @param recipient A TMR recipient with its associated rights.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [NSString*] instance, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSString*` instance, and a `NSError*` that indicates if any error occurred.
  */
 - (void) addTmrAccessAsync:(const SealdTmrRecipientWithRights*)recipient
          completionHandler:(void (^)(NSString* result, NSError*_Nullable error))completionHandler;
@@ -302,7 +302,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param recipients The TMR recipients with their associated rights.
  * @param error A pointer to a SealdError* where details will be stored in case of error.
- * @return A [NSMutableDictionary<NSString*, SealdActionStatus*>*] instance.
+ * @return A `NSMutableDictionary<NSString*, SealdActionStatus*>*` instance.
  */
 - (NSDictionary<NSString*, SealdActionStatus*>*) addMultipleTmrAccesses:(const NSArray<SealdTmrRecipientWithRights*>*)recipients
                                                                   error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
@@ -311,10 +311,23 @@ NS_ASSUME_NONNULL_BEGIN
  * Add multiple TMR accesses to this session for the given authentication factors.
  *
  * @param recipients The TMR recipients with their associated rights.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [NSMutableDictionary<NSString*, SealdActionStatus*>*] instance, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSMutableDictionary<NSString*, SealdActionStatus*>*` instance, and a `NSError*` that indicates if any error occurred.
  */
 - (void) addMultipleTmrAccessesAsync:(const NSArray<SealdTmrRecipientWithRights*>*)recipients
                    completionHandler:(void (^)(NSDictionary<NSString*, SealdActionStatus*>* result, NSError*_Nullable error))completionHandler;
+
+/**
+ * Serialize the EncryptionSession to a string.
+ * This is for advanced use.
+ * May be used to keep sessions in a cache.
+ * WARNING: a user could use this cache to work around being revoked. Use with caution.
+ * WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+ * to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+ *
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Returns the serialized encryption session as a `NSString*`.
+ */
+- (NSString*) serializeWithError:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 @end
 
 NS_ASSUME_NONNULL_END

@@ -630,4 +630,32 @@ class SealdEncryptionSession implements Finalizable {
             .addMultipleTmrAccesses(args["recipients"]),
         {"recipients": recipients});
   }
+
+  /// Serialize the EncryptionSession to a string.
+  /// This is for advanced use.
+  /// May be used to keep sessions in a cache.
+  /// WARNING: a user could use this cache to work around being revoked. Use with caution.
+  /// WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+  /// to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+  ///
+  /// Returns the serialized encryption session as a String.
+  String serialize() {
+    final Pointer<Pointer<Utf8>> nativeResult = calloc<Pointer<Utf8>>();
+    final Pointer<Pointer<NativeSealdError>> err =
+        calloc<Pointer<NativeSealdError>>();
+
+    final int resultCode = _bindings.SealdEncryptionSession_Serialize(
+        _ptr.pointer(), nativeResult, err);
+
+    if (resultCode != 0) {
+      calloc.free(nativeResult);
+      throw SealdException._fromCPtr(err);
+    } else {
+      final String result = nativeResult.value.toDartString();
+      calloc.free(nativeResult.value);
+      calloc.free(nativeResult);
+      calloc.free(err);
+      return result;
+    }
+  }
 }

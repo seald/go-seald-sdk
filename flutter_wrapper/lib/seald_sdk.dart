@@ -1472,6 +1472,43 @@ class SealdSdk {
     return SealdEncryptionSession._fromCArray(res.pointer());
   }
 
+  /// Deserialize a serialized session.
+  /// For advanced use.
+  ///
+  /// [serializedSession] - The serialized encryption session to deserialize.
+  /// Returns the deserialized SealdEncryptionSession instance.
+  SealdEncryptionSession deserializeEncryptionSession(
+      String serializedSession) {
+    if (_closed) {
+      throw SealdException(
+          code: "INSTANCE_CLOSED",
+          id: "FLUTTER_INSTANCE_CLOSED",
+          description: "Instance already closed.");
+    }
+    final Pointer<Utf8> nativeSerializedSession =
+        serializedSession.toNativeUtf8();
+    final Pointer<Pointer<NativeSealdEncryptionSession>> nativeResult =
+        calloc<Pointer<NativeSealdEncryptionSession>>();
+    final Pointer<Pointer<NativeSealdError>> err =
+        calloc<Pointer<NativeSealdError>>();
+
+    final int resultCode = _bindings.SealdSdk_DeserializeEncryptionSession(
+        _ptr.pointer(), nativeSerializedSession, nativeResult, err);
+
+    calloc.free(nativeSerializedSession);
+
+    if (resultCode != 0) {
+      calloc.free(nativeResult);
+      throw SealdException._fromCPtr(err);
+    } else {
+      SealdEncryptionSession result =
+          SealdEncryptionSession._fromC(nativeResult.value);
+      calloc.free(nativeResult);
+      calloc.free(err);
+      return result;
+    }
+  }
+
   /* Connectors */
 
   /// Get all the info for the given connectors to look for, updates the local cache of connectors,

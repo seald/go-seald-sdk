@@ -1047,6 +1047,22 @@ class SealdSDK
                 )
             }
 
+        /**
+         * Deserialize a serialized session.
+         * For advanced use.
+         *
+         * @param serializedSession The serialized encryption session to deserialize.
+         * @return The deserialized [EncryptionSession].
+         * @throws SealdException
+         */
+        @Throws(SealdException::class)
+        fun deserializeEncryptionSession(serializedSession: String): EncryptionSession {
+            convertExceptions {
+                val es = mobileSDK.deserializeEncryptionSession(serializedSession)
+                return EncryptionSession(es)
+            }
+        }
+
         // Connectors
 
         /**
@@ -1579,7 +1595,6 @@ class SealdSDK
          * @param groupId The Id of the group for which to delete a TMR key.
          * @param temporaryKeyId Id of the TMR key to delete.
          */
-        @JvmOverloads
         @Throws(SealdException::class)
         suspend fun deleteGroupTMRTemporaryKeyAsync(
             groupId: String,

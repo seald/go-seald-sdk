@@ -173,3 +173,12 @@ func (encryptionSession *MobileEncryptionSession) AddMultipleTmrAccesses(recipie
 	}
 	return msArray, nil
 }
+
+func (encryptionSession *MobileEncryptionSession) Serialize() (string, error) {
+	res, err := encryptionSession.es.Serialize()
+	if err != nil {
+		return "", utils.ToSerializableError(tracerr.Wrap(err))
+	}
+
+	return res, nil
+}

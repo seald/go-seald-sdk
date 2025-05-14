@@ -366,4 +366,15 @@
         completionHandler(result, localError);
     });
 }
+
+- (NSString*) serializeWithError:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+    NSString* res = [encryptionSession serialize:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return res;
+}
 @end

@@ -352,8 +352,12 @@ typedef NS_ENUM (NSInteger, SealdEncryptionSessionRetrievalFlow) {
     SealdEncryptionSessionRetrievalViaGroup = 2,
     /** The session was retrieved through a proxy session. */
     SealdEncryptionSessionRetrievalViaProxy = 3,
+    /** The session was retrieved with a sealdMessage that include the encrypted SymKey. Should never happen. */
+    SealdEncryptionSessionRetrievalLocal = 4,
+    /** The session was retrieved through a SymEncKey. */
+    SealdEncryptionSessionRetrievalViaSymEncKey = 5,
     /** The session was retrieved through a TMR access. */
-    SealdEncryptionSessionRetrievalViaTmrAccess = 4
+    SealdEncryptionSessionRetrievalViaTmrAccess = 6
 };
 
 /**

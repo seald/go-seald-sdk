@@ -40,6 +40,14 @@
             android:textSize="24sp" />
 
         <TextView
+            android:id="@+id/testAnonymousSDK"
+            android:layout_width="352dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center|center_horizontal"
+            android:text="test Anonymous SDK loading..."
+            android:textSize="24sp" />
+
+        <TextView
             android:id="@+id/testSsksPassword"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

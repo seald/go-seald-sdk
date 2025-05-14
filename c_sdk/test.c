@@ -286,7 +286,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     // either on the server and retrieved from your backend at login,
     // or on the client-side directly and stored in the system's keychain.
     int databaseEncryptionKeyLen = 64;
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
     unsigned char* databaseEncryptionKey = randomBuffer(databaseEncryptionKeyLen);
 
     // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
@@ -472,7 +472,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     char* authFactorValue = malloc(strlen("af_val-") + strlen(afRandString) + strlen("@test.com") + 1);
     sprintf(authFactorValue, "af_val-%s@test.com", afRandString);
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
     int overEncryptionKeyLen = 64;
     unsigned char* overEncryptionKeyBytes = randomBuffer(overEncryptionKeyLen);
 
@@ -599,6 +599,27 @@ int testSealdSDK(TestCredentials* testCredentials) {
     ASSERT_STRING_EQUAL(decryptedMessageFromMess, initialString);
     SealdEncryptionSession_Free(es1SDK1RetrieveFromMess);
     free(decryptedMessageFromMess);
+
+    // Serialize / Deserialize session
+    char* serializedSession = NULL;
+    errCode = SealdEncryptionSession_Serialize(es1SDK1, &serializedSession, &err); // serialize
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    SealdEncryptionSession* deserializedSession = NULL;
+    errCode = SealdSdk_DeserializeEncryptionSession(sdk1, serializedSession, &deserializedSession, &err); // deserialize
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_EQUAL(SealdEncryptionSession_Id(deserializedSession), sessionId); // sessionId is as expected
+    char* decryptedMessageFromDeserialized = NULL; // test decryption
+    errCode = SealdEncryptionSession_DecryptMessage(
+        deserializedSession,
+        encryptedMessage,
+        &decryptedMessageFromDeserialized,
+        &err
+    );
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_EQUAL(decryptedMessageFromDeserialized, initialString);
+    free(serializedSession); // cleanup
+    free(decryptedMessageFromDeserialized);
+    SealdEncryptionSession_Free(deserializedSession);
 
     // Create a test file on disk that we will encrypt/decrypt
     char* fileContent = "File clear data.";
@@ -1171,7 +1192,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdStringArray_Free(membersGTMR);
     SealdStringArray_Free(adminsGTMR);
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
     int gTMRRawOverEncryptionKeyLen = 64;
     unsigned char* gTMRRawOverEncryptionKeyBytes = randomBuffer(gTMRRawOverEncryptionKeyLen);
 

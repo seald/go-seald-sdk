@@ -56,7 +56,7 @@ const random = async (length = 16) => {
   return buff.toString('hex')
 }
 
-const createJWT = async (secret, data) => {
+export const createJWT = async (secret, data) => {
   const token = new SignJWT(data)
     .setProtectedHeader({ alg: 'HS256' })
 
