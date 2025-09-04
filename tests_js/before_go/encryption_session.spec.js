@@ -20,17 +20,33 @@ describe('encryption session', function () {
 
     // create identity
     const sdk = SealdSDK({ appId: credentials.app_id, apiURL: credentials.api_url })
-    sdk.setLogLevel('debug')
+    sdk.setLogLevel('silly')
     const signupJWT = await generateRegistrationJWT(credentials.jwt_shared_secret_id, credentials.jwt_shared_secret)
     const accountInfo = await sdk.initiateIdentity({ signupJWT })
 
-    // create a session, with a message and a file
+    // create a session, and serialize it, with a message and a file
     const session = await sdk.createEncryptionSession({})
     await fs.writeFile('./test_artifacts/from_js/encryption_session/session_id', session.sessionId, { encoding: 'utf8' })
+    const serializedSession = session.serialize()
+    await fs.writeFile('./test_artifacts/from_js/encryption_session/serialized_session', serializedSession, { encoding: 'utf8' })
     const encryptedMessage = await session.encryptMessage('message content')
     await fs.writeFile('./test_artifacts/from_js/encryption_session/encrypted_message', encryptedMessage, { encoding: 'utf8' })
-    const encryptedFile = await session.encryptFile(Buffer.from('file content', 'utf8'), 'test.txt')
+    const encryptedFile = await session.encryptFile(Buffer.from('file content', 'utf8'), { filename: 'test.txt' })
     await fs.writeFile('./test_artifacts/from_js/encryption_session/encrypted_file', encryptedFile, { encoding: 'utf8' })
+
+    // create a symEncKey password
+    const symEncKeyPassword = randomString()
+    const symEncKeyPasswordId = await session.addSymEncKey({ password: symEncKeyPassword })
+    await fs.writeFile('./test_artifacts/from_js/encryption_session/symEncKey_symEncKeyPasswordId', symEncKeyPasswordId, { encoding: 'utf8' })
+    await fs.writeFile('./test_artifacts/from_js/encryption_session/symEncKey_symEncKeyPassword', symEncKeyPassword, { encoding: 'utf8' })
+
+    // create a symEncKey raw keys
+    const symEncKeySecret = randomString()
+    const rawSymKey = await sdk.utils.generateB64EncodedSymKey()
+    const symEncKeyRawKeyId = await session.addSymEncKey({ rawSecret: symEncKeySecret, rawSymKey })
+    await fs.writeFile('./test_artifacts/from_js/encryption_session/symEncKey_symEncKeyRawKeyId', symEncKeyRawKeyId, { encoding: 'utf8' })
+    await fs.writeFile('./test_artifacts/from_js/encryption_session/symEncKey_rawSymKey', rawSymKey, { encoding: 'base64' })
+    await fs.writeFile('./test_artifacts/from_js/encryption_session/symEncKey_symEncKeySecret', symEncKeySecret, { encoding: 'utf8' })
 
     // renew key to check if it works for oldKeys
     await sdk.renewKey()
@@ -40,7 +56,7 @@ describe('encryption session', function () {
     await fs.writeFile('./test_artifacts/from_js/encryption_session/session_id2', session2.sessionId, { encoding: 'utf8' })
     const encryptedMessage2 = await session2.encryptMessage('message content2')
     await fs.writeFile('./test_artifacts/from_js/encryption_session/encrypted_message2', encryptedMessage2, { encoding: 'utf8' })
-    const encryptedFile2 = await session2.encryptFile(Buffer.from('file content2', 'utf8'), 'test2.txt')
+    const encryptedFile2 = await session2.encryptFile(Buffer.from('file content2', 'utf8'), { filename: 'test2.txt' })
     await fs.writeFile('./test_artifacts/from_js/encryption_session/encrypted_file2', encryptedFile2, { encoding: 'utf8' })
 
     // create proxy session and session openable via proxy

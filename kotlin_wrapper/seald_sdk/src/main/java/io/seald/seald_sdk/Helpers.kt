@@ -5,7 +5,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.lang.IllegalArgumentException
 import java.time.Duration
 import java.time.Instant
 
@@ -451,6 +450,19 @@ data class RecipientRights(
         result.forward = this.forward
         return result
     }
+
+    internal companion object {
+        internal fun fromMobileSdk(mobileRights: io.seald.seald_sdk_internals.mobile_sdk.RecipientRights?): RecipientRights? {
+            if (mobileRights == null) {
+                return null
+            }
+            return RecipientRights(
+                read = mobileRights.read,
+                forward = mobileRights.forward,
+                revoke = mobileRights.revoke,
+            )
+        }
+    }
 }
 
 /**
@@ -507,8 +519,14 @@ enum class EncryptionSessionRetrievalFlow(
     /** The session was retrieved through a proxy session. */
     VIA_PROXY(3),
 
+    /** The session was retrieved with a sealdMessage that include the encrypted SymKey. Should never happen. */
+    LOCAL(4),
+
+    /** The session was retrieved through a SymEncKey. */
+    VIA_SYM_ENC_KEY(5),
+
     /** The session was retrieved through a TMR access. */
-    VIA_TMR_ACCESS(4),
+    VIA_TMR_ACCESS(6),
     ;
 
     internal companion object {
@@ -790,3 +808,155 @@ data class SearchGroupTMRTemporaryKeysOpts
             return result
         }
     }
+
+/**
+ * RecipientsList holds a list of all recipients from a session.
+ *
+ * @property sealdRecipients An array of [SealdRecipient] that can access the session.
+ * @property tmrAccesses An array of [TmrAccess] that can access the session.
+ * @property proxySessions An array of [ProxySession] that can access the session.
+ * @property symEncKeys An array of [SymEncKey] that can access the session.
+ */
+data class RecipientsList(
+    val sealdRecipients: Array<SealdRecipient>,
+    val tmrAccesses: Array<TmrAccess>,
+    val proxySessions: Array<ProxySession>,
+    val symEncKeys: Array<SymEncKey>,
+) {
+    internal companion object {
+        internal fun fromMobileSdk(nativeList: io.seald.seald_sdk_internals.mobile_sdk.RecipientsList): RecipientsList =
+            RecipientsList(
+                sealdRecipients = SealdRecipient.Companion.fromMobileSdkArray(nativeList),
+                tmrAccesses = TmrAccess.Companion.fromMobileSdkArray(nativeList),
+                proxySessions = ProxySession.Companion.fromMobileSdkArray(nativeList),
+                symEncKeys = SymEncKey.Companion.fromMobileSdkArray(nativeList),
+            )
+    }
+}
+
+/**
+ * SealdRecipient holds information about a recipient of a session.
+ *
+ * @property sealdId The Seald ID of the user.
+ * @property addedById The IDs of proxy sessions to revoke from this session.
+ * @property readFirst Time of the first access to the session.
+ * @property readLast Time of the last access to the session.
+ * @property readTime Number of access to the session.
+ * @property rights The rights for the recipient.
+ */
+data class SealdRecipient(
+    val sealdId: String,
+    val addedById: String,
+    val readFirst: Instant,
+    val readLast: Instant,
+    val readTime: Int,
+    val rights: RecipientRights,
+) {
+    internal companion object {
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.SealdRecipient): SealdRecipient =
+            SealdRecipient(
+                sealdId = d.sealdId,
+                addedById = d.addedById,
+                readFirst = Instant.ofEpochSecond(d.readFirst),
+                readLast = Instant.ofEpochSecond(d.readLast),
+                readTime = d.readTime.toInt(),
+                rights = RecipientRights.fromMobileSdk(d.rights)!!,
+            )
+
+        internal fun fromMobileSdkArray(nativeList: io.seald.seald_sdk_internals.mobile_sdk.RecipientsList): Array<SealdRecipient> {
+            val result =
+                Array(nativeList.sealdRecipientsSize().toInt()) {
+                    val nativeSR = nativeList.getSealdRecipient(it.toLong())
+                    fromMobileSdk(nativeSR)
+                }
+            return result
+        }
+    }
+}
+
+/**
+ * TmrAccess holds the information about a TMR access.
+ *
+ * @property tmrAccessId Id of the TMR access.
+ * @property created Date of creation.
+ * @property authFactorType The type of authentication factor.
+ * @property rights The rights for the access
+ */
+data class TmrAccess(
+    val tmrAccessId: String,
+    val created: Instant,
+    val authFactorType: String,
+    val rights: RecipientRights,
+) {
+    internal companion object {
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.TmrAccess): TmrAccess =
+            TmrAccess(
+                tmrAccessId = d.tmrAccessId,
+                authFactorType = d.authFactorType,
+                created = Instant.ofEpochSecond(d.created),
+                rights = RecipientRights.fromMobileSdk(d.rights)!!,
+            )
+
+        internal fun fromMobileSdkArray(nativeList: io.seald.seald_sdk_internals.mobile_sdk.RecipientsList): Array<TmrAccess> {
+            val result =
+                Array(nativeList.tmrAccessesSize().toInt()) {
+                    fromMobileSdk(nativeList.getTmrAccess(it.toLong()))
+                }
+            return result
+        }
+    }
+}
+
+/**
+ * ProxySession holds the information about a proxy session.
+ *
+ * @property proxySessionId Id of the proxy session.
+ * @property created Date of creation.
+ * @property rights The rights for the access
+ */
+data class ProxySession(
+    val proxySessionId: String,
+    val created: Instant,
+    val rights: RecipientRights,
+) {
+    internal companion object {
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.ProxySession): ProxySession =
+            ProxySession(
+                proxySessionId = d.proxySessionId,
+                created = Instant.ofEpochSecond(d.created),
+                rights = RecipientRights.fromMobileSdk(d.rights)!!,
+            )
+
+        internal fun fromMobileSdkArray(nativeList: io.seald.seald_sdk_internals.mobile_sdk.RecipientsList): Array<ProxySession> =
+            Array(nativeList.proxySessionsSize().toInt()) {
+                fromMobileSdk(nativeList.getProxySession(it.toLong()))
+            }
+    }
+}
+
+/**
+ * SymEncKey holds the information about a SymEncKey access.
+ *
+ * @property symEncKeyId Id of the SymEncKey access.
+ * @property rights The rights for the access
+ */
+data class SymEncKey(
+    val symEncKeyId: String,
+    val rights: RecipientRights,
+) {
+    internal companion object {
+        internal fun fromMobileSdk(d: io.seald.seald_sdk_internals.mobile_sdk.SymEncKey): SymEncKey =
+            SymEncKey(
+                symEncKeyId = d.symEncKeyId,
+                rights = RecipientRights.fromMobileSdk(d.rights)!!,
+            )
+
+        internal fun fromMobileSdkArray(nativeList: io.seald.seald_sdk_internals.mobile_sdk.RecipientsList): Array<SymEncKey> {
+            val result =
+                Array(nativeList.symEncKeysSize().toInt()) {
+                    fromMobileSdk(nativeList.getSymEncKey(it.toLong()))
+                }
+            return result
+        }
+    }
+}

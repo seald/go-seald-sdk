@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+import _ "golang.org/x/mobile/bind" // not actually required, just here to force it to be in go.mod
+
 // this file should be in test_utils package, but it is not possible because it would create a cyclical import,
 // so it is duplicated in sdk, ssks_password, and ssks_tmr
 

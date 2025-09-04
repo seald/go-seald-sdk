@@ -54,6 +54,6 @@ If you try using them, you will likely encounter a `DATABASE_LOCKED` error.
 This is due to a limitation of the Dart VM, which does not allow to access to lifecycle hooks, in order to perform
 proper cleanup on the existing instance during a Hot-Restart.
 
-© 2024 Seald SAS
+© 2025 Seald SAS
 
 You can find the license information of Open Source libraries used in Seald SDK for mobile at https://download.seald.io/download/mobile_dependencies_licenses_##VERSION##.txt .

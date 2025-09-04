@@ -21,6 +21,7 @@ functions:
   symbol-address:
     include:
       - 'SealdEncryptionSession_Free'
+      - 'SealdAnonymousEncryptionSession_Free'
       - 'SealdSsksTMRPlugin_Free'
       - 'SealdSsksPasswordPlugin_Free'
 comments:

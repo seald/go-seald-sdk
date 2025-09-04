@@ -10,6 +10,8 @@ import (
 	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
+	"go.mongodb.org/mongo-driver/bson"
+	"time"
 )
 
 var (
@@ -30,9 +32,9 @@ var (
 	// ErrorUnknownUserId is returned when a given recipient id is unknown.
 	ErrorUnknownUserId = utils.NewSealdError("UNKNOWN_USER_ID", "recipients unknown user id")
 	// ErrorAddKeySerializer is returned when failing to create EMKs for all recipients
-	ErrorAddKeySerializer = utils.NewSealdError("ErrorAddKeySerializer", "Failed to create message for all recipients")
+	ErrorAddKeySerializer = utils.NewSealdError("CREATE_ENCRYPTION_SESSION_ADD_KEY_SERIALIZER", "Failed to create message for all recipients")
 	// ErrorFailedCreated is returned when failing to create an EMK for a recipient
-	ErrorFailedCreated = utils.NewSealdError("ErrorFailedCreated", "Failed to create message for a recipient")
+	ErrorFailedCreated = utils.NewSealdError("CREATE_ENCRYPTION_SESSION_FAIL_TO_CREATE", "Failed to create message for a recipient")
 	// ErrorRetrieveEncryptionSessionByTmrAccessNotFound is returned when no TMR access was found.
 	ErrorRetrieveEncryptionSessionByTmrAccessNotFound = utils.NewSealdError("TMR_ACCESS_NOT_FOUND", "Could not find requested TMR access")
 	// ErrorRetrieveEncryptionSessionByTmrAccessTooManyAccesses  is returned when expecting one TMR access, but multiple accesses are found.
@@ -43,17 +45,27 @@ var (
 	ErrorAddTMRAccessUnexpectedResponse = utils.NewSealdError("TMR_ACCESS_UNEXPECTED_RESPONSE", "The server did not return a response for the given authentication factor")
 	// ErrorAddTMRAccessCreateError is returned when failing to create a TMR access
 	ErrorAddTMRAccessCreateError = utils.NewSealdError("TMR_ACCESS_ERROR", "The server failed to create the TMR access")
+	// ErrorInvalidB64 is returned when an internal process encounters invalid B64 unexpectedly
+	ErrorInvalidB64 = utils.NewSealdError("RETRIEVE_ENCRYPTION_SESSION_SYM_ENC_KEY_PASS_INVALID_B64", "invalid base64")
+	// ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidMessageId is returned when trying to retrieve an encryption session with an invalid message id.
+	ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidMessageId = utils.NewSealdError("RETRIEVE_ENCRYPTION_SESSION_INVALID_SYM_ENC_KEY_PASS_MESSAGE_ID", "invalid message id")
+	// ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidSymEncKeyId is returned when trying to retrieve an encryption session with an invalid SymEncKey id.
+	ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidSymEncKeyId = utils.NewSealdError("RETRIEVE_ENCRYPTION_SESSION_INVALID_SYM_ENC_KEY_PASS_KEY_ID", "invalid sym enc key id")
+	// ErrorSelfAddWithSymEncKeyPasswordInvalidMessageId is returned when trying to retrieve an encryption session with an invalid message id.
+	ErrorSelfAddWithSymEncKeyPasswordInvalidMessageId = utils.NewSealdError("SELF_ADD_INVALID_SYM_ENC_KEY_PASS_MESSAGE_ID", "invalid message id")
+	// ErrorSelfAddWithSymEncKeyPasswordInvalidSymEncKeyId is returned when trying to retrieve an encryption session with an invalid SymEncKey id.
+	ErrorSelfAddWithSymEncKeyPasswordInvalidSymEncKeyId = utils.NewSealdError("SELF_ADD_INVALID_SYM_ENC_KEY_PASS_KEY_ID", "invalid sym enc key id")
 )
 
 // The EncryptionSession struct represents an encryption session, with which you can then encrypt / decrypt multiple messages.
 type EncryptionSession struct {
-	state *State
+	state *State `bson:"-"`
 	// Id is the ID of this EncryptionSession.
-	Id string
+	Id string `bson:"id"`
 	// Key represents the SymKey of this EncryptionSession. For advanced use only.
-	Key *symmetric_key.SymKey
+	Key *symmetric_key.SymKey `bson:"key"`
 	// RetrievalDetails stores details about how this session was retrieved: through a group, a proxy, or directly
-	RetrievalDetails EncryptionSessionRetrievalDetails
+	RetrievalDetails EncryptionSessionRetrievalDetails `bson:"retrievalDetails"`
 }
 
 type encryptMessageKeyOutput struct {
@@ -644,6 +656,210 @@ func (state *State) RetrieveMultipleEncryptionSessions(sessionIds []string, useC
 	return results, nil
 }
 
+func (state *State) _deriveSecretAndKey(sessionId string, symEncKeyPassword string) (string, []byte, error) {
+	rawSecretBytes, err := utils.DeriveSecret("seald-SymEncKey-Secret", state.options.AppId, sessionId, symEncKeyPassword)
+	if err != nil {
+		return "", nil, tracerr.Wrap(err)
+	}
+	rawSecret := base64.StdEncoding.EncodeToString(rawSecretBytes)
+
+	rawSymKey, err := utils.DeriveKey("seald-SymEncKey-SymKey", state.options.AppId, sessionId, symEncKeyPassword, []byte{})
+	if err != nil {
+		return "", nil, tracerr.Wrap(err)
+	}
+
+	return rawSecret, rawSymKey, nil
+}
+
+func (state *State) _retrieveESWithSymEncKey(sessionId string, symEncKeyId string, rawSecret string, rawSymKey []byte, useCache bool) (*EncryptionSession, error) {
+	if useCache {
+		state.locks.cacheLockGroup.Lock(sessionId)
+		defer state.locks.cacheLockGroup.Unlock(sessionId)
+		retrieveSession, err := state.storage.encryptionSessionsCache.get(sessionId)
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		if retrieveSession != nil {
+			return &EncryptionSession{Id: sessionId, Key: retrieveSession.Symkey, state: state, RetrievalDetails: retrieveSession.RetrievalDetails}, nil
+		}
+	}
+
+	response, err := autoLogin(state, state.apiClient.retrieveWithSymEncKey)(&retrieveWithSymEncKeyRequest{
+		SymEncKeyId: symEncKeyId,
+		Secret:      rawSecret,
+	})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	encSymEncKey, err := base64.StdEncoding.DecodeString(response.EncSymKey)
+	if err != nil {
+		return nil, tracerr.Wrap(ErrorInvalidB64.AddDetails(err.Error()))
+	}
+
+	symEncKey, err := symmetric_key.Decode(rawSymKey)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	rawEsSymKey, err := symEncKey.Decrypt(encSymEncKey)
+	esSymKey, err := symmetric_key.Decode(rawEsSymKey)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	retrievalDetails := EncryptionSessionRetrievalDetails{
+		Flow:        EncryptionSessionRetrievalViaSymEncKey,
+		SymEncKeyId: symEncKeyId,
+	}
+
+	session := EncryptionSession{Id: sessionId, Key: &esSymKey, state: state, RetrievalDetails: retrievalDetails}
+	state.logger.Debug().Str("symEncKeyId", symEncKeyId).Str("sessionId", sessionId).Msg("RetrieveEncryptionSessionWithSymEncKeyPassword returning encryption session")
+
+	if useCache {
+		state.storage.encryptionSessionsCache.Set(sessionId, *session.Key, session.RetrievalDetails)
+		err = state.saveEncryptionSessions()
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+	}
+	return &session, nil
+}
+
+// RetrieveEncryptionSessionWithSymEncKeyPassword retrieve an encryption session, with which you can then encrypt / decrypt multiple messages, with the sessionId and a SymEncKey.
+func (state *State) RetrieveEncryptionSessionWithSymEncKeyPassword(sessionId string, symEncKeyId string, symEncKeyPassword string, useCache bool) (*EncryptionSession, error) {
+	state.locks.currentDeviceLock.RLock()
+	defer state.locks.currentDeviceLock.RUnlock()
+	err := state.checkSdkState(true)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	if !utils.IsUUID(sessionId) {
+		return nil, tracerr.Wrap(ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidMessageId)
+	}
+	if !utils.IsUUID(symEncKeyId) {
+		return nil, tracerr.Wrap(ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidSymEncKeyId)
+	}
+
+	rawSecret, symEncKey, err := state._deriveSecretAndKey(sessionId, symEncKeyPassword)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	session, err := state._retrieveESWithSymEncKey(sessionId, symEncKeyId, rawSecret, symEncKey, useCache)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	return session, nil
+}
+
+// SelfAddToEncryptionSessionWithSymEncKeyPassword allow to Self-add to an encryption session, and return it.
+// You can only call this if the SymEncKey has the `forward` right.
+// You can only assign to yourself a subset of rights that the SymEncKey does have.
+func (state *State) SelfAddToEncryptionSessionWithSymEncKeyPassword(sessionId string, symEncKeyId string, symEncKeyPassword string, rights *RecipientRights, useCache bool) (*EncryptionSession, error) {
+	state.locks.currentDeviceLock.RLock()
+	defer state.locks.currentDeviceLock.RUnlock()
+	err := state.checkSdkState(true)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	if !utils.IsUUID(sessionId) {
+		return nil, tracerr.Wrap(ErrorSelfAddWithSymEncKeyPasswordInvalidMessageId)
+	}
+	if !utils.IsUUID(symEncKeyId) {
+		return nil, tracerr.Wrap(ErrorSelfAddWithSymEncKeyPasswordInvalidSymEncKeyId)
+	}
+
+	rawSecret, symEncKey, err := state._deriveSecretAndKey(sessionId, symEncKeyPassword)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	session, err := state._retrieveESWithSymEncKey(sessionId, symEncKeyId, rawSecret, symEncKey, useCache)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	currentDevice := state.storage.currentDevice.get()
+	keys, err := state.encryptMessageKey(session.Key, []string{currentDevice.UserId})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	_, err = autoLogin(state, state.apiClient.selfAddWithSymEncKey)(&selfAddWithSymEncKeyRequest{
+		SymEncKeyId: symEncKeyId,
+		Secret:      rawSecret,
+		Read:        rights.Read,
+		Forward:     rights.Forward,
+		Revoke:      rights.Revoke,
+		Tokens:      keys.Keys,
+	})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	return session, nil
+}
+
+// RetrieveEncryptionSessionWithSymEncKeyFromRawKeys retrieve an encryption session, with which you can then encrypt / decrypt multiple messages, with the sessionId and a SymEncKey.
+func (state *State) RetrieveEncryptionSessionWithSymEncKeyFromRawKeys(sessionId string, symEncKeyId string, rawSecret string, rawSymKey []byte, useCache bool) (*EncryptionSession, error) {
+	state.locks.currentDeviceLock.RLock()
+	defer state.locks.currentDeviceLock.RUnlock()
+	err := state.checkSdkState(true)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	if !utils.IsUUID(sessionId) {
+		return nil, tracerr.Wrap(ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidMessageId)
+	}
+	if !utils.IsUUID(symEncKeyId) {
+		return nil, tracerr.Wrap(ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidSymEncKeyId)
+	}
+
+	return state._retrieveESWithSymEncKey(sessionId, symEncKeyId, rawSecret, rawSymKey, useCache)
+}
+
+// SelfAddToEncryptionSessionWithSymEncKeyFromRawKeys allow to Self-add to an encryption session, and return it.
+// You can only call this if the SymEncKey has the `forward` right.
+// You can only assign to yourself a subset of rights that the SymEncKey does have.
+func (state *State) SelfAddToEncryptionSessionWithSymEncKeyFromRawKeys(sessionId string, symEncKeyId string, rawSecret string, rawSymKey []byte, rights *RecipientRights, useCache bool) (*EncryptionSession, error) {
+	state.locks.currentDeviceLock.RLock()
+	defer state.locks.currentDeviceLock.RUnlock()
+	err := state.checkSdkState(true)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	if !utils.IsUUID(sessionId) {
+		return nil, tracerr.Wrap(ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidMessageId)
+	}
+	if !utils.IsUUID(symEncKeyId) {
+		return nil, tracerr.Wrap(ErrorRetrieveEncryptionSessionWithSymEncKeyPasswordInvalidSymEncKeyId)
+	}
+
+	session, err := state._retrieveESWithSymEncKey(sessionId, symEncKeyId, rawSecret, rawSymKey, useCache)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	currentDevice := state.storage.currentDevice.get()
+	keys, err := state.encryptMessageKey(session.Key, []string{currentDevice.UserId})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	_, err = autoLogin(state, state.apiClient.selfAddWithSymEncKey)(&selfAddWithSymEncKeyRequest{
+		SymEncKeyId: symEncKeyId,
+		Secret:      rawSecret,
+		Read:        rights.Read,
+		Forward:     rights.Forward,
+		Revoke:      rights.Revoke,
+		Tokens:      keys.Keys,
+	})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	return session, nil
+}
+
 // AddRecipients adds new recipients to this session.
 // These recipients will be able to read all encrypted messages of this session.
 func (encryptionSession *EncryptionSession) AddRecipients(recipientsWithRights []*RecipientWithRights) (*AddKeysMultiStatusResponse, error) {
@@ -708,20 +924,35 @@ func (encryptionSession *EncryptionSession) AddProxySession(proxySessionId strin
 	return nil
 }
 
+type RecipientsToRevoke struct {
+	SealdIds             []string
+	ProxySessionsIds     []string
+	SymEncKeysIds        []string
+	TmrAccessIds         []string
+	TmrAccessAuthFactors []*common_models.AuthFactor
+}
+
 // RevokeRecipients revoke some recipients or proxy sessions from this session.
 // If you want to revoke all recipients, see RevokeAll instead.
 // If you want to revoke all recipients besides yourself, see RevokeOthers.
-func (encryptionSession *EncryptionSession) RevokeRecipients(recipientsIds []string, proxySessionsIds []string) (*RevokeRecipientsResponse, error) {
-	if len(recipientsIds) == 0 && len(proxySessionsIds) == 0 {
+func (encryptionSession *EncryptionSession) RevokeRecipients(recipientsToRevoke *RecipientsToRevoke) (*RevokeRecipientsResponse, error) {
+	if len(recipientsToRevoke.SealdIds) == 0 &&
+		len(recipientsToRevoke.ProxySessionsIds) == 0 &&
+		len(recipientsToRevoke.TmrAccessIds) == 0 &&
+		len(recipientsToRevoke.TmrAccessAuthFactors) == 0 &&
+		len(recipientsToRevoke.SymEncKeysIds) == 0 {
 		encryptionSession.state.logger.Log().Msg("RevokeRecipients called with nothing, bailing.")
 		return &RevokeRecipientsResponse{}, nil
 	}
 	response, err := handleMultipleAcl(encryptionSession.state, autoLogin(encryptionSession.state, encryptionSession.state.apiClient.revokeRecipients))(&revokeRecipientsRequest{
-		MessageId:      encryptionSession.Id,
-		LookupProxyKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy,
-		LookupGroupKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup,
-		UserIds:        recipientsIds,
-		ProxyMkIds:     proxySessionsIds,
+		MessageId:            encryptionSession.Id,
+		LookupProxyKey:       encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy,
+		LookupGroupKey:       encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup,
+		UserIds:              recipientsToRevoke.SealdIds,
+		ProxyMkIds:           recipientsToRevoke.ProxySessionsIds,
+		SymEncKeyIds:         recipientsToRevoke.SymEncKeysIds,
+		TmrAccessIds:         recipientsToRevoke.TmrAccessIds,
+		TmrAccessAuthFactors: recipientsToRevoke.TmrAccessAuthFactors,
 	})
 	if err != nil {
 		return nil, tracerr.Wrap(err)
@@ -733,9 +964,9 @@ func (encryptionSession *EncryptionSession) RevokeRecipients(recipientsIds []str
 
 	currentDevice := encryptionSession.state.storage.currentDevice.get()
 	if retrieveES != nil {
-		if utils.SliceIncludes(recipientsIds, currentDevice.UserId) ||
-			(retrieveES.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup && utils.SliceIncludes(recipientsIds, retrieveES.RetrievalDetails.GroupId)) ||
-			(retrieveES.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy && utils.SliceIncludes(proxySessionsIds, retrieveES.RetrievalDetails.ProxySessionId)) {
+		if utils.SliceIncludes(recipientsToRevoke.SealdIds, currentDevice.UserId) ||
+			(retrieveES.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup && utils.SliceIncludes(recipientsToRevoke.SealdIds, retrieveES.RetrievalDetails.GroupId)) ||
+			(retrieveES.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy && utils.SliceIncludes(recipientsToRevoke.ProxySessionsIds, retrieveES.RetrievalDetails.ProxySessionId)) {
 			encryptionSession.state.storage.encryptionSessionsCache.delete(encryptionSession.Id)
 			err = encryptionSession.state.saveEncryptionSessions()
 			if err != nil {
@@ -938,4 +1169,272 @@ func (encryptionSession *EncryptionSession) AddMultipleTmrAccesses(recipients []
 	}
 
 	return response, nil
+}
+
+// Serialize serializes the EncryptionSession to a string.
+// This is for advanced use.
+// May be used to keep sessions in a cache.
+// WARNING: a user could use this cache to work around being revoked. Use with caution.
+// WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+// to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+func (encryptionSession *EncryptionSession) Serialize() (string, error) {
+	res, err := bson.Marshal(encryptionSession)
+	if err != nil {
+		return "", tracerr.Wrap(err)
+	}
+	return base64.StdEncoding.EncodeToString(res), nil
+}
+
+// DeserializeEncryptionSession deserializes a serialized session.
+// For advanced use.
+func (state *State) DeserializeEncryptionSession(str string) (*EncryptionSession, error) {
+	bsoned, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var session EncryptionSession
+	err = bson.Unmarshal(bsoned, &session)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	session.state = state
+	return &session, nil
+}
+
+// AddSymEncKeyFromPassword adds a SymEncKey for this session, which allows to retrieve the session without being a recipient,
+// and/or to self-add to the session.
+func (encryptionSession *EncryptionSession) AddSymEncKeyFromPassword(password string, rights *RecipientRights) (*SymEncKey, error) {
+	rawSecretBytes, err := utils.DeriveSecret("seald-SymEncKey-Secret", encryptionSession.state.options.AppId, encryptionSession.Id, password)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	rawSecret := base64.StdEncoding.EncodeToString(rawSecretBytes)
+
+	keyBuffer, err := utils.DeriveKey("seald-SymEncKey-SymKey", encryptionSession.state.options.AppId, encryptionSession.Id, password, []byte{})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	symKey, err := symmetric_key.Decode(keyBuffer)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	encMessageKey, err := symKey.Encrypt(encryptionSession.Key.Encode())
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	symEncKeyData := base64.StdEncoding.EncodeToString(encMessageKey)
+
+	response, err := handleMultipleAcl(encryptionSession.state, autoLogin(encryptionSession.state, encryptionSession.state.apiClient.addSymEncKey))(&addSymEncKeyRequest{
+		Id:             encryptionSession.Id,
+		Secret:         rawSecret,
+		Data:           symEncKeyData,
+		Rights:         rights,
+		LookupProxyKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy,
+		LookupGroupKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup,
+	})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return response, nil
+}
+
+// AddSymEncKeyFromRawKeys adds a SymEncKey for this session, which allows to retrieve the session without being a recipient,
+// and/or to self-add to the session.
+func (encryptionSession *EncryptionSession) AddSymEncKeyFromRawKeys(rawSecret string, rawSymKey []byte, rights *RecipientRights) (*SymEncKey, error) {
+	symKey, err := symmetric_key.Decode(rawSymKey)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	encMessageKey, err := symKey.Encrypt(encryptionSession.Key.Encode())
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	symEncKeyData := base64.StdEncoding.EncodeToString(encMessageKey)
+
+	response, err := handleMultipleAcl(encryptionSession.state, autoLogin(encryptionSession.state, encryptionSession.state.apiClient.addSymEncKey))(&addSymEncKeyRequest{
+		Id:             encryptionSession.Id,
+		Secret:         rawSecret,
+		Data:           symEncKeyData,
+		Rights:         rights,
+		LookupProxyKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy,
+		LookupGroupKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup,
+	})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	return response, nil
+}
+
+// ChangeSymEncKeyRights change rights for a SymEncKey.
+// You can add rights by setting them to `true`, remove rights by setting them to `false`.
+// To add a right, you must have the right in question plus the `forward` right.
+// To remove a right, you must have the `revoke` right.
+func (encryptionSession *EncryptionSession) ChangeSymEncKeyRights(symEncKeyId string, rights *RecipientRights) (*SymEncKey, error) {
+	response, err := autoLogin(encryptionSession.state, encryptionSession.state.apiClient.changeSymEncKeyRights)(&changeSymEncKeyRightsRequest{
+		EsId:        encryptionSession.Id,
+		SymEncKeyId: symEncKeyId,
+		Read:        rights.Read,
+		Forward:     rights.Forward,
+		Revoke:      rights.Revoke,
+	})
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	return response, nil
+}
+
+type RecipientsList struct {
+	SealdRecipients []*SealdRecipient
+	TmrAccesses     []*TmrAccess
+	ProxySessions   []*ProxySession
+	SymEncKeys      []*SymEncKey
+}
+
+type SealdRecipient struct {
+	SealdId     string
+	AddedById   string
+	ReadFirst   *time.Time
+	ReadLast    *time.Time
+	ReadTime    int
+	RevokedDate *time.Time
+	Rights      *RecipientRights
+}
+type TmrAccess struct {
+	Id             string
+	Created        *time.Time
+	AuthFactorType string
+	Rights         *RecipientRights
+}
+
+type ProxySession struct {
+	Created        *time.Time
+	SessionId      string
+	ProxySessionId string
+	Revoke         bool
+	RevokedDate    *time.Time
+	Rights         *RecipientRights
+}
+
+// ListRecipients list all recipients of the EncryptionSession.
+func (encryptionSession *EncryptionSession) ListRecipients() (*RecipientsList, error) {
+	recipientsList := &RecipientsList{}
+
+	// List SealdRecipients
+	sealdRecipientsLastPage := 1000
+	for currentPage := 1; currentPage <= sealdRecipientsLastPage; currentPage++ {
+		sessionInfo, err := handleMultipleAcl(encryptionSession.state, autoLogin(encryptionSession.state, encryptionSession.state.apiClient.getSessionInfo))(&getSessionInfoRequest{
+			SessionId:      encryptionSession.Id,
+			Page:           currentPage,
+			LookupProxyKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy,
+			LookupGroupKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup,
+		})
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+
+		sealdRecipientsLastPage = sessionInfo.RecipientsNbPage
+		for _, br := range sessionInfo.Recipients {
+			if br.RevokedDate == nil {
+				recipientsList.SealdRecipients = append(recipientsList.SealdRecipients, &SealdRecipient{
+					SealdId:     br.SealdId,
+					AddedById:   br.AddedById,
+					ReadFirst:   br.ReadFirst,
+					ReadLast:    br.ReadLast,
+					ReadTime:    br.ReadTime,
+					RevokedDate: br.RevokedDate,
+					Rights: &RecipientRights{
+						Read:    br.AclRead,
+						Forward: br.AclForward,
+						Revoke:  br.AclRevoke,
+					},
+				})
+			}
+		}
+	}
+
+	// List TMR accesses
+	tmrAccessesLastPage := 1000
+	for currentPage := 1; currentPage <= tmrAccessesLastPage; currentPage++ {
+		TMRResponse, err := handleMultipleAcl(encryptionSession.state, autoLogin(encryptionSession.state, encryptionSession.state.apiClient.listTmrAccesses))(&listTmrAccessesRequest{
+			MessageId:      encryptionSession.Id,
+			Page:           currentPage,
+			LookupProxyKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy,
+			LookupGroupKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup,
+		})
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		tmrAccessesLastPage = TMRResponse.NbPage
+		for _, tmrAB := range TMRResponse.TmrMKs {
+			recipientsList.TmrAccesses = append(recipientsList.TmrAccesses, &TmrAccess{
+				Id:             tmrAB.Id,
+				Created:        tmrAB.Created,
+				AuthFactorType: tmrAB.AuthFactorType,
+				Rights: &RecipientRights{
+					Read:    tmrAB.AclRead,
+					Forward: tmrAB.AclForward,
+					Revoke:  tmrAB.AclRevoke,
+				}})
+		}
+	}
+
+	// List Proxy sessions
+	proxySessionsLastPage := 1000
+	for currentPage := 1; currentPage <= proxySessionsLastPage; currentPage++ {
+		proxySessionsResponse, err := handleMultipleAcl(encryptionSession.state, autoLogin(encryptionSession.state, encryptionSession.state.apiClient.getProxySessions))(&getProxySessionsRequest{
+			SessionId:      encryptionSession.Id,
+			Page:           currentPage,
+			LookupProxyKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy,
+			LookupGroupKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup,
+		})
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+
+		proxySessionsLastPage = proxySessionsResponse.NbPage
+		for _, bPS := range proxySessionsResponse.ProxySessions {
+			if bPS.RevokedDate == nil {
+				recipientsList.ProxySessions = append(recipientsList.ProxySessions, &ProxySession{
+					SessionId:      bPS.SessionId,
+					ProxySessionId: bPS.ProxySessionId,
+					Created:        bPS.Created,
+					Revoke:         bPS.Revoked,
+					RevokedDate:    bPS.RevokedDate,
+					Rights: &RecipientRights{
+						Read:    bPS.AclRead,
+						Forward: bPS.AclForward,
+						Revoke:  bPS.AclRevoke,
+					}})
+			}
+		}
+	}
+
+	// List SymEncKeys
+	symEncKeysLastPage := 1000
+	for currentPage := 1; currentPage <= symEncKeysLastPage; currentPage++ {
+		symEncKeysResponse, err := handleMultipleAcl(encryptionSession.state, autoLogin(encryptionSession.state, encryptionSession.state.apiClient.listSymEncKeys))(&listSymEncKeysRequest{
+			SessionId:      encryptionSession.Id,
+			Page:           currentPage,
+			LookupProxyKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaProxy,
+			LookupGroupKey: encryptionSession.RetrievalDetails.Flow == EncryptionSessionRetrievalViaGroup,
+		})
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+
+		symEncKeysLastPage = symEncKeysResponse.NbPage
+		for _, bSEK := range symEncKeysResponse.SymEncKeys {
+			recipientsList.SymEncKeys = append(recipientsList.SymEncKeys, &SymEncKey{
+				SymEncKeyId: bSEK.SymEncKeyId,
+				Rights: &RecipientRights{
+					Read:    bSEK.AclRead,
+					Forward: bSEK.AclForward,
+					Revoke:  bSEK.AclRevoke,
+				}})
+		}
+	}
+
+	return recipientsList, nil
 }

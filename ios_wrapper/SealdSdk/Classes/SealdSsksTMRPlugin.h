@@ -83,7 +83,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param rawTMRSymKey The raw encryption key used to encrypt / decrypt the stored identity keys. This *MUST* be a cryptographically random NSData of 64 bytes.
  * @param identity The identity to save.
  * @param challenge Optional. The challenge sent by SSKS to the user's authentication method, if any.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdSsksSaveIdentityResponse*` containing the SSKS ID of the saved identity, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdSsksSaveIdentityResponse* containing the SSKS ID of the saved identity, and a `NSError*` that indicates if any error occurred.
  */
 - (void) saveIdentityAsync:(const NSString*)sessionId
                 authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -99,7 +99,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param authFactor The authentication factor to use.
  * @param rawTMRSymKey The raw encryption key used to encrypt / decrypt the stored identity keys. This *MUST* be a cryptographically random NSData of 64 bytes.
  * @param identity The identity to save.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdSsksSaveIdentityResponse*` containing the SSKS ID of the saved identity, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdSsksSaveIdentityResponse* containing the SSKS ID of the saved identity, and a `NSError*` that indicates if any error occurred.
  */
 - (void) saveIdentityAsync:(const NSString*)sessionId
                 authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -108,14 +108,14 @@ NS_ASSUME_NONNULL_BEGIN
          completionHandler:(void (^)(SealdSsksSaveIdentityResponse* response, NSError*_Nullable error))completionHandler;
 
 /**
- * Retrieve the Seald account previously saved with `[ssksTMRPluginInstance saveIdentity]`.
+ * Retrieve the Seald account previously saved with SealdSsksTMRPlugin.saveIdentity:authFactor:rawTMRSymKey:identity:challenge:error:.
  *
  * @param sessionId The user's session ID.
  * @param authFactor The authentication factor to use.
  * @param rawTMRSymKey The raw encryption key used to encrypt / decrypt the stored identity keys. This *MUST* be a cryptographically random NSData of 64 bytes.
  * @param challenge Optional. The challenge sent by SSKS to the user's authentication method, if any.
  * @param error Error pointer.
- * @return A SealdSsksRetrieveIdentityResponse instance, containing `identity`, the retrieved identity, `shouldRenewKey`, a boolean set to true is the user private key should be renewed (using [sealdSDKInstance renewKeys]), and `authenticatedSessionId`, a new authenticated sessionId, that you can use to perform further SSKS TMR operations without challenge.
+ * @return A SealdSsksRetrieveIdentityResponse instance, containing `identity`, the retrieved identity, `shouldRenewKey`, a boolean set to true is the user private key should be renewed (using SealdSdk.renewKeysWithPreparedRenewal:privateKeys:expireAfter:error:), and `authenticatedSessionId`, a new authenticated sessionId, that you can use to perform further SSKS TMR operations without challenge.
  */
 - (SealdSsksRetrieveIdentityResponse*) retrieveIdentity:(const NSString*)sessionId
                                              authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -124,13 +124,13 @@ NS_ASSUME_NONNULL_BEGIN
                                                   error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 
 /**
- * Retrieve the Seald account previously saved with `[ssksTMRPluginInstance saveIdentity]`.
+ * Retrieve the Seald account previously saved with SealdSsksTMRPlugin.saveIdentity:authFactor:rawTMRSymKey:identity:challenge:error:.
  *
  * @param sessionId The user's session ID.
  * @param authFactor The authentication factor to use.
  * @param rawTMRSymKey The raw encryption key used to encrypt / decrypt the stored identity keys. This *MUST* be a cryptographically random NSData of 64 bytes.
  * @param error Error pointer.
- * @return A SealdSsksRetrieveIdentityResponse instance, containing `identity`, the retrieved identity, `shouldRenewKey`, a boolean set to true is the user private key should be renewed (using [sealdSDKInstance renewKeys]), and `authenticatedSessionId`, a new authenticated sessionId, that you can use to perform further SSKS TMR operations without challenge.
+ * @return A SealdSsksRetrieveIdentityResponse instance, containing `identity`, the retrieved identity, `shouldRenewKey`, a boolean set to true is the user private key should be renewed (using SealdSdk.renewKeysWithPreparedRenewal:privateKeys:expireAfter:error:), and `authenticatedSessionId`, a new authenticated sessionId, that you can use to perform further SSKS TMR operations without challenge.
  */
 - (SealdSsksRetrieveIdentityResponse*) retrieveIdentity:(const NSString*)sessionId
                                              authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -138,13 +138,13 @@ NS_ASSUME_NONNULL_BEGIN
                                                   error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 
 /**
- * Retrieve the Seald account previously saved with `[ssksTMRPluginInstance saveIdentity]`.
+ * Retrieve the Seald account previously saved with SealdSsksTMRPlugin.saveIdentity:authFactor:rawTMRSymKey:identity:challenge:error:.
  *
  * @param sessionId The user's session ID.
  * @param authFactor The authentication factor to use.
  * @param rawTMRSymKey The raw encryption key used to encrypt / decrypt the stored identity keys. This *MUST* be a cryptographically random NSData of 64 bytes.
  * @param challenge Optional. The challenge sent by SSKS to the user's authentication method, if any.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdSsksRetrieveIdentityResponse*` containing the retrieved identity, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdSsksRetrieveIdentityResponse* containing the retrieved identity, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveIdentityAsync:(const NSString*)sessionId
                     authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -153,12 +153,12 @@ NS_ASSUME_NONNULL_BEGIN
              completionHandler:(void (^)(SealdSsksRetrieveIdentityResponse* response, NSError*_Nullable error))completionHandler;
 
 /**
- * Retrieve the Seald account previously saved with `[ssksTMRPluginInstance saveIdentity]`.
+ * Retrieve the Seald account previously saved with SealdSsksTMRPlugin.saveIdentity:authFactor:rawTMRSymKey:identity:challenge:error:.
  *
  * @param sessionId The user's session ID.
  * @param authFactor The authentication factor to use.
  * @param rawTMRSymKey The raw encryption key used to encrypt / decrypt the stored identity keys. This *MUST* be a cryptographically random NSData of 64 bytes.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdSsksRetrieveIdentityResponse*` containing the retrieved identity, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdSsksRetrieveIdentityResponse* containing the retrieved identity, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveIdentityAsync:(const NSString*)sessionId
                     authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -172,7 +172,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param authFactor Authentication method of this user, to which SSKS has sent a challenge at the request of your app's server.
  * @param challenge Optional. The challenge sent by SSKS to the user's authentication method, if any.
  * @param error Error pointer.
- * @return An [GetFactorTokenResponse] instance, containing the retrieved authentication factor token.
+ * @return A SealdSsksGetFactorTokenResponse instance, containing the retrieved authentication factor token.
  */
 - (SealdSsksGetFactorTokenResponse*) getFactorToken:(const NSString*)sessionId
                                          authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -187,7 +187,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param sessionId Session ID given by SSKS to your app's server.
  * @param authFactor Authentication method of this user, to which SSKS has sent a challenge at the request of your app's server.
  * @param error Error pointer.
- * @return An [GetFactorTokenResponse] instance, containing the retrieved authentication factor token.
+ * @return A SealdSsksGetFactorTokenResponse instance, containing the retrieved authentication factor token.
  */
 - (SealdSsksGetFactorTokenResponse*) getFactorToken:(const NSString*)sessionId
                                          authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -201,7 +201,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param sessionId Session ID given by SSKS to your app's server.
  * @param authFactor Authentication method of this user, to which SSKS has sent a challenge at the request of your app's server.
  * @param challenge Optional. The challenge sent by SSKS to the user's authentication method, if any.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdSsksGetFactorTokenResponse*` containing the retrieved token, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `SealdSsksGetFactorTokenResponse*` containing the retrieved token, and a `NSError*` that indicates if any error occurred.
  */
 - (void) getFactorTokenAsync:(const NSString*)sessionId
                   authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -214,7 +214,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param sessionId Session ID given by SSKS to your app's server.
  * @param authFactor Authentication method of this user, to which SSKS has sent a challenge at the request of your app's server.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdSsksGetFactorTokenResponse*` containing the retrieved token, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdSsksGetFactorTokenResponse* containing the retrieved token, and a `NSError*` that indicates if any error occurred.
  */
 - (void) getFactorTokenAsync:(const NSString*)sessionId
                   authFactor:(const SealdTmrAuthFactor*)authFactor

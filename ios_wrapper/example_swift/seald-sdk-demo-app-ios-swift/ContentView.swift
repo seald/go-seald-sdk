@@ -35,14 +35,14 @@ func testSealdSDK() async -> Bool {
         // On iOS, in Swift, the recommended path is `documentDirectory`.
         let paths = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)
         let documentsDirectory = paths[0]
-        let sealdDir = "\(documentsDirectory)/seald-swift"
+        let sealdDir = "\(documentsDirectory)/seald-swift/sdk"
 
         // The Seald SDK uses a local database that will persist on disk.
         // When instantiating a SealdSDK, it is highly recommended to set a symmetric key to encrypt this database.
         // In an actual app, it should be generated at signup,
         // either on the server and retrieved from your backend at login,
         // or on the client-side directly and stored in the system's keychain.
-        // WARNING: This should be a cryptographically random buffer of 64 bytes.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         // This random generation is NOT good enough.
         let databaseEncryptionKey = randomData(length: 64)
 
@@ -180,7 +180,7 @@ func testSealdSDK() async -> Bool {
         let userEM = "tmr-em-swift-\(rand)@test.com"
         let tmrAuthFactor = SealdTmrAuthFactor(value: userEM, type: "EM")
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         // This random generation is NOT good enough.
         let overEncryptionKey = randomData(length: 64)
 
@@ -295,6 +295,15 @@ func testSealdSDK() async -> Bool {
         assert(es1SDK1RetrieveFromMess.retrievalDetails.flow == SealdEncryptionSessionRetrievalFlow.direct)
         let decryptedMessageFromMess = try await es1SDK1RetrieveFromMess.decryptMessageAsync(encryptedMessage)
         assert(initialString == decryptedMessageFromMess)
+
+        // Serialize / Deserialize session
+        let serializedSession = try es1SDK1.serialize() // serialize
+        let deserializedSession = try sdk1.deserializeEncryptionSession(serializedSession) // deserialize
+        assert(deserializedSession.sessionId == es1SDK1.sessionId) // sessionId is as expected
+        let decryptedMessageFromDeserialized = try await deserializedSession.decryptMessageAsync(
+            encryptedMessage
+        ) // test decryption
+        assert(decryptedMessageFromDeserialized == initialString) // decrypted message is as expected
 
         // Create a test file on disk that we will encrypt/decrypt
         let filename = "testfile.txt"
@@ -423,10 +432,18 @@ func testSealdSDK() async -> Bool {
         let decryptedMessageAfterAdd = try await es1SDK3.decryptMessageAsync(encryptedMessage)
         assert(initialString == decryptedMessageAfterAdd)
 
+        // We can list all session recipients.
+        let resultList = try await es1SDK1.listRecipients(recipientsToRevoke)
+        assert(resultList.sealdRecipients.count == 4)
+        assert(resultList.symEncKeys.count == 0)
+        assert(resultList.proxySessions.count == 2)
+        assert(resultList.tmrAccesses.count == 0)
+
         // user1 revokes user3 and proxy1 from the encryption session.
-        let respRevoke = try await es1SDK1.revokeRecipientsIdsAsync(
-            [user3AccountInfo.userId],
-            proxySessionsIds: [proxySession1.sessionId])
+        let respRevoke = try await es1SDK1.revokeRecipientsAsyncWithSealdIds(
+            sealdIds: [user3AccountInfo.userId],
+            proxySessionsIds: [proxySession1.sessionId]
+        )
         assert(respRevoke.recipients.count == 1)
         assert((respRevoke.recipients[user3AccountInfo.userId]!).success)
         assert(respRevoke.proxySessions.count == 1)
@@ -681,7 +698,7 @@ func testSealdSDK() async -> Bool {
             admins: groupTMRAdmins,
             privateKeys: nil)
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         // This random generation is NOT good enough.
         let gTMRRawOverEncryptionKey = randomData(length: 64)
 
@@ -977,8 +994,191 @@ func testSealdSsksTMR() async -> Bool {
     }
 }
 
+func testSealdAnonymousSDK() async -> Bool {
+    do {
+        let paths = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)
+        let documentsDirectory = paths[0]
+        let anonymousTestDir = "\(documentsDirectory)/seald-swift/anonymous"
+
+        // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
+        // In a real app, it should never be done.
+        let fileManager = FileManager.default
+        try? fileManager.removeItem(atPath: anonymousTestDir)
+        try fileManager.createDirectory(atPath: anonymousTestDir, withIntermediateDirectories: true)
+
+        // Create classic SDK users
+        let sdkClassicUser = try SealdSdk(
+            apiUrl: testCredentials.apiURL,
+            appId: testCredentials.appId,
+            databasePath: nil,
+            databaseEncryptionKey: nil,
+            instanceName: "Swift-anonymous-full-sdk",
+            logLevel: -1,
+            logNoColor: true,
+            encryptionSessionCacheTTL: 0,
+            keySize: 4096
+        )
+        let jwtBuilder = JWTBuilder(
+            JWTSharedSecretId: testCredentials.JWTSharedSecretId,
+            JWTSharedSecret: testCredentials.JWTSharedSecret
+        )
+        let sdkClassicUserInfo = try await sdkClassicUser.createAccountAsync(
+            withSignupJwt: jwtBuilder.signupJWT(),
+            deviceName: "Swift-anonymous-full-sdk",
+            displayName: "Swift-anonymous-full-sdk",
+            privateKeys: nil,
+            expireAfter: 0
+        )
+
+        let sdkClassicUser2 = try SealdSdk(
+            apiUrl: testCredentials.apiURL,
+            appId: testCredentials.appId,
+            databasePath: nil,
+            databaseEncryptionKey: nil,
+            instanceName: "Swift-anonymous-full-sdk2",
+            logLevel: -1,
+            logNoColor: true,
+            encryptionSessionCacheTTL: 0,
+            keySize: 4096
+        )
+        let sdkClassicUserInfo2 = try await sdkClassicUser2.createAccountAsync(
+            withSignupJwt: jwtBuilder.signupJWT(),
+            deviceName: "Swift-anonymous-full-sdk2",
+            displayName: "Swift-anonymous-full-sdk2",
+            privateKeys: nil,
+            expireAfter: 0
+        )
+
+        // Create anonymous SDK
+        let anonymousSDK = try SealdAnonymousSdk(
+            apiUrl: testCredentials.apiURL,
+            appId: testCredentials.appId,
+            instanceName: "Swift-anonymous",
+            logLevel: -1,
+            logNoColor: true
+        )
+
+        // Generate JWTs
+        let authFactorValue = "anonymous-tmr-em-swift-\(randomString(length: 5))@test.com"
+        let authFactor = SealdTmrAuthFactor(value: authFactorValue, type: "EM")
+        let overEncryptionKey = randomData(length: 64)
+        let tmrRecipients = [
+            SealdAnonymousTmrRecipient(authFactor: authFactor, rawOverEncryptionKey: overEncryptionKey)
+        ]
+        let createJWT = try await jwtBuilder.anonymousCreateMessageJWT(
+            owner: sdkClassicUserInfo.userId,
+            recipients: [sdkClassicUserInfo.userId],
+            tmrRecipients: tmrRecipients
+        )
+        let findKeyJWT = try await jwtBuilder.anonymousFindKeyJWT(recipients: [sdkClassicUserInfo.userId])
+
+        // Anonymous SDK can create an AnonymousSession
+        let anonymousSession = try anonymousSDK.createAnonymousEncryptionSession(
+            withEncryptionToken: createJWT,
+            getKeysToken: findKeyJWT,
+            recipients: [sdkClassicUserInfo.userId],
+            tmrRecipients: tmrRecipients
+        )
+
+        // Full SDK recipient can retrieve the EncryptionSession corresponding to the AnonymousSession
+        let classicES = try await sdkClassicUser.retrieveEncryptionSessionAsync(
+            withSessionId: anonymousSession.sessionId,
+            useCache: false,
+            lookupProxyKey: false,
+            lookupGroupKey: false
+        )
+
+        let initialMessage = "a message that needs to be encrypted!"
+        let encryptedMessage = try await anonymousSession.encryptMessageAsync(initialMessage)
+
+        let decryptedMessage = try await anonymousSession.decryptMessageAsync(encryptedMessage)
+        assert(decryptedMessage == initialMessage)
+
+        let decryptedClassic = try await classicES.decryptMessageAsync(encryptedMessage)
+        assert(decryptedClassic == initialMessage)
+
+        // Full SDK non-recipient can retrieve the EncryptionSession via TMR
+        let ssksTMR = SealdSsksTMRPlugin(
+            ssksURL: testCredentials.ssksURL,
+            appId: testCredentials.appId,
+            instanceName: "AnonymousTmrPlugin",
+            logLevel: -1,
+            logNoColor: true
+        )
+        let ssksBackend = SSKSBackend( // Instantiate the SSKS backend
+            keyStorageURL: testCredentials.ssksURL,
+            appId: testCredentials.appId,
+            appKey: testCredentials.ssksBackendAppKey
+        )
+        let authSession = try await ssksBackend.challengeSend( // The app backend creates an SSKS authentication session
+            userId: sdkClassicUserInfo2.userId,
+            authFactor: authFactor,
+            createUser: true,
+            forceAuth: true,
+            // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'.
+            // In production, you cannot use this.
+            fakeOtp: true
+        )
+        let tmrJWT = try await ssksTMR.getFactorTokenAsync( // Retrieve a JWT associated with the authentication factor
+            sessionId: authSession.sessionId,
+            authFactor: authFactor,
+            challenge: testCredentials.ssksTMRChallenge
+        )
+        let tmrES = try await sdkClassicUser2.retrieveEncryptionSessionAsync(
+            byTmr: tmrJWT.token,
+            sessionId: anonymousSession.sessionId,
+            overEncryptionKey: overEncryptionKey,
+            tmrAccessesFilters: nil,
+            tryIfMultiple: true,
+            useCache: false
+        ) // Retrieve the encryption session using the JWT
+        let decryptedTMR = try await tmrES.decryptMessageAsync(encryptedMessage)
+        assert(decryptedTMR == initialMessage) // TMR-retrieved session can decrypt the message
+
+        // Serialize / Deserialize session
+        let serialized = try anonymousSession.serialize() // serialize
+        let deserialized = try anonymousSDK.deserializeAnonymousEncryptionSession(serialized) // deserialize
+        assert(deserialized.sessionId == anonymousSession.sessionId) // sessionId is as expected
+
+        let decryptedFromDeserialized = try await deserialized.decryptMessageAsync(encryptedMessage) // test decryption
+        assert(decryptedFromDeserialized == initialMessage) // decrypted message is as expected
+
+        // Create a test file on disk that we will encrypt/decrypt
+        let clearFile = "\(anonymousTestDir)/testfile.txt"
+        let content = "File clear data."
+        try content.write(toFile: clearFile, atomically: true, encoding: .utf8)
+
+        // Encrypt the test file. Resulting file will be written alongside the source file,
+        // with `.seald` extension added
+        let encryptedFileURI = try await anonymousSession.encryptFileAsync(fromURI: clearFile)
+
+        // The retrieved session can decrypt the file.
+        // The decrypted file will be named with the name it had at encryption.
+        // Any renaming of the encrypted file will be ignored.
+        // NOTE: In this example, the decrypted file will have `(1)` suffix
+        // to avoid overwriting the original clear file.
+        let decryptedFileURI = try await anonymousSession.decryptFileAsync(fromURI: encryptedFileURI)
+        assert(decryptedFileURI.hasSuffix("testfile (1).txt"))
+
+        let decryptedFileContent = try String(contentsOfFile: decryptedFileURI, encoding: .utf8)
+        assert(decryptedFileContent == content)
+
+        // Close SDK
+        try await sdkClassicUser.closeAsync()
+        try await sdkClassicUser2.closeAsync()
+
+        print("Anonymous SDK tests success!")
+        return true
+    } catch {
+        print("Anonymous SDK tests failed")
+        print(error)
+        return false
+    }
+}
+
 struct ContentView: View {
     @State private var statusSdk = "Running..."
+    @State private var statusAnonymousSdk = "Running..."
     @State private var statusSsksPassword = "Running..."
     @State private var statusSsksTmr = "Running..."
 
@@ -987,6 +1187,8 @@ struct ContentView: View {
             Text("version: \(SealdSdkVersion)")
                 .padding()
             Text("test SDK: \(statusSdk)")
+                .padding()
+            Text("test Anonymous SDK: \(statusAnonymousSdk)")
                 .padding()
             Text("test SSKS Password: \(statusSsksPassword)")
                 .padding()
@@ -1004,6 +1206,10 @@ struct ContentView: View {
             let result = await testSealdSDK()
             statusSdk = result ? "success" : "error"
         }
+        let taskAnonymousSdk = Task { [self] in
+            let result = await testSealdAnonymousSDK()
+            statusAnonymousSdk = result ? "success" : "error"
+        }
         let taskSsksPassword = Task { [self] in
             let result = await testSealdSsksPassword()
             statusSsksPassword = result ? "success" : "error"
@@ -1014,6 +1220,7 @@ struct ContentView: View {
         }
 
         await taskSdk.value
+        await taskAnonymousSdk.value
         await taskSsksPassword.value
         await taskSsksTmr.value
     }

@@ -8,6 +8,7 @@
 
 import Foundation
 import JWTKit
+import SealdSdk
 
 class JWTBuilder {
     let JWTSharedSecretId: String
@@ -58,6 +59,27 @@ class JWTBuilder {
         func verify(using key: some JWTAlgorithm) throws {}
     }
 
+    struct AnonymousFindKeyPayload: JWTPayload {
+        let iss: String
+        let iat: Date
+        let scopes: String
+        let recipients: [String]
+
+        func verify(using key: some JWTAlgorithm) throws {}
+    }
+
+    struct AnonymousCreateMessageJWTPayload: JWTPayload {
+        let iss: String
+        let jti: String
+        let iat: Date
+        let scopes: String
+        let owner: String
+        let recipients: [String]
+        let tmr_recipients: [[String: String]] // swiftlint:disable:this identifier_name
+
+        func verify(using key: some JWTAlgorithm) throws {}
+    }
+
     func signupJWT() async throws -> String {
         let payload = SignupPayload(
             iss: JWTSharedSecretId,
@@ -77,6 +99,40 @@ class JWTBuilder {
             iat: Date(),
             connector_add: ["type": "AP", "value": "\(customUserId)@\(appId)"],
             scopes: JWTPermission.addConnector.rawValue
+        )
+
+        return try await keys.sign(payload)
+    }
+
+    func anonymousFindKeyJWT(recipients: [String]) async throws -> String {
+        let payload = AnonymousFindKeyPayload(
+            iss: JWTSharedSecretId,
+            iat: Date(),
+            scopes: JWTPermission.anonymousFindKey.rawValue,
+            recipients: recipients,
+        )
+
+        return try await keys.sign(payload)
+    }
+
+    func anonymousCreateMessageJWT(
+        owner: String,
+        recipients: [String],
+        tmrRecipients: [SealdAnonymousTmrRecipient] = []
+    ) async throws -> String {
+        let payload = AnonymousCreateMessageJWTPayload(
+            iss: JWTSharedSecretId,
+            jti: UUID().uuidString,
+            iat: Date(),
+            scopes: JWTPermission.anonymousCreateMessage.rawValue,
+            owner: owner,
+            recipients: recipients,
+            tmr_recipients: tmrRecipients.map { factor in
+                [
+                    "auth_factor_type": factor.authFactor.type,
+                    "auth_factor_value": factor.authFactor.value
+                ]
+            },
         )
 
         return try await keys.sign(payload)

@@ -558,3 +558,79 @@ func (c canaryBeardApiClient) searchGroupTMRTemporaryKeys(request *searchGroupTM
 	}
 	return c.Client.searchGroupTMRTemporaryKeys(request)
 }
+
+func (c canaryBeardApiClient) addSymEncKey(request *addSymEncKeyRequest) (*SymEncKey, error) {
+	res, err := executeBeardApiCanary[SymEncKey](c, "addSymEncKey", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.addSymEncKey(request)
+}
+
+func (c canaryBeardApiClient) changeSymEncKeyRights(request *changeSymEncKeyRightsRequest) (*SymEncKey, error) {
+	res, err := executeBeardApiCanary[SymEncKey](c, "changeSymEncKeyRights", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.changeSymEncKeyRights(request)
+}
+
+func (c canaryBeardApiClient) retrieveWithSymEncKey(request *retrieveWithSymEncKeyRequest) (*retrieveWithSymEncKeyResponse, error) {
+	res, err := executeBeardApiCanary[retrieveWithSymEncKeyResponse](c, "retrieveWithSymEncKey", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.retrieveWithSymEncKey(request)
+}
+
+func (c canaryBeardApiClient) selfAddWithSymEncKey(request *selfAddWithSymEncKeyRequest) (*statusResponse, error) {
+	res, err := executeBeardApiCanary[statusResponse](c, "selfAddWithSymEncKey", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.selfAddWithSymEncKey(request)
+}
+
+func (c canaryBeardApiClient) getSessionInfo(request *getSessionInfoRequest) (*GetInfoResponse, error) {
+	res, err := executeBeardApiCanary[GetInfoResponse](c, "getSessionInfo", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.getSessionInfo(request)
+}
+
+func (c canaryBeardApiClient) getProxySessions(request *getProxySessionsRequest) (*getProxySessionsResponse, error) {
+	res, err := executeBeardApiCanary[getProxySessionsResponse](c, "getProxySessions", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.getProxySessions(request)
+}
+func (c canaryBeardApiClient) listSymEncKeys(request *listSymEncKeysRequest) (*listSymEncKeysResponse, error) {
+	res, err := executeBeardApiCanary[listSymEncKeysResponse](c, "listSymEncKeys", request)
+	if err != nil {
+		return nil, err
+	}
+	if res != nil {
+		return res, nil
+	}
+	return c.Client.listSymEncKeys(request)
+}

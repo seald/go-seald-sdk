@@ -1,7 +1,21 @@
+# UNRELEASED
+- @go: \[**breaking change**\] Remove anonymous SDK `Encrypt` function.
+- @go: \[new feature\] Anonymous SDK now can create `AnonymousEncryptionSession`. This session exposes six functions: `EncryptMessage`, `DecryptMessage`, `EncryptFile`, `DecryptFile`, `EncryptFileFromPath`, `DecryptFileFromPath`.
+- @android: \[new feature\] Implement Anonymous SDK.
+- @all: \[new feature\] Implement serialization / deserialization of `EncryptionSession` and `AnonymousEncryptionSession`.
+- @all: \[**breaking change**\] The internal codes for representing `RetrievalDetails` flows have changed to align with JS, so the `RetrievalDetails` of some sessions that were cached before update and retrieved from cache after update may be invalid.
+- @go: \[new feature\] Add functions `AddSymEncKeyFromPassword`, `AddSymEncKeyFromRawKeys`, `ChangeSymEncKeyRights`, `SelfAddToEncryptionSessionWithSymEncKeyPassword`, `SelfAddToEncryptionSessionWithSymEncKeyFromRawKeys`, `RetrieveEncryptionSessionWithSymEncKeyPassword`, `RetrieveEncryptionSessionWithSymEncKeyFromRawKeys` to create and use symEncKey as recipients of an encryption session.
+- @go: \[**breaking change**\] The function `EncryptionSession.revokeRecipients` takes a third arguments `symEncKeyIds []string` to revoke `symEncKey` accesses
+- @go: \[new feature\] Add functions `EncryptionSession.ListRecipients` to list all recipients of an `EncryptionSession`
+- @go: \[new feature\] Add functions `RetrieveEncryptionSessionFromPassword` and `RetrieveEncryptionSessionFromRawKey` to anonymous SDK to use symEncKey
+- @go: \[**breaking change**\] `session.RevokeRecipients` now take a `*RecipientsToRevoke` as argument
+- @go: \[new feature\] `session.RevokeRecipients` can revoke TMR Accesses
+
+
 # 0.9.0 : 2025/02/05
 - @all: \[enhancement\] Encryption / Decryption from file paths now streams the data in chunks, to avoid having to load the entire file in-memory, and for better performance.
 - @go: \[**breaking change**\] Change some internal function names and signatures, mainly in `encrypt_decrypt_file`, and change some errors.
-- @go: \[**breaking change**\] Second argument of `createEncryptionSession` is now of type `CreateEncryptionSessionOptions`, and includes `metadata` argument to be able to add an arbitrary metadata string .
+- @go: \[**breaking change**\] Second argument of `createEncryptionSession` is now of type `CreateEncryptionSessionOptions`, and includes `metadata` argument to be able to add an arbitrary metadata string.
 - @android: \[new feature\] Add optional `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.
 - @ios: \[**breaking change**\] Add `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.
 - @c: \[**breaking change**\] Add `metadata` argument to `createEncryptionSession`, to be able to add an arbitrary metadata string.

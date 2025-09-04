@@ -273,19 +273,23 @@ const (
 	EncryptionSessionRetrievalDirect                                             // 1 - The session was retrieved as a direct recipient.
 	EncryptionSessionRetrievalViaGroup                                           // 2 - The session was retrieved as a member of a group.
 	EncryptionSessionRetrievalViaProxy                                           // 3 - The session was retrieved through a proxy session.
-	EncryptionSessionRetrievalViaTmrAccess                                       // 4 - The session was retrieved through a TMR access
+	EncryptionSessionRetrievalLocal                                              // 4 - The session was retrieved with a sealdMessage that include the encrypted SymKey. Should never happen in Go.
+	EncryptionSessionRetrievalViaSymEncKey                                       // 5 - The session was retrieved through a SymEncKey.
+	EncryptionSessionRetrievalViaTmrAccess                                       // 6 - The session was retrieved through a TMR access
 )
 
 // EncryptionSessionRetrievalDetails represents the details of how an Encryption Session was retrieved.
 type EncryptionSessionRetrievalDetails struct {
 	// Flow represents the way the session was retrieved : as a direct recipient, as member of a group, or through a proxy session.
-	Flow EncryptionSessionRetrievalFlow `json:"flow"`
+	Flow EncryptionSessionRetrievalFlow `json:"flow" bson:"flow"`
 	// GroupId gives, if the session was retrieved as member of a group, the ID of the group in question.
-	GroupId string `json:"groupId"`
+	GroupId string `json:"groupId" bson:"groupId"`
 	// ProxySessionId gives, if the session was retrieved through a proxy session, the ID of this proxy session.
-	ProxySessionId string `json:"proxySessionId"`
+	ProxySessionId string `json:"proxySessionId" bson:"proxySessionId"`
+	// SymEncKeyId gives, if the session was retrieved through a SymEncKey, the ID of this SymEncKey.
+	SymEncKeyId string `json:"symEncKeyId" bson:"symEncKeyId"`
 	// FromCache indicates if this session was retrieved from the cache.
-	FromCache bool `json:"-"`
+	FromCache bool `json:"-" bson:"fromCache"`
 }
 
 type encryptionSessionCacheEntry struct {

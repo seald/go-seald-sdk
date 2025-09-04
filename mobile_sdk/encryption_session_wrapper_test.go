@@ -1,12 +1,13 @@
 package mobile_sdk
 
 import (
+	"testing"
+
 	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/test_utils"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestMobileEncryptionSession(t *testing.T) {
@@ -66,7 +67,9 @@ func TestMobileEncryptionSession(t *testing.T) {
 		mES, err := sdk1.CreateEncryptionSession(recipients1and2, "test-mobile-3", true)
 		require.NoError(t, err)
 
-		respAllGood, err := mES.RevokeRecipients(&StringArray{items: []string{sdk1UserInfo.UserId, sdk2UserInfo.UserId, sdk3UserInfo.UserId}}, nil)
+		respAllGood, err := mES.RevokeRecipients(&RecipientsToRevoke{
+			SealdIds: &StringArray{items: []string{sdk1UserInfo.UserId, sdk2UserInfo.UserId, sdk3UserInfo.UserId}},
+		})
 		require.NoError(t, err)
 		assert.Equal(t, 3, len(respAllGood.Recipients.status))
 		assert.Equal(t, 0, len(respAllGood.ProxySessions.status))

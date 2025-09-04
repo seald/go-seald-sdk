@@ -11,15 +11,16 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/seald/go-seald-sdk/test_utils"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 // Known good RSA key (it's the one for the test sdk user)
@@ -36,9 +37,9 @@ const HexNullHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b785
 
 func TestAsymkey(t *testing.T) {
 	publicKey, err := PublicKeyFromB64(B64PublicKey)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	privateKey, err := PrivateKeyFromB64(B64PrivateKey)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	var key4096 *PrivateKey
 
 	t.Parallel()
@@ -47,14 +48,12 @@ func TestAsymkey(t *testing.T) {
 			t.Parallel()
 			t.Run("Error at generate", func(t *testing.T) {
 				_, err := Generate(-1)
-				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorGenerateInvalidSize)
-				}
+				assert.ErrorIs(t, err, ErrorGenerateInvalidSize)
 			})
 			t.Run("Generate 1024 bits", func(t *testing.T) {
 				key, err := Generate(1024)
-				assert.NoError(t, err)
-				assert.NoError(t, key.key.Validate())
+				require.NoError(t, err)
+				require.NoError(t, key.key.Validate())
 				assert.Equal(t, key.key.Size(), 128)
 				assert.Equal(t, key.key.E, 65537)
 				assert.Equal(t, key.BitLen(), 1024)
@@ -62,8 +61,8 @@ func TestAsymkey(t *testing.T) {
 			})
 			t.Run("Generate 2048 bits", func(t *testing.T) {
 				key, err := Generate(2048)
-				assert.NoError(t, err)
-				assert.NoError(t, key.key.Validate())
+				require.NoError(t, err)
+				require.NoError(t, key.key.Validate())
 				assert.Equal(t, key.key.Size(), 256)
 				assert.Equal(t, key.key.E, 65537)
 				assert.Equal(t, key.BitLen(), 2048)
@@ -71,8 +70,8 @@ func TestAsymkey(t *testing.T) {
 			})
 			t.Run("Generate 4096 bits", func(t *testing.T) {
 				key, err := Generate(4096)
-				assert.NoError(t, err)
-				assert.NoError(t, key.key.Validate())
+				require.NoError(t, err)
+				require.NoError(t, key.key.Validate())
 				assert.Equal(t, key.key.Size(), 512)
 				assert.Equal(t, key.key.E, 65537)
 				assert.Equal(t, key.BitLen(), 4096)
@@ -87,7 +86,7 @@ func TestAsymkey(t *testing.T) {
 			t.Run("Encode private key", func(t *testing.T) {
 				rawKey := privateKey.Encode()
 				rawKeyReference, err := base64.StdEncoding.DecodeString(B64PrivateKey)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, rawKey, rawKeyReference)
 			})
 
@@ -95,7 +94,7 @@ func TestAsymkey(t *testing.T) {
 				rawKey, err := base64.StdEncoding.DecodeString(B64PrivateKey)
 				require.NoError(t, err)
 				key, err := PrivateKeyDecode(rawKey)
-				assert.NoError(t, key.key.Validate())
+				require.NoError(t, key.key.Validate())
 				assert.Equal(t, 512, key.key.Size())
 				assert.Equal(t, 65537, key.key.E)
 			})
@@ -129,7 +128,7 @@ func TestAsymkey(t *testing.T) {
 			t.Run("EncodePKCS1DER private key", func(t *testing.T) {
 				rawKey := privateKey.EncodePKCS1DER()
 				rawKeyReference, err := base64.StdEncoding.DecodeString(B64PrivateKeyPKCS1DER)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, rawKey, rawKeyReference)
 			})
 
@@ -137,7 +136,7 @@ func TestAsymkey(t *testing.T) {
 				rawKey, err := base64.StdEncoding.DecodeString(B64PrivateKeyPKCS1DER)
 				require.NoError(t, err)
 				key, err := PrivateKeyDecodePKCS1DER(rawKey)
-				assert.NoError(t, key.key.Validate())
+				require.NoError(t, key.key.Validate())
 				assert.Equal(t, 512, key.key.Size())
 				assert.Equal(t, 65537, key.key.E)
 				assert.Equal(t, B64PrivateKey, key.ToB64())
@@ -175,7 +174,7 @@ func TestAsymkey(t *testing.T) {
 			t.Parallel()
 			t.Run("Marshal", func(t *testing.T) {
 				m, err := json.Marshal(privateKey)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				assert.Equal(t, "\""+B64PrivateKey+"\"", string(m))
 			})
@@ -184,10 +183,10 @@ func TestAsymkey(t *testing.T) {
 				var pKey PrivateKey
 				err := json.Unmarshal([]byte("\""+B64PrivateKey+"\""), &pKey)
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				privateKeyExpected, err := PrivateKeyFromB64(B64PrivateKey)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				assert.Equal(t, *privateKeyExpected, pKey)
 			})
@@ -195,19 +194,13 @@ func TestAsymkey(t *testing.T) {
 			t.Run("Unmarshal non string", func(t *testing.T) {
 				var pKey PrivateKey
 				err := json.Unmarshal([]byte("1"), &pKey)
-
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "json: cannot unmarshal number into Go value of type string")
-				}
+				assert.EqualError(t, err, "json: cannot unmarshal number into Go value of type string")
 			})
 
 			t.Run("Unmarshal non base64", func(t *testing.T) {
 				var pKey PrivateKey
 				err := json.Unmarshal([]byte("\"€\""), &pKey)
-
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "illegal base64 data at input byte 0")
-				}
+				assert.EqualError(t, err, "illegal base64 data at input byte 0")
 			})
 		})
 
@@ -215,10 +208,10 @@ func TestAsymkey(t *testing.T) {
 			t.Parallel()
 			t.Run("MarshalBSONValue", func(t *testing.T) {
 				referenceBytes, err := base64.StdEncoding.DecodeString(B64PrivateKeyLatin1String)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				referenceStr := string(referenceBytes)
 				bsonType, b, err := privateKey.MarshalBSONValue()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, bsonType, bsontype.String)
 				str, rem, couldFinish := bsoncore.ReadString(b)
 				assert.True(t, couldFinish)
@@ -228,51 +221,45 @@ func TestAsymkey(t *testing.T) {
 
 			t.Run("UnmarshalBSONValue", func(t *testing.T) {
 				referenceBytes, err := base64.StdEncoding.DecodeString(B64PrivateKeyLatin1String)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				referenceStr := string(referenceBytes)
 				referenceMarshalledString := bsoncore.AppendString([]byte{}, referenceStr)
 				var key PrivateKey
 				err = key.UnmarshalBSONValue(bsontype.String, referenceMarshalledString)
-				assert.NoError(t, err)
-				assert.NoError(t, key.key.Validate())
+				require.NoError(t, err)
+				require.NoError(t, key.key.Validate())
 				assert.Equal(t, key.key.Size(), 512)
 				assert.Equal(t, key.key.E, 65537)
 			})
 
 			t.Run("Invalid type for UnmarshalBSONValue", func(t *testing.T) {
 				referenceBytes, err := base64.StdEncoding.DecodeString(B64PrivateKeyLatin1String)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				referenceMarshalledBinary := bsoncore.AppendBinary([]byte{}, bsontype.BinaryGeneric, referenceBytes)
 				var key PrivateKey
 				err = key.UnmarshalBSONValue(bsontype.Binary, referenceMarshalledBinary)
-				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorUnmarshalBSONValueInvalidType)
-				}
+				assert.ErrorIs(t, err, ErrorUnmarshalBSONValueInvalidType)
 			})
 
 			t.Run("Truncated input for UnmarshalBSONValue", func(t *testing.T) {
 				referenceBytes, err := base64.StdEncoding.DecodeString(B64PrivateKeyLatin1String)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				referenceStr := string(referenceBytes)
 				referenceMarshalledString := bsoncore.AppendString([]byte{}, referenceStr)
 				var key PrivateKey
 				err = key.UnmarshalBSONValue(bsontype.String, referenceMarshalledString[len(referenceMarshalledString)/2:])
-				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorUnmarshalBSONValueTooShort)
-				}
+				assert.ErrorIs(t, err, ErrorUnmarshalBSONValueTooShort)
 			})
 
 			t.Run("Invalid private key for UnmarshalBSONValue", func(t *testing.T) {
 				referenceBytes, err := base64.StdEncoding.DecodeString(B64PrivateKeyLatin1String)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				referenceBytes = append([]byte{0x00}, referenceBytes...)
 				referenceStr := string(referenceBytes)
 				referenceMarshalledString := bsoncore.AppendString([]byte{}, referenceStr)
 				var key PrivateKey
 				err = key.UnmarshalBSONValue(bsontype.String, referenceMarshalledString)
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "asn1: structure error: tags don't match (16 vs {class:0 tag:0 length:48 isCompound:false}) {optional:false explicit:false application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} pkcs8 @2")
-				}
+				assert.EqualError(t, err, "asn1: structure error: tags don't match (16 vs {class:0 tag:0 length:48 isCompound:false}) {optional:false explicit:false application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} pkcs8 @2")
 			})
 		})
 
@@ -289,10 +276,10 @@ func TestAsymkey(t *testing.T) {
 		t.Run("Decryption", func(t *testing.T) {
 			t.Parallel()
 			cipherText, err := base64.StdEncoding.DecodeString(EncryptedMessage)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			t.Run("Valid decryption", func(t *testing.T) {
 				clearText, err := privateKey.Decrypt(cipherText)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, []byte(Message), clearText)
 			})
 
@@ -301,49 +288,41 @@ func TestAsymkey(t *testing.T) {
 				copy(cipherText2, cipherText)
 				cipherText2[0] = 0
 				_, err := privateKey.Decrypt(cipherText2)
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "ASYMKEY_DECRYPT_CRYPTO_ERROR - Cannot decrypt : crypto/rsa: decryption error")
-				}
+				assert.EqualError(t, err, "ASYMKEY_DECRYPT_CRYPTO_ERROR - Cannot decrypt : crypto/rsa: decryption error")
 			})
 			t.Run("Invalid CRC32", func(t *testing.T) {
 				clearMessage := []byte(Message)
 				invalidClearText := make([]byte, len(clearMessage)+4)
 				copy(invalidClearText[4:], clearMessage)
 				cipherText2, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &privateKey.Public().key, invalidClearText, nil)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				_, err = privateKey.Decrypt(cipherText2)
-				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorDecryptCryptoRSA)
-				}
+				assert.ErrorIs(t, err, ErrorDecryptCryptoRSA)
 			})
 
 			t.Run("Cleartext shorter than CRC32", func(t *testing.T) {
 				invalidClearText := []byte{'L', 'O', 'L'}
 				cipherText2, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &privateKey.Public().key, invalidClearText, nil)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				_, err = privateKey.Decrypt(cipherText2)
-				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorDecryptCryptoRSA)
-				}
+				assert.ErrorIs(t, err, ErrorDecryptCryptoRSA)
 			})
 
 			t.Run("Empty message", func(t *testing.T) {
 				invalidClearText := []byte{0, 0, 0, 0}
 				cipherText2, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &privateKey.Public().key, invalidClearText, nil)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				message, err := privateKey.Decrypt(cipherText2)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, len(message), 0)
 			})
 
 			t.Run("Empty message with invalid CRC32", func(t *testing.T) {
 				invalidClearText := []byte{0, 0, 0, 1}
 				cipherText2, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &privateKey.Public().key, invalidClearText, nil)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				_, err = privateKey.Decrypt(cipherText2)
-				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorDecryptCryptoRSA)
-				}
+				assert.ErrorIs(t, err, ErrorDecryptCryptoRSA)
 			})
 		})
 
@@ -351,50 +330,48 @@ func TestAsymkey(t *testing.T) {
 			t.Parallel()
 			t.Run("Valid signature", func(t *testing.T) {
 				signature, err := privateKey.Sign([]byte(Message))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				hash := sha256.New()
 				hash.Write([]byte(Message))
 				err = rsa.VerifyPSS(&privateKey.Public().key, crypto.SHA256, hash.Sum(nil), signature, nil)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = privateKey.Public().Verify([]byte(Message), signature)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 
 			t.Run("Empty textToSign", func(t *testing.T) {
 				signature, err := privateKey.Sign([]byte{})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				nullHash, err := hex.DecodeString(HexNullHash)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				err = rsa.VerifyPSS(&privateKey.Public().key, crypto.SHA256, nullHash, signature, nil)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = privateKey.Public().Verify([]byte{}, signature)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 
 			t.Run("TextToSign larger than key", func(t *testing.T) {
 				largeTextToSign := make([]byte, privateKey.key.Size()*2)
 				_, err := rand.Read(largeTextToSign)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				signature, err := privateKey.Sign(largeTextToSign)
 				hash := sha256.New()
 				hash.Write(largeTextToSign)
 				err = rsa.VerifyPSS(&privateKey.Public().key, crypto.SHA256, hash.Sum(nil), signature, nil)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = privateKey.Public().Verify(largeTextToSign, signature)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 
 			t.Run("Invalid private key", func(t *testing.T) {
 				privateKey, err := PrivateKeyFromB64(B64PrivateKey)
-				assert.NoError(t, err)
-				privateKey.key.E = 0 // should break
+				require.NoError(t, err)
+				privateKey.key.N = nil // should break
 				_, err = privateKey.Sign([]byte(Message))
-				if assert.Error(t, err) {
-					assert.ErrorContains(t, err, "rsa") // "rsa: internal error" vs "crypto/rsa: decryption error"
-				}
+				assert.ErrorContains(t, err, "crypto/rsa: missing public modulus")
 			})
 		})
 	})
@@ -406,13 +383,13 @@ func TestAsymkey(t *testing.T) {
 			t.Run("Encode public key", func(t *testing.T) {
 				rawKey := publicKey.Encode()
 				rawKeyReference, err := base64.StdEncoding.DecodeString(B64PublicKey)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, rawKeyReference, rawKey)
 			})
 
 			t.Run("Decode public key", func(t *testing.T) {
 				rawKey, err := base64.StdEncoding.DecodeString(B64PublicKey)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				key, err := PublicKeyDecode(rawKey)
 				assert.Equal(t, 0, key.key.N.Cmp(privateKey.key.N))
 				assert.Equal(t, key.key.Size(), 512)
@@ -421,21 +398,17 @@ func TestAsymkey(t *testing.T) {
 
 			t.Run("Decode invalid public key", func(t *testing.T) {
 				rawKey, err := base64.StdEncoding.DecodeString(B64PublicKey)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				rawKey[0] = 0
 				_, err = PublicKeyDecode(rawKey)
 				t.Log(err)
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "asn1: structure error: tags don't match (16 vs {class:0 tag:0 length:546 isCompound:false}) {optional:false explicit:false application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} publicKeyInfo @4")
-				}
+				assert.EqualError(t, err, "asn1: structure error: tags don't match (16 vs {class:0 tag:0 length:546 isCompound:false}) {optional:false explicit:false application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} publicKeyInfo @4")
 			})
 
 			t.Run("Decode empty public key", func(t *testing.T) {
 				_, err := PublicKeyDecode([]byte{})
 				t.Log(err)
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "asn1: syntax error: sequence truncated")
-				}
+				assert.EqualError(t, err, "asn1: syntax error: sequence truncated")
 			})
 
 			t.Run("Decode ED25519 key instead of RSA", func(t *testing.T) {
@@ -443,16 +416,12 @@ func TestAsymkey(t *testing.T) {
 				b, err := x509.MarshalPKIXPublicKey(privKey.Public())
 
 				_, err = PublicKeyDecode(b)
-				if assert.Error(t, err) {
-					assert.ErrorIs(t, err, ErrorPublicKeyDecodeUnknownKeyType)
-				}
+				assert.ErrorIs(t, err, ErrorPublicKeyDecodeUnknownKeyType)
 			})
 
 			t.Run("Decode invalid base64", func(t *testing.T) {
 				_, err := PublicKeyFromB64("$" + B64PublicKey)
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "illegal base64 data at input byte 0")
-				}
+				assert.EqualError(t, err, "illegal base64 data at input byte 0")
 			})
 		})
 
@@ -460,7 +429,7 @@ func TestAsymkey(t *testing.T) {
 			t.Parallel()
 			t.Run("Marshal", func(t *testing.T) {
 				m, err := json.Marshal(publicKey)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				assert.Equal(t, "\""+B64PublicKey+"\"", string(m))
 			})
@@ -469,10 +438,10 @@ func TestAsymkey(t *testing.T) {
 				var pKey PublicKey
 				err := json.Unmarshal([]byte("\""+B64PublicKey+"\""), &pKey)
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				publicKeyExpected, err := PublicKeyFromB64(B64PublicKey)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				assert.Equal(t, *publicKeyExpected, pKey)
 			})
@@ -480,19 +449,13 @@ func TestAsymkey(t *testing.T) {
 			t.Run("Unmarshal non string", func(t *testing.T) {
 				var pKey PublicKey
 				err := json.Unmarshal([]byte("1"), &pKey)
-
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "json: cannot unmarshal number into Go value of type string")
-				}
+				assert.EqualError(t, err, "json: cannot unmarshal number into Go value of type string")
 			})
 
 			t.Run("Unmarshal non base64", func(t *testing.T) {
 				var pKey PublicKey
 				err := json.Unmarshal([]byte("\"€\""), &pKey)
-
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "illegal base64 data at input byte 0")
-				}
+				assert.EqualError(t, err, "illegal base64 data at input byte 0")
 			})
 		})
 
@@ -510,76 +473,67 @@ func TestAsymkey(t *testing.T) {
 
 			t.Run("Valid encryption", func(t *testing.T) {
 				cipherText, err := publicKey.Encrypt(clearText)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				decrypted, err := rsa.DecryptOAEP(sha1.New(), rand.Reader, &privateKey.key, cipherText, nil)
-				assert.NoError(t, err)
-				if assert.Greater(t, len(decrypted), 4) {
-					crc32 := decrypted[0:4]
-					clear := decrypted[4:]
-					assert.Equal(t, clearText, clear)
-					assert.Equal(t, hex.EncodeToString(crc32), MessageCRC32)
-				}
+				require.NoError(t, err)
+				require.Greater(t, len(decrypted), 4)
+				crc32 := decrypted[0:4]
+				clear := decrypted[4:]
+				assert.Equal(t, clearText, clear)
+				assert.Equal(t, hex.EncodeToString(crc32), MessageCRC32)
 
 				res, err := privateKey.Decrypt(cipherText)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, clearText, res)
 			})
 
 			t.Run("Empty clearText", func(t *testing.T) {
 				cipherText, err := publicKey.Encrypt([]byte{})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				decrypted, err := rsa.DecryptOAEP(sha1.New(), rand.Reader, &privateKey.key, cipherText, nil)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				assert.Equal(t, []byte{0, 0, 0, 0}, decrypted)
 
 				res, err := privateKey.Decrypt(cipherText)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, []byte{}, res)
 			})
 
 			t.Run("Message larger than key", func(t *testing.T) {
 				largeClearText := make([]byte, privateKey.key.Size()*2)
 				_, err := rand.Read(largeClearText)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				_, err = publicKey.Encrypt(largeClearText)
-				if assert.Error(t, err) {
-					assert.ErrorContains(t, err, "crypto/rsa: message too long for RSA") // different versions of Go have different error messages for this "RSA public key size" / "RSA key size"
-				}
+				assert.ErrorContains(t, err, "crypto/rsa: message too long for RSA") // different versions of Go have different error messages for this "RSA public key size" / "RSA key size"
 			})
 		})
 
 		t.Run("Signature verification", func(t *testing.T) {
 			referenceSignature, err := base64.StdEncoding.DecodeString(B64Signature)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			t.Parallel()
 			t.Run("Valid signature", func(t *testing.T) {
 				err := publicKey.Verify([]byte(Message), referenceSignature)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 
 			t.Run("Signature mismatch", func(t *testing.T) {
 				err := publicKey.Verify([]byte{0x00}, referenceSignature)
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "crypto/rsa: verification error")
-				}
+				assert.EqualError(t, err, "crypto/rsa: verification error")
 			})
 
 			t.Run("Truncated signature", func(t *testing.T) {
 				err := publicKey.Verify([]byte(Message), referenceSignature[len(referenceSignature)/2:])
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "crypto/rsa: verification error")
-				}
+				assert.EqualError(t, err, "crypto/rsa: verification error")
 			})
 
 			t.Run("Empty signature", func(t *testing.T) {
 				err := publicKey.Verify([]byte(Message), []byte{})
-				if assert.Error(t, err) {
-					assert.EqualError(t, err, "crypto/rsa: verification error")
-				}
+				assert.EqualError(t, err, "crypto/rsa: verification error")
 			})
 		})
 	})
@@ -626,7 +580,7 @@ func TestAsymkey(t *testing.T) {
 			signature, err := os.ReadFile(filepath.Join(testArtifactsDir, "signature"))
 			require.NoError(t, err)
 			err = publicKeyFromJS.Verify(clearData, signature)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("Export for JS", func(t *testing.T) {
 			// make sure dir exists

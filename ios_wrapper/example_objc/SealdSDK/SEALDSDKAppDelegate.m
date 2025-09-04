@@ -52,14 +52,14 @@ BOOL testSealdSDK(void)
         NSArray* paths = NSSearchPathForDirectoriesInDomains
                              (NSDocumentDirectory, NSUserDomainMask, YES);
         NSString* documentsDirectory = [paths objectAtIndex:0];
-        NSString* sealdDir = [NSString stringWithFormat:@"%@/seald", documentsDirectory];
+        NSString* sealdDir = [NSString stringWithFormat:@"%@/seald/sdk", documentsDirectory];
 
         // The Seald SDK uses a local database that will persist on disk.
         // When instantiating a SealdSDK, it is highly recommended to set a symmetric key to encrypt this database.
         // In an actual app, it should be generated at signup,
         // either on the server and retrieved from your backend at login,
         // or on the client-side directly and stored in the system's keychain.
-        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         NSData* databaseEncryptionKey = randomData(64);
 
         // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
@@ -146,7 +146,7 @@ BOOL testSealdSDK(void)
         NSString* authFactorValue = [NSString stringWithFormat:@"tmr-em-objc-%@@test.com", rand];
         SealdTmrAuthFactor* tmrAuthFactor = [[SealdTmrAuthFactor alloc] initWithValue:authFactorValue type:@"EM"];
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         NSData* overEncryptionKey = randomData(64);
 
         SealdTmrRecipientWithRights* tmrRecipient = [[SealdTmrRecipientWithRights alloc] initWithAuthFactor:tmrAuthFactor overEncryptionKey:overEncryptionKey];
@@ -244,6 +244,16 @@ BOOL testSealdSDK(void)
         NSString* decryptedMessageFromMess = [es1SDK1RetrieveFromMess decryptMessage:encryptedMessage error:&error];
         NSCAssert(error == nil, error.localizedDescription);
         NSCAssert([decryptedMessageFromMess isEqualToString:initialString], @"decryptedMessageFromMess incorrect");
+
+        // Serialize / Deserialize session
+        NSString* serializedSession = [es1SDK1 serializeWithError:&error]; // serialize
+        NSCAssert(error == nil, error.localizedDescription);
+        SealdEncryptionSession* deserializedSession = [sdk1 deserializeEncryptionSession:serializedSession error:&error]; // deserialize
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([deserializedSession.sessionId isEqualToString:es1SDK1.sessionId], @"bad session id"); // sessionId is as expected
+        NSString* decryptedMessageFromDeserialized = [deserializedSession decryptMessage:encryptedMessage error:&error]; // test decryption
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([decryptedMessageFromDeserialized isEqualToString:initialString], @"decryptedMessageFromDeserialized incorrect"); // decrypted message is as expected
 
         // Create a test file on disk that we will encrypt/decrypt
         NSString* filename = @"testfile.txt";
@@ -345,11 +355,16 @@ BOOL testSealdSDK(void)
         NSCAssert(error == nil, error.localizedDescription);
         NSCAssert([decryptedMessageAfterAdd isEqualToString:initialString], @"decryptedMessageAfterAdd incorrect");
 
+        // We can list all session recipients.
+        SealdRecipientsList* resultList = [es1SDK1 listRecipients:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert(resultList.sealdRecipients.count == 4, @"Unexpected list response count.");
+        NSCAssert(resultList.symEncKeys.count == 0, @"Unexpected list response count.");
+        NSCAssert(resultList.proxySessions.count == 2, @"Unexpected list response count.");
+        NSCAssert(resultList.tmrAccesses.count == 0, @"Unexpected list response count.");
+
         // user1 revokes user3 and proxy1 from the encryption session.
-        SealdRevokeResult* respRevoke = [es1SDK1 revokeRecipientsIds:[NSArray arrayWithObject:user3AccountInfo.userId]
-                                                    proxySessionsIds:[NSArray arrayWithObject:proxySession1.sessionId]
-                                                               error:&error
-                                        ];
+        SealdRevokeResult* respRevoke = [es1SDK1 revokeRecipientsWithSealdIds:[NSArray arrayWithObject:user3AccountInfo.userId] proxySessionsIds:[NSArray arrayWithObject:proxySession1.sessionId] symEncKeysIds:nil tmrAccessIds:nil tmrAccessAuthFactors:nil error:&error];
         NSCAssert(error == nil, error.localizedDescription);
         NSCAssert(respRevoke.recipients.count == 1, @"Unexpected response count.");
         NSCAssert(respRevoke.recipients[user3AccountInfo.userId].success == YES, @"Unexpected status.");
@@ -552,7 +567,7 @@ BOOL testSealdSDK(void)
         NSString* groupTMRId = [sdk1 createGroupWithGroupName:@"group-tmr" members:membersGTMR admins:adminsGTMR privateKeys:nil error:&error];
         NSCAssert(error == nil, error.localizedDescription);
 
-        // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
         NSData* gTMRRawOverEncryptionKey = randomData(64);
 
         // We defined a two man rule recipient earlier. We will use it again.
@@ -825,6 +840,187 @@ BOOL testSealdSsksTMR(void)
     }
 }
 
+BOOL testSealdAnonymousSDK(void)
+{
+    @try {
+        NSError* error = nil;
+
+        NSArray* paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString* documentsDirectory = [paths objectAtIndex:0];
+        NSString* anonymousTestDir = [NSString stringWithFormat:@"%@/seald/anonymous", documentsDirectory];
+
+        // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
+        // In a real app, it should never be done.
+        NSFileManager* fileManager = [NSFileManager defaultManager];
+        if ([fileManager removeItemAtPath:anonymousTestDir error:&error]) {
+            NSLog(@"Anonymous Test Dir removed successfully");
+        } else {
+            NSLog(@"Error removing Anonymous Test Dir %@", error.userInfo);
+            error = nil;
+        }
+        [fileManager createDirectoryAtPath:anonymousTestDir withIntermediateDirectories:YES attributes:nil error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        // Create classic SDK users
+        SealdSdk* sdkClassicUser = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL
+                                                              appId:sealdCredentials.appId
+                                                       databasePath:nil
+                                              databaseEncryptionKey:nil
+                                                       instanceName:@"ObjC-anonymous-full-sdk"
+                                                           logLevel:-1
+                                                         logNoColor:YES
+                                          encryptionSessionCacheTTL:0
+                                                            keySize:4096
+                                                              error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        DemoAppJWTBuilder* jwtbuilder = [[DemoAppJWTBuilder alloc] initWithJWTSharedSecretId:sealdCredentials.JWTSharedSecretId JWTSharedSecret:sealdCredentials.JWTSharedSecret];
+        SealdAccountInfo* sdkClassicUserInfo = [sdkClassicUser createAccountWithSignupJwt:[jwtbuilder signupJWT]
+                                                                               deviceName:@"ObjC-anonymous-full-sdk"
+                                                                              displayName:@"ObjC-anonymous-full-sdk"
+                                                                              privateKeys:nil
+                                                                              expireAfter:0
+                                                                                    error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        SealdSdk* sdkClassicUser2 = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL
+                                                               appId:sealdCredentials.appId
+                                                        databasePath:nil
+                                               databaseEncryptionKey:nil
+                                                        instanceName:@"ObjC-anonymous-full-sdk2"
+                                                            logLevel:-1
+                                                          logNoColor:YES
+                                           encryptionSessionCacheTTL:0
+                                                             keySize:4096
+                                                               error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        SealdAccountInfo* sdkClassicUserInfo2 = [sdkClassicUser2 createAccountWithSignupJwt:[jwtbuilder signupJWT]
+                                                                                 deviceName:@"ObjC-anonymous-full-sdk2"
+                                                                                displayName:@"ObjC-anonymous-full-sdk2"
+                                                                                privateKeys:nil
+                                                                                expireAfter:0
+                                                                                      error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        // Create anonymous SDK
+        SealdAnonymousSdk* anonymousSDK = [[SealdAnonymousSdk alloc] initWithApiUrl:sealdCredentials.apiURL
+                                                                              appId:sealdCredentials.appId
+                                                                       instanceName:@"Obj-C-anonymous"
+                                                                           logLevel:-1
+                                                                         logNoColor:YES
+                                                                              error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        // Generate JWTs
+        NSString* authFactorValue = [NSString stringWithFormat:@"anonymous-tmr-em-objc-%@@test.com", randomString(5)];
+        SealdTmrAuthFactor* authFactor = [[SealdTmrAuthFactor alloc] initWithValue:authFactorValue type:@"EM"];
+        NSData* overEncryptionKey = randomData(64);
+        NSArray<SealdAnonymousTmrRecipient*>* tmrRecipients = @[[[SealdAnonymousTmrRecipient alloc] initWithAuthFactor:authFactor rawOverEncryptionKey:overEncryptionKey]];
+        NSString* createJWT = [jwtbuilder anonymousCreateMessageJWTWithOwnerId:sdkClassicUserInfo.userId recipients:@[sdkClassicUserInfo.userId] tmrRecipients:tmrRecipients];
+        NSString* findKeyJWT = [jwtbuilder anonymousFindKeyJWTWithRecipients:@[sdkClassicUserInfo.userId]];
+
+        // Anonymous SDK can create an AnonymousSession
+        SealdAnonymousEncryptionSession* anonymousSession = [anonymousSDK createAnonymousEncryptionSessionWithEncryptionToken:createJWT getKeysToken:findKeyJWT recipients:@[sdkClassicUserInfo.userId] tmrRecipients:tmrRecipients error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        // Full SDK recipient can retrieve the EncryptionSession corresponding to the AnonymousSession
+        SealdEncryptionSession* classicES = [sdkClassicUser retrieveEncryptionSessionWithSessionId:anonymousSession.sessionId useCache:NO lookupProxyKey:NO lookupGroupKey:NO error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        NSString* initialMessage = @"a message that needs to be encrypted!";
+        NSString* encryptedMessage = [anonymousSession encryptMessage:initialMessage error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        NSString* decryptedMessage = [anonymousSession decryptMessage:encryptedMessage error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([initialMessage isEqualToString:decryptedMessage], @"decryptedMessage incorrect");
+
+        NSString* decryptedClassic = [classicES decryptMessage:encryptedMessage error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([initialMessage isEqualToString:decryptedClassic], @"decryptedClassic incorrect");
+
+        // Full SDK non-recipient can retrieve the EncryptionSession via TMR
+        SealdSsksTMRPlugin* ssksTMR = [[SealdSsksTMRPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL
+                                                                            appId:sealdCredentials.appId
+                                                                     instanceName:@"AnonymousTmrPlugin"
+                                                                         logLevel:-1
+                                                                       logNoColor:YES];
+        DemoAppSsksBackend* ssksBackend = [[DemoAppSsksBackend alloc] initWithSsksURL:sealdCredentials.ssksURL // Instantiate the SSKS backend
+                                                                                AppId:sealdCredentials.appId
+                                                                               AppKey:sealdCredentials.ssksBackendAppKey];
+        SealdSsksBackendChallengeResponse* authSession = // The app backend creates an SSKS authentication session
+                                                         [ssksBackend challengeSendWithUserId:sdkClassicUserInfo2.userId
+                                                                                   authFactor:authFactor
+                                                                                   createUser:YES
+                                                                                    forceAuth:YES
+                                                                                      fakeOtp:YES // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
+                                                                                        error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        SealdSsksGetFactorTokenResponse* tmrJWT = [ssksTMR getFactorToken:authSession.sessionId // Retrieve a JWT associated with the authentication factor from SSKS
+                                                               authFactor:authFactor
+                                                                challenge:sealdCredentials.ssksTMRChallenge
+                                                                    error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        SealdEncryptionSession* tmrES = [sdkClassicUser2 retrieveEncryptionSessionByTmr:tmrJWT.token // Retrieve the encryption session using the JWT
+                                                                              sessionId:anonymousSession.sessionId
+                                                                      overEncryptionKey:overEncryptionKey
+                                                                     tmrAccessesFilters:nil
+                                                                          tryIfMultiple:YES
+                                                                               useCache:NO
+                                                                                  error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSString* decryptedMessageTMRES = [tmrES decryptMessage:encryptedMessage error:&error]; // TMR-retrieved session can decrypt the message
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([initialMessage isEqualToString:decryptedMessageTMRES], @"decryptedMessageTMRES incorrect");
+
+        // Serialize / Deserialize session
+        NSString* serialized = [anonymousSession serializeWithError:&error]; // serialize
+        NSCAssert(error == nil, error.localizedDescription);
+        SealdAnonymousEncryptionSession* deserialized = [anonymousSDK deserializeAnonymousEncryptionSession:serialized error:&error]; // deserialize
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([deserialized.sessionId isEqualToString:anonymousSession.sessionId], @"bad session id"); // sessionId is as expected
+
+        NSString* decryptedFromDeserialized = [deserialized decryptMessage:encryptedMessage error:&error]; // test decryption
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([decryptedFromDeserialized isEqualToString:initialMessage], @"decryptedFromDeserialized incorrect"); // decrypted message is as expected
+
+        // Create a test file on disk that we will encrypt/decrypt
+        NSString* filename = @"testfile.txt";
+        NSString* content = @"File clear data.";
+        NSString* clearFilePath = [NSString stringWithFormat:@"%@/%@", anonymousTestDir, filename];
+        [content writeToFile:clearFilePath atomically:YES encoding:NSUTF8StringEncoding error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        // Encrypt the test file. Resulting file will be written alongside the source file, with `.seald` extension added
+        NSString* encryptedFileURI = [anonymousSession encryptFileFromURI:clearFilePath error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        // The retrieved session can decrypt the file.
+        // The decrypted file will be named with the name it had at encryption. Any renaming of the encrypted file will be ignored.
+        // NOTE: In this example, the decrypted file will have `(1)` suffix to avoid overwriting the original clear file.
+        NSString* decryptedFileURI = [anonymousSession decryptFileFromURI:encryptedFileURI error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([decryptedFileURI hasSuffix:@"testfile (1).txt"], @"decryptedFileURI incorrect");
+
+        NSString* decryptedFileContent = [NSString stringWithContentsOfFile:decryptedFileURI encoding:NSUTF8StringEncoding error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([content isEqualToString:decryptedFileContent], @"decryptedFileContent incorrect");
+
+        // close SDKs
+        [sdkClassicUser closeWithError:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        [sdkClassicUser2 closeWithError:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        NSLog(@"Anonymous SDK tests success!");
+        return YES;
+    }
+    @catch (NSException* exception) {
+        NSLog(@"Anonymous SDK tests failed");
+        NSLog(@"Error: %@", exception);
+        return NO;
+    }
+}
+
+
 @implementation SEALDSDKAppDelegate
 
 - (BOOL)              application:(UIApplication*)application
@@ -832,6 +1028,7 @@ BOOL testSealdSsksTMR(void)
 {
     self.versionLabel = SealdSdkVersion;
     self.testSdkLabel = @"pending...";
+    self.testAnonymousSdkLabel = @"pending...";
     self.testSsksPasswordLabel = @"pending...";
     self.testSsksTmrLabel = @"pending...";
 
@@ -839,6 +1036,12 @@ BOOL testSealdSsksTMR(void)
         self.testSdkLabel = @"running...";
         BOOL res = testSealdSDK();
         self.testSdkLabel = res ? @"success" : @"error";
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        self.testAnonymousSdkLabel = @"running...";
+        BOOL res = testSealdAnonymousSDK();
+        self.testAnonymousSdkLabel = res ? @"success" : @"error";
     });
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{

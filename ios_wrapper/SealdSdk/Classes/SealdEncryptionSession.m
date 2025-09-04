@@ -1,5 +1,5 @@
 //
-//  EncryptionSession.m
+//  SealdEncryptionSession.m
 //  SealdSdk
 //
 //  Created by Mehdi Kouhen on 22/02/2023.
@@ -115,14 +115,24 @@
     });
 }
 
-- (SealdRevokeResult*) revokeRecipientsIds:(const NSArray<NSString*>*)recipientsIds
-                          proxySessionsIds:(const NSArray<NSString*>*)proxySessionsIds
-                                     error:(NSError*_Nullable*)error
+- (SealdRevokeResult*) revokeRecipientsWithSealdIds:(const NSArray<NSString*>*_Nullable)sealdIds
+                                   proxySessionsIds:(const NSArray<NSString*>*_Nullable)proxySessionsIds
+                                      symEncKeysIds:(const NSArray<NSString*>*_Nullable)symEncKeysIds
+                                       tmrAccessIds:(const NSArray<NSString*>*_Nullable)tmrAccessIds
+                               tmrAccessAuthFactors:(const NSArray<SealdTmrAuthFactor*>*_Nullable)tmrAccessAuthFactors
+                                              error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
 {
     NSError* localErr = nil;
-    SealdSdkInternalsMobile_sdkRevokeResult* resp = [encryptionSession revokeRecipients:arrayToStringArray(recipientsIds)
-                                                                       proxySessionsIds:arrayToStringArray(proxySessionsIds)
-                                                                                  error:&localErr];
+
+    SealdSdkInternalsMobile_sdkRecipientsToRevoke* rtr = [[SealdSdkInternalsMobile_sdkRecipientsToRevoke alloc] init];
+    rtr.sealdIds = arrayToStringArray(sealdIds);
+    rtr.proxySessionsIds = arrayToStringArray(proxySessionsIds);
+    rtr.symEncKeysIds = arrayToStringArray(symEncKeysIds);
+    rtr.tmrAccessIds = arrayToStringArray(tmrAccessIds);
+    rtr.tmrAccessAuthFactors = [SealdTmrAuthFactor toMobileSdkArray:tmrAccessAuthFactors];
+
+
+    SealdSdkInternalsMobile_sdkRevokeResult* resp = [encryptionSession revokeRecipients:rtr error:error];
     if (localErr) {
         _SealdInternal_ConvertError(localErr, error);
         return nil;
@@ -130,13 +140,16 @@
     return [SealdRevokeResult fromMobileSdk:resp];
 }
 
-- (void) revokeRecipientsIdsAsync:(const NSArray<NSString*>*)recipientsIds
-                 proxySessionsIds:(const NSArray<NSString*>*)proxySessionsIds
-                completionHandler:(void (^)(SealdRevokeResult* result, NSError*_Nullable error))completionHandler
+- (void) revokeRecipientsAsyncWithSealdIds:(const NSArray<NSString*>*_Nullable)sealdIds
+                          proxySessionsIds:(const NSArray<NSString*>*_Nullable)proxySessionsIds
+                             symEncKeysIds:(const NSArray<NSString*>*_Nullable)symEncKeysIds
+                              tmrAccessIds:(const NSArray<NSString*>*_Nullable)tmrAccessIds
+                      tmrAccessAuthFactors:(const NSArray<SealdTmrAuthFactor*>*_Nullable)tmrAccessAuthFactors
+                         completionHandler:(void (^)(SealdRevokeResult* result, NSError*_Nullable error))completionHandler
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSError* localError = nil;
-        SealdRevokeResult* result = [self revokeRecipientsIds:recipientsIds proxySessionsIds:proxySessionsIds error:&localError];
+        SealdRevokeResult* result = [self revokeRecipientsWithSealdIds:sealdIds proxySessionsIds:proxySessionsIds symEncKeysIds:symEncKeysIds tmrAccessIds:tmrAccessIds tmrAccessAuthFactors:tmrAccessAuthFactors error:&localError];
         completionHandler(result, localError);
     });
 }
@@ -177,6 +190,26 @@
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSError* localError = nil;
         SealdRevokeResult* result = [self revokeOthers:&localError];
+        completionHandler(result, localError);
+    });
+}
+
+- (SealdRecipientsList*) listRecipients:(NSError*_Nullable*)error
+{
+    NSError* localErr = nil;
+    SealdSdkInternalsMobile_sdkRecipientsList* resp = [encryptionSession listRecipients:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return [SealdRecipientsList fromMobileSdk:resp];
+}
+
+- (void) listRecipientsAsyncWithCompletionHandler:(void (^)(SealdRecipientsList* result, NSError*_Nullable error))completionHandler
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError* localError = nil;
+        SealdRecipientsList* result = [self listRecipients:&localError];
         completionHandler(result, localError);
     });
 }
@@ -365,5 +398,16 @@
                                                                                      error:&localError];
         completionHandler(result, localError);
     });
+}
+
+- (NSString*) serializeWithError:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+    NSString* res = [encryptionSession serialize:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return res;
 }
 @end

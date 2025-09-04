@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import SealdSDKPkg, { EncryptionSessionRetrievalFlow } from '@seald-io/sdk'
 import { strict as assert } from 'node:assert'
-import { TMRBackend } from '../utils.spec.js'
+import {generateRegistrationJWT, TMRBackend} from '../utils.spec.js'
 import SSKSTMRPluginPkg from '@seald-io/sdk-plugin-ssks-2mr'
 
 const SealdSDK = SealdSDKPkg.default
@@ -26,6 +26,13 @@ describe('encryption session', function () {
     // can retrieve first session (with old key)
     const sessionId = await fs.readFile('./test_artifacts/from_go/encryption_session/session_id', { encoding: 'utf8' })
     const session = await sdk.retrieveEncryptionSession({ sessionId })
+
+    // can deserialize session
+    const serializedSession = await fs.readFile('./test_artifacts/from_go/encryption_session/serialized_session', { encoding: 'utf8' })
+    const deserializedSession = sdk.utils.deserializeSession(serializedSession)
+    assert.equal(deserializedSession.sessionId, session.sessionId)
+    assert.ok(deserializedSession._sessionSymKey.key.equals(session._sessionSymKey.key))
+    assert.equal(deserializedSession.retrievalDetails.flow, EncryptionSessionRetrievalFlow.created)
 
     // session can decrypt message
     const encryptedMessage = await fs.readFile('./test_artifacts/from_go/encryption_session/encrypted_message', { encoding: 'utf8' })
@@ -76,5 +83,30 @@ describe('encryption session', function () {
     const tmrSession = await sdk.retrieveEncryptionSessionByTmr(sessionId, tmrJWT.token, rawOverEncryptionKey)
     assert.equal(tmrSession.retrievalDetails.flow, EncryptionSessionRetrievalFlow.tmrMessageKey)
     assert.equal(tmrSession.sessionId, sessionId)
+
+    const symEncKeyPasswordId = await fs.readFile('./test_artifacts/from_go/encryption_session/symEncKey_symEncKeyPasswordId', { encoding: 'utf8' })
+    const symEncKeyPassword = await fs.readFile('./test_artifacts/from_go/encryption_session/symEncKey_symEncKeyPassword', { encoding: 'utf8' })
+    const symEncKeyPasswordSession = await sdk.retrieveEncryptionSessionWithSymEncKey({ sessionId, symEncKeyId: symEncKeyPasswordId, symEncKeyPassword: symEncKeyPassword, useCache: false })
+    assert.equal(symEncKeyPasswordSession.retrievalDetails.flow, EncryptionSessionRetrievalFlow.symEncKey)
+    assert.equal(symEncKeyPasswordSession.retrievalDetails.symEncKeyId, symEncKeyPasswordId)
+
+    const decryptedMessageSKP = await session.decryptMessage(encryptedMessage)
+    assert.equal(decryptedMessageSKP, 'message content')
+
+    const symEncKeyRawKeyId = await fs.readFile('./test_artifacts/from_go/encryption_session/symEncKey_symEncKeyRawKeyId', { encoding: 'utf8' })
+    const rawSymKey = await fs.readFile('./test_artifacts/from_go/encryption_session/symEncKey_rawSymKey', { encoding: 'base64' })
+    const symEncKeySecret = await fs.readFile('./test_artifacts/from_go/encryption_session/symEncKey_symEncKeySecret', { encoding: 'utf8' })
+    const symEncKeyRawKeySession = await sdk.retrieveEncryptionSessionWithSymEncKey({
+      sessionId,
+      symEncKeyId: symEncKeyRawKeyId,
+      symEncKeyRawSecret: symEncKeySecret,
+      symEncKeyRawSymKey: rawSymKey,
+      useCache: false
+    })
+    assert.equal(symEncKeyRawKeySession.retrievalDetails.flow, EncryptionSessionRetrievalFlow.symEncKey)
+    assert.equal(symEncKeyRawKeySession.retrievalDetails.symEncKeyId, symEncKeyRawKeyId)
+
+    const decryptedMessageSKRawKey = await session.decryptMessage(encryptedMessage)
+    assert.equal(decryptedMessageSKRawKey, 'message content')
   })
 })

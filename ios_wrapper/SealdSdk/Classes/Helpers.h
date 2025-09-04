@@ -6,8 +6,8 @@
 //  Copyright © 2023 Seald SAS. All rights reserved.
 //
 
-#ifndef Helpers_h
-#define Helpers_h
+#ifndef SealdHelpers_h
+#define SealdHelpers_h
 
 #import <Foundation/Foundation.h>
 #import <SealdSdkInternals/SealdSdkInternals.h>
@@ -307,6 +307,7 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
 - (instancetype) initWithDefaultRights;
 /** \cond */
 - (SealdSdkInternalsMobile_sdkRecipientRights*) toMobileSdk;
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkRecipientRights*)nativeRights;
 /** \endcond */
 @end
 
@@ -316,7 +317,7 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
  * Default rights for the current user when creating an encryptionSession are read: true, forward: true, revoke: true
  */
 @interface SealdRecipientWithRights : NSObject
-/** Internal Seald IDs. Returned for users with `sdk.getCurrentAccountInfo`, for groups when creating them */
+/** Internal Seald IDs. Returned for users with SealdSdk.getCurrentAccountInfo, for groups when creating them */
 @property (atomic, strong) NSString* recipientId;
 /** The rights for the associated recipient ID */
 @property (atomic, strong) SealdRecipientRights* rights;
@@ -352,8 +353,12 @@ typedef NS_ENUM (NSInteger, SealdEncryptionSessionRetrievalFlow) {
     SealdEncryptionSessionRetrievalViaGroup = 2,
     /** The session was retrieved through a proxy session. */
     SealdEncryptionSessionRetrievalViaProxy = 3,
+    /** The session was retrieved with a sealdMessage that include the encrypted SymKey. Should never happen. */
+    SealdEncryptionSessionRetrievalLocal = 4,
+    /** The session was retrieved through a SymEncKey. */
+    SealdEncryptionSessionRetrievalViaSymEncKey = 5,
     /** The session was retrieved through a TMR access. */
-    SealdEncryptionSessionRetrievalViaTmrAccess = 4
+    SealdEncryptionSessionRetrievalViaTmrAccess = 6
 };
 
 /**
@@ -432,6 +437,7 @@ typedef NS_ENUM (NSInteger, SealdEncryptionSessionRetrievalFlow) {
                           type:(NSString*)type;
 /** \cond */
 - (SealdSdkInternalsMobile_sdkAuthFactor*) toMobileSdk;
++ (SealdSdkInternalsMobile_sdkAuthFactorArray*) toMobileSdkArray:(const NSArray<SealdTmrAuthFactor*>*)tmrAFArray;
 /** \endcond */
 @end
 
@@ -592,12 +598,149 @@ typedef NS_ENUM (NSInteger, SealdEncryptionSessionRetrievalFlow) {
 @property (atomic, assign, readonly) NSString* groupId;
 /** Page to return. */
 @property (atomic, assign, readonly) NSInteger page;
-/** Should return all pages after `Page`. */
+/** Should return all pages after `page`. */
 @property (atomic, assign, readonly) BOOL all;
 /** \cond */
 - (SealdSdkInternalsMobile_sdkSearchGroupTMRTemporaryKeysOpts*) toMobileSdk;
 /** \endcond */
 @end
+
+
+/**
+ * SealdAnonymousTmrRecipient represents a TMR recipient.
+ *
+ */
+@interface SealdAnonymousTmrRecipient : NSObject
+/** The authentication method, to which SSKS has sent a challenge at the request of your app's server. */
+@property (atomic, strong) SealdTmrAuthFactor* authFactor;
+/** The over encryption key. */
+@property (atomic, strong) NSData* rawOverEncryptionKey; // TODO naming inconsistant with normal SDK.
+/**
+ * Initialize a SealdAnonymousTmrRecipient instance.
+ *
+ * @param authFactor The authentication factor.
+ * @param rawOverEncryptionKey The over encryption key.
+ */
+- (instancetype) initWithAuthFactor:(SealdTmrAuthFactor*)authFactor
+               rawOverEncryptionKey:(NSData*)rawOverEncryptionKey;
+/** \cond */
+- (SealdSdkInternalsMobile_sdkAnonymousTmrRecipient*) toMobileSdk;
++ (SealdSdkInternalsMobile_sdkAnonymousTmrRecipientArray*) toMobileSdkArray:(NSArray<SealdAnonymousTmrRecipient*>*)rArray
+                                                                      error:(NSError*_Nullable*)error;
+/** \endcond */
+@end
+
+/**
+ * SealdSymEncKey holds information about a SymEncKey access.
+ */
+@interface SealdSymEncKey : NSObject
+
+/** Id of the SymEncKey access. */
+@property (nonatomic, strong) NSString* symEncKeyId;
+/** The rights for the access */
+@property (nonatomic, strong) SealdRecipientRights* rights;
+
+- (instancetype) initWithSymEncKeyId:(NSString*)symEncKeyId
+                              rights:(SealdRecipientRights*)rights;
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkSymEncKey*)d;
++ (NSArray<SealdSymEncKey*>*) fromMobileSdkArray:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList;
+@end
+
+/**
+ * SealdProxySession holds information about a proxy session.
+ */
+@interface SealdProxySession : NSObject
+
+/** Id of the proxy session. */
+@property (nonatomic, strong) NSString* proxySessionId;
+/** Date of creation. */
+@property (nonatomic, strong) NSDate* created;
+/** The rights for the access */
+@property (nonatomic, strong) SealdRecipientRights* rights;
+
+- (instancetype) initWithProxySessionId:(NSString*)proxySessionId
+                                created:(NSDate*)created
+                                 rights:(SealdRecipientRights*)rights;
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkProxySession*)d;
++ (NSArray<SealdProxySession*>*) fromMobileSdkArray:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList;
+@end
+
+/**
+ * SealdTmrAccess holds information about a TMR access.
+ */
+@interface SealdTmrAccess : NSObject
+
+/** Id of the TMR access. */
+@property (nonatomic, strong) NSString* tmrAccessId;
+/** Date of creation. */
+@property (nonatomic, strong) NSDate* created;
+/** The type of authentication factor. */
+@property (nonatomic, strong) NSString* authFactorType;
+/** The rights for the access */
+@property (nonatomic, strong) SealdRecipientRights* rights;
+
+- (instancetype) initWithTmrAccessId:(NSString*)tmrAccessId
+                             created:(NSDate*)created
+                      authFactorType:(NSString*)authFactorType
+                              rights:(SealdRecipientRights*)rights;
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkTmrAccess*)d;
++ (NSArray<SealdTmrAccess*>*) fromMobileSdkArray:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList;
+@end
+
+/**
+ * SealdSealdRecipient holds information about a Seald recipient.
+ */
+@interface SealdSealdRecipient : NSObject
+
+/** The Seald ID of the user. */
+@property (nonatomic, strong) NSString* sealdId;
+/** The ID of the user who created this access */
+@property (nonatomic, strong) NSString* addedById;
+/** Time of the first access to the session. */
+@property (nonatomic, strong) NSDate* readFirst;
+/** Time of the last access to the session. */
+@property (nonatomic, strong) NSDate* readLast;
+/** Number of access to the session. */
+@property (nonatomic, assign) NSInteger readTime;
+/** The rights for the access */
+@property (nonatomic, strong) SealdRecipientRights* rights;
+
+- (instancetype) initWithSealdId:(NSString*)sealdId
+                       addedById:(NSString*)addedById
+                       readFirst:(NSDate*)readFirst
+                        readLast:(NSDate*)readLast
+                        readTime:(NSInteger)readTime
+                          rights:(SealdRecipientRights*)rights;
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkSealdRecipient*)d;
++ (NSArray<SealdSealdRecipient*>*) fromMobileSdkArray:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList;
+@end
+
+/**
+ * RecipientsList holds a list of all recipients from a session.
+ */
+@interface SealdRecipientsList : NSObject
+
+/** An array of `SealdSealdRecipient` that can access the session. */
+@property (nonatomic, strong) NSArray<SealdSealdRecipient*>* sealdRecipients;
+/** An array of `SealdTmrAccess` that can access the session. */
+@property (nonatomic, strong) NSArray<SealdTmrAccess*>* tmrAccesses;
+/** An array of `SealdProxySession` that can access the session. */
+@property (nonatomic, strong) NSArray<SealdProxySession*>* proxySessions;
+/** An array of `SealdSymEncKey` that can access the session. */
+@property (nonatomic, strong) NSArray<SealdSymEncKey*>* symEncKeys;
+
+- (instancetype) initWithSealdRecipients:(NSArray<SealdSealdRecipient*>*)sealdRecipients
+                             tmrAccesses:(NSArray<SealdTmrAccess*>*)tmrAccesses
+                           proxySessions:(NSArray<SealdProxySession*>*)proxySessions
+                              symEncKeys:(NSArray<SealdSymEncKey*>*)symEncKeys;
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList;
+@end
+
 NS_ASSUME_NONNULL_END
 
-#endif /* Helpers_h */
+#endif /* SealdHelpers_h */
