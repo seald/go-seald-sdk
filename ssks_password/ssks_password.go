@@ -2,6 +2,7 @@ package ssks_password
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/rs/zerolog"
@@ -100,15 +101,19 @@ func (pluginPassword *PluginPassword) SaveIdentityFromPassword(userId string, pa
 	if err != nil {
 		return "", tracerr.Wrap(err)
 	}
-	secret, err := deriveSecret(pluginPassword.appId, userId, password)
+	secretBytes, err := utils.DeriveSecret("seald-ssks-secret", pluginPassword.appId, userId, password)
 	if err != nil {
 		return "", tracerr.Wrap(err)
 	}
-	keyBuffer, err := deriveKey(pluginPassword.appId, userId, password, salt)
+	secret := hex.EncodeToString(secretBytes)
+	keyBuffer, err := utils.DeriveKey("seald-ssks-encryption", pluginPassword.appId, userId, password, salt)
 	if err != nil {
 		return "", tracerr.Wrap(err)
 	}
 	symKey, err := symmetric_key.Decode(keyBuffer)
+	if err != nil {
+		return "", tracerr.Wrap(err)
+	}
 	encryptedIdentity, err := symKey.Encrypt(identity)
 	if err != nil {
 		return "", tracerr.Wrap(err)
@@ -155,10 +160,11 @@ func (pluginPassword *PluginPassword) RetrieveIdentityFromPassword(userId string
 		return nil, tracerr.Wrap(ErrorRetrieveIdentityPasswordNoPassword)
 	}
 
-	secret, err := deriveSecret(pluginPassword.appId, userId, password)
+	secretBytes, err := utils.DeriveSecret("seald-ssks-secret", pluginPassword.appId, userId, password)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
+	secret := hex.EncodeToString(secretBytes)
 
 	searchResult, err := pluginPassword.ssksPasswordApiClient.search(pluginPassword.appId, userId, secret)
 	if err != nil {
@@ -174,7 +180,7 @@ func (pluginPassword *PluginPassword) RetrieveIdentityFromPassword(userId string
 		return nil, tracerr.Wrap(ErrorInvalidB64.AddDetails(err.Error()))
 	}
 	salt := encryptedData[0:32]
-	rawKey, err := deriveKey(pluginPassword.appId, userId, password, salt)
+	rawKey, err := utils.DeriveKey("seald-ssks-encryption", pluginPassword.appId, userId, password, salt)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}

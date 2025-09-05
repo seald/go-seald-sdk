@@ -913,6 +913,18 @@ __attribute__((constructor)) static void initializeSealdSdkVersion(void) {
     });
 }
 
+- (SealdEncryptionSession*) deserializeEncryptionSession:(const NSString*_Nonnull)serializedSession
+                                                   error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+    SealdSdkInternalsMobile_sdkMobileEncryptionSession* es = [sdkInstance deserializeEncryptionSession:(NSString*)serializedSession error:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return [SealdEncryptionSession fromMobileSdk:es];
+}
+
 // Connectors
 - (NSArray<NSString*>*) getSealdIdsFromConnectors:(const NSArray<SealdConnectorTypeValue*>*)connectorTypeValues
                                             error:(NSError*_Nullable*)error

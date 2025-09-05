@@ -158,7 +158,7 @@ func TestTMRPlugin(t *testing.T) {
 		})
 		t.Run("no challenge", func(t *testing.T) {
 			_, err = pluginInstance1.RetrieveIdentity("bad-session-id", authFactor, "", rawTMRSymKey)
-			assert.ErrorIs(t, err, utils.APIError{Status: 400, Code: "UNKNOWN"})
+			assert.ErrorIs(t, err, utils.APIError{Status: 404, Code: "UNKNOWN"})
 		})
 		t.Run("nil authFactor", func(t *testing.T) {
 			challSendRep, err := backend.ChallengeSend(userId, authFactor, true, false)

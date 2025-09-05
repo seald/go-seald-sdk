@@ -75,6 +75,7 @@ const (
 	PermissionAnonymousFindSigchain  JWTPermissionScopes = 2
 	PermissionJoinTeam               JWTPermissionScopes = 3
 	PermissionAddConnector           JWTPermissionScopes = 4
+	PermissionAnonymousFindSymEncKey JWTPermissionScopes = 5
 )
 
 type ConnectorAdd struct {

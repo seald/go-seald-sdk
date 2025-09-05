@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"hash"
 	"io"
 )
@@ -69,6 +71,26 @@ func Decode(key []byte) (SymKey, error) {
 		hmacKey:       key[:32],
 	}
 	return symKey, nil
+}
+
+func (symKey *SymKey) MarshalBSONValue() (bsontype.Type, []byte, error) {
+	return bson.MarshalValue(symKey.Encode())
+}
+
+func (symKey *SymKey) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
+	var encoded []byte
+	err := bson.UnmarshalValue(t, data, &encoded)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+
+	decoded, err := Decode(encoded)
+	if err != nil {
+		return tracerr.Wrap(err)
+	}
+
+	*symKey = decoded
+	return nil
 }
 
 func aesEncrypt(iv []byte, encryptionKey []byte, plaintext []byte) ([]byte, error) {

@@ -27,6 +27,8 @@ var (
 	ErrorApiAddKeyMultistatusRequired = utils.NewSealdError("API_ADD_KEY_MULTISTATUS_REQUIRED", "Must set MultiStatus to true")
 	// ErrorNoTokenForYou is returned when trying to access a session for with the current user doesn't have a token
 	ErrorNoTokenForYou = utils.NewSealdError("NO_TOKEN_FOR_YOU", "Can't decipher this session")
+	// ErrorUnknownSymEncKey is returned when trying to retrieve a session by SymEncKey with an unknown SymEncKey Id.
+	ErrorUnknownSymEncKey = utils.NewSealdError("UNKNOWN_SYM_ENC_KEY", "Can't retrieve this session")
 )
 
 type beardApiClientInterface interface {
@@ -79,6 +81,13 @@ type beardApiClientInterface interface {
 	getGroupTMRTemporaryKey(request *getGroupTMRTemporaryKeyRequest) (*getGroupTMRTemporaryKeyResponse, error)
 	convertGroupTMRTemporaryKey(request *convertGroupTMRTemporaryKeyRequest) (*statusResponse, error)
 	searchGroupTMRTemporaryKeys(request *searchGroupTMRTemporaryKeysRequest) (*searchGroupTMRTemporaryKeysResponse, error)
+	addSymEncKey(request *addSymEncKeyRequest) (*SymEncKey, error)
+	changeSymEncKeyRights(request *changeSymEncKeyRightsRequest) (*SymEncKey, error)
+	retrieveWithSymEncKey(request *retrieveWithSymEncKeyRequest) (*retrieveWithSymEncKeyResponse, error)
+	selfAddWithSymEncKey(request *selfAddWithSymEncKeyRequest) (*statusResponse, error)
+	getSessionInfo(request *getSessionInfoRequest) (*GetInfoResponse, error)
+	getProxySessions(request *getProxySessionsRequest) (*getProxySessionsResponse, error)
+	listSymEncKeys(request *listSymEncKeysRequest) (*listSymEncKeysResponse, error)
 }
 
 type emptyInterface struct{}
@@ -393,13 +402,13 @@ func (apiClient *beardApiClient) search(request *searchRequest) (*searchResponse
 }
 
 type createMessageRequest struct {
-	MetaData         string                      `json:"meta_data,omitempty"`
-	AllowDownload    bool                        `json:"allow_download,omitempty"`
-	NotForMe         bool                        `json:"not_for_me,omitempty"`
-	MultiStatus      bool                        `json:"multistatus,omitempty"`
-	Tokens           []encryptedMessageKey       `json:"tokens,omitempty"`
-	SelfDestructDate *time.Time                  `json:"date,omitempty"`
-	Rights           map[string]*RecipientRights `json:"rights"`
+	MetaData      string                `json:"meta_data,omitempty"`
+	AllowDownload bool                  `json:"allow_download,omitempty"`
+	NotForMe      bool                  `json:"not_for_me,omitempty"`
+	MultiStatus   bool                  `json:"multistatus,omitempty"`
+	Tokens        []encryptedMessageKey `json:"tokens,omitempty"`
+	// SelfDestructDate *time.Time                  `json:"date,omitempty"` Not implemented in SDK GO
+	Rights map[string]*RecipientRights `json:"rights"`
 }
 
 type createMessageResponse struct {
@@ -672,12 +681,15 @@ func (apiClient *beardApiClient) addKeyProxy(request *addKeyProxyRequest) (*prox
 }
 
 type revokeRecipientsRequest struct {
-	MessageId      string   `json:"-"`
-	LookupProxyKey bool     `json:"-"`
-	LookupGroupKey bool     `json:"-"`
-	UserIds        []string `json:"user_ids,omitempty"`
-	ProxyMkIds     []string `json:"proxy_mk_ids,omitempty"`
-	RevokeAll      string   `json:"revoke,omitempty"` // "all" | "others"
+	MessageId            string                      `json:"-"`
+	LookupProxyKey       bool                        `json:"-"`
+	LookupGroupKey       bool                        `json:"-"`
+	UserIds              []string                    `json:"user_ids,omitempty"`
+	SymEncKeyIds         []string                    `json:"sym_enc_key_ids,omitempty"`
+	TmrAccessIds         []string                    `json:"tmr_key_ids,omitempty"`
+	TmrAccessAuthFactors []*common_models.AuthFactor `json:"tmr_key_factors,omitempty"`
+	ProxyMkIds           []string                    `json:"proxy_mk_ids,omitempty"`
+	RevokeAll            string                      `json:"revoke,omitempty"` // "all" | "others"
 	// EntrustedRecipients []EntrustedRecipient `json:"entrusted_users,omitempty"`
 }
 
@@ -697,11 +709,15 @@ func (r *revokeRecipientsRequest) forceLookups() *revokeRecipientsRequest {
 // It contains ProxyMkIds, a map of the IDs of ProxyMKs you tried to revoke explicitly and the result for each one.
 // It also contains RevokeAll, which contains the results (in a similar format) for the recipients revoked when you try to revoke all the session's recipients.
 type RevokeRecipientsResponse struct { // Used directly by the mobile wrapper
-	UserIds    map[string]string `json:"user_ids"`
-	ProxyMkIds map[string]string `json:"proxy_mk_ids"`
-	RevokeAll  struct {
-		UserIds    map[string]string `json:"user_ids"`
-		ProxyMkIds map[string]string `json:"proxy_mk_ids"`
+	UserIds      map[string]string `json:"user_ids"`
+	ProxyMkIds   map[string]string `json:"proxy_mk_ids"`
+	SymEncKeyIds map[string]string `json:"sym_enc_key_ids"`
+	TMRKeys      map[string]string `json:"tmr_keys"`
+	RevokeAll    struct {
+		UserIds      map[string]string `json:"user_ids"`
+		ProxyMkIds   map[string]string `json:"proxy_mk_ids"`
+		SymEncKeyIds map[string]string `json:"sym_enc_key_ids"`
+		TMRKeys      map[string]string `json:"tmr_keys"`
 	} `json:"revoke_all"`
 }
 
@@ -1696,18 +1712,18 @@ type AddedTmrAccessesError struct {
 	Code   string `json:"code"`
 }
 
-type TmrAccesses struct {
-	Id             string    `json:"id"`
-	Created        time.Time `json:"created"`
-	AuthFactorType string    `json:"auth_factor_type"`
-	AclRead        bool      `json:"acl_read"`
-	AclForward     bool      `json:"acl_forward"`
-	AclRevoke      bool      `json:"acl_revoke"`
+type TmrAccessBeard struct {
+	Id             string     `json:"id"`
+	Created        *time.Time `json:"created"`
+	AuthFactorType string     `json:"auth_factor_type"`
+	AclRead        bool       `json:"acl_read"`
+	AclForward     bool       `json:"acl_forward"`
+	AclRevoke      bool       `json:"acl_revoke"`
 }
 
 type AddTmrAccessesResponse struct {
 	Status int                    `json:"status"`
-	TmrKey *TmrAccesses           `json:"tmr_key"`
+	TmrKey *TmrAccessBeard        `json:"tmr_key"`
 	Error  *AddedTmrAccessesError `json:"error"`
 }
 
@@ -1758,8 +1774,8 @@ func (r *listTmrAccessesRequest) forceLookups() *listTmrAccessesRequest {
 }
 
 type ListTmrAccessesResponse struct {
-	NbPage int            `json:"nb_page"`
-	TmrMKs []*TmrAccesses `json:"tmr_mks"`
+	NbPage int               `json:"nb_page"`
+	TmrMKs []*TmrAccessBeard `json:"tmr_mks"`
 }
 
 func (apiClient *beardApiClient) listTmrAccesses(request *listTmrAccessesRequest) (*ListTmrAccessesResponse, error) {
@@ -2123,6 +2139,363 @@ func (apiClient *beardApiClient) searchGroupTMRTemporaryKeys(request *searchGrou
 		return nil, tracerr.Wrap(err)
 	}
 	var result searchGroupTMRTemporaryKeysResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type addSymEncKeyRequest struct {
+	Id             string           `json:"-"`
+	Secret         string           `json:"secret"`
+	Data           string           `json:"data"`
+	Rights         *RecipientRights `json:"rights"`
+	LookupProxyKey bool             `json:"-"`
+	LookupGroupKey bool             `json:"-"`
+}
+
+func (r *addSymEncKeyRequest) forceLookups() *addSymEncKeyRequest {
+	return &addSymEncKeyRequest{
+		Id:             r.Id,
+		Secret:         r.Secret,
+		Data:           r.Data,
+		Rights:         r.Rights,
+		LookupProxyKey: true,
+		LookupGroupKey: true,
+	}
+}
+
+type addSymEncKeyResponse struct {
+	SymEncKey struct {
+		Id      string `json:"id"`
+		Read    bool   `json:"acl_read"`
+		Forward bool   `json:"acl_forward"`
+		Revoke  bool   `json:"acl_revoke"`
+	} `json:"sym_enc_key"`
+}
+
+type SymEncKey struct {
+	SymEncKeyId string
+	Rights      *RecipientRights
+}
+
+func (apiClient *beardApiClient) addSymEncKey(request *addSymEncKeyRequest) (*SymEncKey, error) {
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	responseBody, err := apiClient.MakeRequest(
+		"POST",
+		"/api/message/"+request.Id+"/sym_enc_key/"+
+			"?lookup_proxy_key="+utils.Ternary(request.LookupProxyKey, "1", "0")+
+			"&lookup_group_key="+utils.Ternary(request.LookupGroupKey, "1", "0"),
+		requestBody,
+		[]api_helper.Header{},
+		200,
+	)
+
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result addSymEncKeyResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &SymEncKey{
+		SymEncKeyId: result.SymEncKey.Id,
+		Rights: &RecipientRights{
+			Read:    result.SymEncKey.Read,
+			Forward: result.SymEncKey.Forward,
+			Revoke:  result.SymEncKey.Revoke,
+		},
+	}, nil
+}
+
+type changeSymEncKeyRightsRequest struct {
+	EsId        string `json:"-"`
+	SymEncKeyId string `json:"-"`
+	Read        bool   `json:"acl_read"`
+	Forward     bool   `json:"acl_forward"`
+	Revoke      bool   `json:"acl_revoke"`
+}
+
+type changeSymEncKeyRightsResponse struct {
+	Rights struct {
+		Read    bool `json:"acl_read"`
+		Forward bool `json:"acl_forward"`
+		Revoke  bool `json:"acl_revoke"`
+	} `json:"rights"`
+}
+
+func (apiClient *beardApiClient) changeSymEncKeyRights(request *changeSymEncKeyRightsRequest) (*SymEncKey, error) {
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	responseBody, err := apiClient.MakeRequest(
+		"PATCH",
+		"/api/message/"+request.EsId+"/rights/sym_encrypted_keys/"+request.SymEncKeyId+"/",
+		requestBody,
+		[]api_helper.Header{},
+		200,
+	)
+
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result changeSymEncKeyRightsResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &SymEncKey{
+		SymEncKeyId: request.SymEncKeyId,
+		Rights: &RecipientRights{
+			Read:    result.Rights.Read,
+			Forward: result.Rights.Forward,
+			Revoke:  result.Rights.Revoke,
+		},
+	}, nil
+}
+
+type retrieveWithSymEncKeyRequest struct {
+	SymEncKeyId string
+	Secret      string `json:"secret"`
+}
+
+type retrieveWithSymEncKeyResponse struct {
+	EncSymKey string `json:"data"`
+}
+
+func (apiClient *beardApiClient) retrieveWithSymEncKey(request *retrieveWithSymEncKeyRequest) (*retrieveWithSymEncKeyResponse, error) {
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	responseBody, err := apiClient.MakeRequest(
+		"POST",
+		"/api/sym_enc_keys/"+request.SymEncKeyId+"/authenticate_for_data/",
+		requestBody,
+		[]api_helper.Header{},
+		200,
+	)
+	if err != nil {
+		var apiErr utils.APIError
+		if errors.As(err, &apiErr) && apiErr.Status == 404 && apiErr.Raw == "{\"model\":\"SymEncryptedMessageKey\"}" {
+			return nil, tracerr.Wrap(ErrorUnknownSymEncKey)
+		}
+		return nil, tracerr.Wrap(err)
+	}
+	var result retrieveWithSymEncKeyResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type selfAddWithSymEncKeyRequest struct {
+	SymEncKeyId string
+	Secret      string                `json:"secret"`
+	Read        bool                  `json:"acl_read"`
+	Forward     bool                  `json:"acl_forward"`
+	Revoke      bool                  `json:"acl_revoke"`
+	Tokens      []encryptedMessageKey `json:"tokens,omitempty"`
+}
+
+func (apiClient *beardApiClient) selfAddWithSymEncKey(request *selfAddWithSymEncKeyRequest) (*statusResponse, error) {
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	responseBody, err := apiClient.MakeRequest(
+		"POST",
+		"/api/sym_enc_keys/"+request.SymEncKeyId+"/authenticate_for_self_forward/",
+		requestBody,
+		[]api_helper.Header{},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result statusResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type getSessionInfoRequest struct {
+	SessionId string
+	Page      int
+	//EntrustedPage   int
+	LookupProxyKey bool
+	LookupGroupKey bool
+}
+
+func (r *getSessionInfoRequest) forceLookups() *getSessionInfoRequest {
+	return &getSessionInfoRequest{
+		SessionId:      r.SessionId,
+		Page:           r.Page,
+		LookupProxyKey: true,
+		LookupGroupKey: true,
+	}
+}
+
+type BeardRecipient struct {
+	SealdId   string `json:"bearduser_id"`
+	AddedById string `json:"added_by_id"`
+	//Revoked string `json:"revoked"` // deprecated. See `rights.read` instead.
+	ReadFirst   *time.Time `json:"read_first"`
+	ReadLast    *time.Time `json:"read_last"`
+	ReadTime    int        `json:"read_time"`
+	RevokedDate *time.Time `json:"revoked_date"`
+	AclRead     bool       `json:"acl_read"`
+	AclForward  bool       `json:"acl_forward"`
+	AclRevoke   bool       `json:"acl_revoke"`
+}
+
+type GetInfoResponse struct {
+	Metadata string `json:"metadata"`
+	//IsPremium string `json:"is_premium"`
+	TotalViews       int               `json:"total_views"`
+	Recipients       []*BeardRecipient `json:"recipients"`
+	RecipientsNbPage int               `json:"recipients_nb_page"`
+	//EntrustedRecipients ??? `json:"entrusted_recipients"`
+	//TotalViewsEntrusted string `json:"total_views_entrusted"`
+	//EntrustedRecipientsNbPage string `json:"entrusted_recipients_nb_page"`
+	OwnerId            string     `json:"owner_id"`
+	SelfDestructDate   *time.Time `json:"self_destruct_date"`
+	UploadedFileExpiry string     `json:"uploaded_file_expiry"`
+	AllowDownload      bool       `json:"allow_download"`
+}
+
+func (apiClient *beardApiClient) getSessionInfo(request *getSessionInfoRequest) (*GetInfoResponse, error) {
+	responseBody, err := apiClient.MakeRequest(
+		"GET",
+		fmt.Sprintf("/api/message/%s/get_info/?recipients_page=%d&lookup_proxy_key=%s&lookup_group_key=%s",
+			request.SessionId,
+			request.Page,
+			utils.Ternary(request.LookupProxyKey, "1", "0"),
+			utils.Ternary(request.LookupGroupKey, "1", "0")),
+		[]byte{},
+		[]api_helper.Header{},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result GetInfoResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type getProxySessionsRequest struct {
+	SessionId      string
+	Page           int
+	LookupProxyKey bool
+	LookupGroupKey bool
+}
+
+func (r *getProxySessionsRequest) forceLookups() *getProxySessionsRequest {
+	return &getProxySessionsRequest{
+		SessionId:      r.SessionId,
+		Page:           r.Page,
+		LookupProxyKey: true,
+		LookupGroupKey: true,
+	}
+}
+
+type ProxySessionBeard struct {
+	Created        *time.Time `json:"created"`
+	CreatedById    string     `json:"created_by_id"`
+	SessionId      string     `json:"message_id"`
+	ProxySessionId string     `json:"proxy_message_id"`
+	Revoked        bool       `json:"revoked"`
+	RevokedDate    *time.Time `json:"revoked_date"`
+	AclRead        bool       `json:"acl_read"`
+	AclForward     bool       `json:"acl_forward"`
+	AclRevoke      bool       `json:"acl_revoke"`
+}
+
+type getProxySessionsResponse struct {
+	NbPage        int                  `json:"nb_page"`
+	ProxySessions []*ProxySessionBeard `json:"proxy_mks"`
+}
+
+func (apiClient *beardApiClient) getProxySessions(request *getProxySessionsRequest) (*getProxySessionsResponse, error) {
+	responseBody, err := apiClient.MakeRequest(
+		"GET",
+		fmt.Sprintf("/api/message/%s/get_proxy_mks/?page=%d&lookup_proxy_key=%s&lookup_group_key=%s",
+			request.SessionId,
+			request.Page,
+			utils.Ternary(request.LookupProxyKey, "1", "0"),
+			utils.Ternary(request.LookupGroupKey, "1", "0")),
+		[]byte{},
+		[]api_helper.Header{},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result getProxySessionsResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	return &result, nil
+}
+
+type listSymEncKeysRequest struct {
+	SessionId      string
+	Page           int
+	LookupProxyKey bool
+	LookupGroupKey bool
+}
+
+func (r *listSymEncKeysRequest) forceLookups() *listSymEncKeysRequest {
+	return &listSymEncKeysRequest{
+		SessionId:      r.SessionId,
+		Page:           r.Page,
+		LookupProxyKey: true,
+		LookupGroupKey: true,
+	}
+}
+
+type listSymEncKeysResponse struct {
+	NbPage     int               `json:"nb_page"`
+	SymEncKeys []*SymEncKeyBeard `json:"sym_enc_keys"`
+}
+
+type SymEncKeyBeard struct {
+	SymEncKeyId string `json:"id"`
+	AclRead     bool   `json:"acl_read"`
+	AclForward  bool   `json:"acl_forward"`
+	AclRevoke   bool   `json:"acl_revoke"`
+}
+
+func (apiClient *beardApiClient) listSymEncKeys(request *listSymEncKeysRequest) (*listSymEncKeysResponse, error) {
+	responseBody, err := apiClient.MakeRequest(
+		"GET",
+		fmt.Sprintf("/api/message/%s/sym_enc_key/?page=%d&lookup_proxy_key=%s&lookup_group_key=%s",
+			request.SessionId,
+			request.Page,
+			utils.Ternary(request.LookupProxyKey, "1", "0"),
+			utils.Ternary(request.LookupGroupKey, "1", "0")),
+		[]byte{},
+		[]api_helper.Header{},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result listSymEncKeysResponse
 	err = json.Unmarshal(responseBody, &result)
 	if err != nil {
 		return nil, tracerr.Wrap(err)

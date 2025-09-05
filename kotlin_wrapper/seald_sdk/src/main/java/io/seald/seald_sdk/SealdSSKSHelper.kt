@@ -18,6 +18,19 @@ data class AuthFactor(
         internalAuthFactor.value = value
         return internalAuthFactor
     }
+
+    internal companion object {
+        internal fun toMobileSdkArray(afArray: Array<AuthFactor>): io.seald.seald_sdk_internals.mobile_sdk.AuthFactorArray {
+            var afa =
+                io.seald.seald_sdk_internals.mobile_sdk
+                    .AuthFactorArray()
+            val arrayIterator = afArray.iterator()
+            while (arrayIterator.hasNext()) {
+                afa = afa.add(arrayIterator.next().toMobileSdk())
+            }
+            return afa
+        }
+    }
 }
 
 enum class AuthFactorType(

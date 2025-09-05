@@ -84,6 +84,9 @@ func (array *ConnectorsArray) Size() int {
 	return len(array.items)
 }
 func (array *ConnectorsArray) getSlice() []common_models.Connector {
+	if array == nil {
+		return nil
+	}
 	return array.items
 }
 
@@ -127,6 +130,9 @@ func (array *ConnectorTypeValueArray) Size() int {
 	return len(array.items)
 }
 func (array *ConnectorTypeValueArray) getSlice() []*sdk.ConnectorTypeValue {
+	if array == nil {
+		return nil
+	}
 	return array.items
 }
 
@@ -173,6 +179,9 @@ func (asArray *ActionStatusArray) Size() int {
 	return len(asArray.status)
 }
 func (asArray *ActionStatusArray) getSlice() []ActionStatus {
+	if asArray == nil {
+		return nil
+	}
 	return asArray.status
 }
 
@@ -368,6 +377,9 @@ func (array *TmrRecipientWithRightsArray) Size() int {
 	return len(array.items)
 }
 func (array *TmrRecipientWithRightsArray) getSlice() []*sdk.TmrRecipientWithRights {
+	if array == nil {
+		return nil
+	}
 	return array.items
 }
 
@@ -386,6 +398,9 @@ func (array *MobileEncryptionSessionArray) Size() int {
 	return len(array.items)
 }
 func (array *MobileEncryptionSessionArray) getSlice() []*sdk.EncryptionSession {
+	if array == nil {
+		return nil
+	}
 	return array.items
 }
 
@@ -462,5 +477,159 @@ func (s *SearchGroupTMRTemporaryKeysOpts) toCommon() *sdk.SearchGroupTMRTemporar
 		GroupId: s.GroupId,
 		Page:    s.Page,
 		All:     s.All,
+	}
+}
+
+type AuthFactor struct {
+	Type  string `json:"type"` // 'EM' | 'SMS' no enum concept in GO, we should use a setter to ensure the value
+	Value string `json:"value"`
+}
+
+func (mAF *AuthFactor) toCommon() *common_models.AuthFactor {
+	return &common_models.AuthFactor{Type: mAF.Type, Value: mAF.Value}
+}
+
+func authFactorFromCommon(s *common_models.AuthFactor) *AuthFactor {
+	return &AuthFactor{
+		Type:  s.Type,
+		Value: s.Value,
+	}
+}
+
+type AuthFactorArray struct {
+	items []*common_models.AuthFactor
+}
+
+func (array *AuthFactorArray) Add(s *AuthFactor) *AuthFactorArray {
+	array.items = append(array.items, s.toCommon())
+	return array
+}
+func (array *AuthFactorArray) Get(i int) *AuthFactor {
+	return authFactorFromCommon(array.items[i])
+}
+func (array *AuthFactorArray) Size() int {
+	return len(array.items)
+}
+func (array *AuthFactorArray) getSlice() []*common_models.AuthFactor {
+	if array == nil {
+		return nil
+	}
+	return array.items
+}
+
+type RecipientsList struct {
+	SealdRecipients []*sdk.SealdRecipient
+	TmrAccesses     []*sdk.TmrAccess
+	ProxySessions   []*sdk.ProxySession
+	SymEncKeys      []*sdk.SymEncKey
+}
+
+func (rList *RecipientsList) GetSealdRecipient(i int) *SealdRecipient {
+	return sealdRecipientFromCommon(rList.SealdRecipients[i])
+}
+func (rList *RecipientsList) GetTmrAccess(i int) *TmrAccess {
+	return tmrAccessFromCommon(rList.TmrAccesses[i])
+}
+func (rList *RecipientsList) GetProxySession(i int) *ProxySession {
+	return proxySessionFromCommon(rList.ProxySessions[i])
+}
+func (rList *RecipientsList) GetSymEncKey(i int) *SymEncKey {
+	return symEncKeyFromCommon(rList.SymEncKeys[i])
+}
+
+func (rList *RecipientsList) SealdRecipientsSize() int {
+	return len(rList.SealdRecipients)
+}
+func (rList *RecipientsList) TmrAccessesSize() int {
+	return len(rList.TmrAccesses)
+}
+func (rList *RecipientsList) ProxySessionsSize() int {
+	return len(rList.ProxySessions)
+}
+func (rList *RecipientsList) SymEncKeysSize() int {
+	return len(rList.SymEncKeys)
+}
+
+type SealdRecipient struct {
+	SealdId   string
+	AddedById string
+	ReadFirst int64
+	ReadLast  int64
+	ReadTime  int
+	Rights    *RecipientRights
+}
+
+func sealdRecipientFromCommon(nativeR *sdk.SealdRecipient) *SealdRecipient {
+	sR := &SealdRecipient{
+		SealdId:   nativeR.SealdId,
+		AddedById: nativeR.AddedById,
+		ReadTime:  nativeR.ReadTime,
+		Rights:    recipientRightsFromCommon(nativeR.Rights),
+	}
+	if nativeR.ReadFirst != nil {
+		sR.ReadFirst = nativeR.ReadFirst.Unix()
+	}
+	if nativeR.ReadLast != nil {
+		sR.ReadLast = nativeR.ReadLast.Unix()
+	}
+	return sR
+}
+
+type TmrAccess struct {
+	TmrAccessId    string
+	Created        int64
+	AuthFactorType string
+	Rights         *RecipientRights
+}
+
+func tmrAccessFromCommon(nTmrAccess *sdk.TmrAccess) *TmrAccess {
+	tA := &TmrAccess{
+		TmrAccessId:    nTmrAccess.Id,
+		AuthFactorType: nTmrAccess.AuthFactorType,
+		Rights:         recipientRightsFromCommon(nTmrAccess.Rights),
+	}
+	if nTmrAccess.Created != nil {
+		tA.Created = nTmrAccess.Created.Unix()
+	}
+	return tA
+}
+
+type ProxySession struct {
+	Created        int64
+	SessionId      string
+	ProxySessionId string
+	Rights         *RecipientRights
+}
+
+func proxySessionFromCommon(nProxySession *sdk.ProxySession) *ProxySession {
+	pS := &ProxySession{
+		SessionId:      nProxySession.SessionId,
+		ProxySessionId: nProxySession.ProxySessionId,
+		Rights:         recipientRightsFromCommon(nProxySession.Rights),
+	}
+	if nProxySession.Created != nil {
+		pS.Created = nProxySession.Created.Unix()
+	}
+	return pS
+}
+
+type SymEncKey struct {
+	SymEncKeyId string
+	Rights      *RecipientRights
+}
+
+func symEncKeyFromCommon(nativeR *sdk.SymEncKey) *SymEncKey {
+	return &SymEncKey{
+		SymEncKeyId: nativeR.SymEncKeyId,
+		Rights:      recipientRightsFromCommon(nativeR.Rights),
+	}
+}
+
+func recipientsListFromCommon(nativeList *sdk.RecipientsList) *RecipientsList {
+	return &RecipientsList{
+		SealdRecipients: nativeList.SealdRecipients,
+		TmrAccesses:     nativeList.TmrAccesses,
+		ProxySessions:   nativeList.ProxySessions,
+		SymEncKeys:      nativeList.SymEncKeys,
 	}
 }

@@ -332,13 +332,21 @@ class SealdActionStatus {
 /// {@category Helpers}
 class SealdRevokeResult {
   /// The Seald recipients the revocation operation acted on.
-  final Map<String, SealdActionStatus> recipients;
+  final Map<String, SealdActionStatus> sealdRecipients;
 
   /// The proxy sessions the revocation operation acted on.
   final Map<String, SealdActionStatus> proxySessions;
 
+  /// The SymEncKey the revocation operation acted on.
+  final Map<String, SealdActionStatus> symEncKeys;
+
+  /// The TMR access the revocation operation acted on.
+  final Map<String, SealdActionStatus> tmrAccesses;
+
   SealdRevokeResult._fromC(Pointer<NativeSealdRevokeResult> rr)
-      : recipients = SealdActionStatus._fromCArray(rr.ref.Recipients),
+      : sealdRecipients = SealdActionStatus._fromCArray(rr.ref.SealdIds),
+        symEncKeys = SealdActionStatus._fromCArray(rr.ref.SymEncKeyIds),
+        tmrAccesses = SealdActionStatus._fromCArray(rr.ref.TMRAccess),
         proxySessions = SealdActionStatus._fromCArray(rr.ref.ProxySessions) {
     calloc.free(rr);
   }
@@ -373,7 +381,7 @@ List<String> _listFromSealdStringArray(Pointer<NativeSealdStringArray> arr) {
   return l;
 }
 
-/// Represents a connector type-value pair.
+/// Represents the rights a user can have over an encrypted message or an encryption session.
 ///
 /// {@category Helpers}
 class SealdRecipientRights {
@@ -443,8 +451,12 @@ enum SealdEncryptionSessionRetrievalFlow {
   viaGroup, // 2
   /// The session was retrieved through a proxy session.
   viaProxy, // 3
+  /// The session was retrieved with a sealdMessage that include the encrypted SymKey. Should never happen.
+  local, // 4
+  /// The session was retrieved through a SymEncKey.
+  viaSymEncKey, // 5
   /// The session was retrieved through a TMR access.
-  viaTmrAccess, // 4
+  viaTmrAccess, // 6
 }
 
 /// SealdEncryptionSessionRetrievalDetails represents the details of how an Encryption Session was retrieved.
@@ -783,5 +795,336 @@ class SealdSearchGroupTMRTemporaryKeysOpts {
     nativeStruct.ref.Page = page;
     nativeStruct.ref.All = all ? 1 : 0;
     return nativeStruct;
+  }
+}
+
+/// Represents a tmr recipient for anonymous SDK.
+///
+/// {@category Helpers}
+class SealdAnonymousTmrRecipient {
+  /// Type of authentication factor. Can be `EM` or `SMS`.
+  final String type;
+
+  /// Value of the authentication factor.
+  final String value;
+
+  /// Over encryption key for the authentication factor.
+  final Uint8List overEncryptionKey;
+
+  SealdAnonymousTmrRecipient({
+    required this.type,
+    required this.value,
+    required this.overEncryptionKey,
+  });
+
+  static Pointer<NativeSealdAnonymousTmrRecipientsArray> _toCArray(
+      List<SealdAnonymousTmrRecipient>? listTMRRecipient) {
+    final Pointer<NativeSealdAnonymousTmrRecipientsArray> array =
+        _bindings.SealdAnonymousTmrRecipientsArray_New();
+    for (SealdAnonymousTmrRecipient tmrR in listTMRRecipient ?? []) {
+      final Pointer<Utf8> rType = tmrR.type.toNativeUtf8();
+      final Pointer<Utf8> rValue = tmrR.value.toNativeUtf8();
+      // Dart FFI forces us to copy the data from Uint8List to a newly allocated Pointer<Uint8>
+      final Pointer<Uint8> nativeOverEncryptionKey =
+          calloc<Uint8>(tmrR.overEncryptionKey.length);
+      final pointerListOverEncryptionKey =
+          nativeOverEncryptionKey.asTypedList(tmrR.overEncryptionKey.length);
+      pointerListOverEncryptionKey.setAll(0, tmrR.overEncryptionKey);
+
+      _bindings.SealdAnonymousTmrRecipientsArray_Add(array, rType, rValue,
+          nativeOverEncryptionKey, tmrR.overEncryptionKey.length);
+
+      calloc.free(rType);
+      calloc.free(rValue);
+      calloc.free(nativeOverEncryptionKey);
+    }
+    return array;
+  }
+}
+
+/// Represents a tmr recipient.
+///
+/// {@category Helpers}
+class SealdTmrAuthFactor {
+  /// Type of authentication factor. Can be `EM` or `SMS`.
+  final String type;
+
+  /// Value of the authentication factor.
+  final String value;
+
+  SealdTmrAuthFactor({
+    required this.type,
+    required this.value,
+  });
+
+  static Pointer<NativeSealdAuthFactorArray> _toCArray(
+      List<SealdTmrAuthFactor>? listTMRRecipient) {
+    final Pointer<NativeSealdAuthFactorArray> array =
+        _bindings.SealdAuthFactorArray_New();
+    for (SealdTmrAuthFactor tmrAF in listTMRRecipient ?? []) {
+      final Pointer<Utf8> rType = tmrAF.type.toNativeUtf8();
+      final Pointer<Utf8> rValue = tmrAF.value.toNativeUtf8();
+
+      _bindings.SealdAuthFactorArray_Add(array, rType, rValue);
+
+      calloc.free(rType);
+      calloc.free(rValue);
+    }
+    return array;
+  }
+}
+
+/// Holds information about a SymEncKey access.
+///
+/// {@category Helpers}
+class SealdSymEncKey {
+  /// Id of the SymEncKey access.
+  final String symEncKeyId;
+
+  /// The rights for the access
+  final SealdRecipientRights rights;
+
+  SealdSymEncKey({
+    required this.symEncKeyId,
+    required this.rights,
+  });
+
+  SealdSymEncKey._fromC(Pointer<NativeSealdSymEncKey> sek, {bool free = true})
+      : symEncKeyId = sek.ref.SymEncKeyId.toDartString(),
+        rights = SealdRecipientRights(
+            read: sek.ref.ReadRight == 1,
+            forward: sek.ref.ForwardRight == 1,
+            revoke: sek.ref.RevokeRight == 1) {
+    // Cleanup what we don't need anymore
+    if (free) _bindings.SealdSymEncKey_Free(sek);
+  }
+
+  static List<SealdSymEncKey> _fromCArray(
+      Pointer<NativeSealdSymEncKeyArray> nativeArray,
+      {bool free = true}) {
+    final int size = _bindings.SealdSymEncKeyArray_Size(nativeArray);
+    final List<SealdSymEncKey> symKeys = [];
+    for (int i = 0; i < size; i++) {
+      final Pointer<NativeSealdSymEncKey> nativeSymKey =
+          _bindings.SealdSymEncKeyArray_Get(nativeArray, i);
+      // not freeing nativeSymKey here, as they will be freed when calling SealdSymEncKeyArray_Free
+      final SealdSymEncKey symKey =
+          SealdSymEncKey._fromC(nativeSymKey, free: false);
+      symKeys.add(symKey);
+    }
+    // We HAVE to call the specific SealdSymEncKeyArray_Free function, because it's actually a Go instance
+    if (free) _bindings.SealdSymEncKeyArray_Free(nativeArray);
+    return symKeys;
+  }
+}
+
+/// Holds information about a ProxySession access.
+///
+/// {@category Helpers}
+class SealdProxySession {
+  /// Id of the proxy session.
+  final String proxySessionId;
+
+  /// Date of creation.
+  final DateTime created;
+
+  /// The rights for the access
+  final SealdRecipientRights rights;
+
+  SealdProxySession({
+    required this.proxySessionId,
+    required this.created,
+    required this.rights,
+  });
+
+  SealdProxySession._fromC(Pointer<NativeSealdProxySession> ps,
+      {bool free = true})
+      : proxySessionId = ps.ref.ProxySessionId.toDartString(),
+        created = DateTime.fromMillisecondsSinceEpoch(ps.ref.Created * 1000),
+        rights = SealdRecipientRights(
+            read: ps.ref.ReadRight == 1,
+            forward: ps.ref.ForwardRight == 1,
+            revoke: ps.ref.RevokeRight == 1) {
+    // Cleanup what we don't need anymore
+    if (free) _bindings.SealdProxySession_Free(ps);
+  }
+
+  static List<SealdProxySession> _fromCArray(
+      Pointer<NativeSealdProxySessionArray> nativeArray,
+      {bool free = true}) {
+    final int size = _bindings.SealdProxySessionArray_Size(nativeArray);
+    final List<SealdProxySession> proxySessions = [];
+    for (int i = 0; i < size; i++) {
+      final Pointer<NativeSealdProxySession> nativeProxySession =
+          _bindings.SealdProxySessionArray_Get(nativeArray, i);
+      // not freeing nativeProxySession here, as they will be freed when calling SealdProxySessionArray_Free
+      final SealdProxySession ps =
+          SealdProxySession._fromC(nativeProxySession, free: false);
+      proxySessions.add(ps);
+    }
+    // We HAVE to call the specific SealdProxySessionArray_Free function, because it's actually a Go instance
+    if (free) _bindings.SealdProxySessionArray_Free(nativeArray);
+    return proxySessions;
+  }
+}
+
+/// Holds information about a TMR access.
+///
+/// {@category Helpers}
+class SealdTmrAccess {
+  /// Id of the TMR access.
+  final String tmrAccessId;
+
+  /// Date of creation.
+  final DateTime created;
+
+  /// The type of authentication factor.
+  final String authFactorType;
+
+  /// The rights for the access
+  final SealdRecipientRights rights;
+
+  SealdTmrAccess({
+    required this.tmrAccessId,
+    required this.created,
+    required this.authFactorType,
+    required this.rights,
+  });
+
+  SealdTmrAccess._fromC(Pointer<NativeSealdTMRAccess> tmrA, {bool free = true})
+      : tmrAccessId = tmrA.ref.TmrAccessId.toDartString(),
+        authFactorType = tmrA.ref.AuthFactorType.toDartString(),
+        created = DateTime.fromMillisecondsSinceEpoch(tmrA.ref.Created * 1000),
+        rights = SealdRecipientRights(
+            read: tmrA.ref.ReadRight == 1,
+            forward: tmrA.ref.ForwardRight == 1,
+            revoke: tmrA.ref.RevokeRight == 1) {
+    // Cleanup what we don't need anymore
+    if (free) _bindings.SealdTMRAccess_Free(tmrA);
+  }
+
+  static List<SealdTmrAccess> _fromCArray(
+      Pointer<NativeSealdTMRAccessArray> nativeArray,
+      {bool free = true}) {
+    final int size = _bindings.SealdTMRAccessArray_Size(nativeArray);
+    final List<SealdTmrAccess> tmrAccesses = [];
+    for (int i = 0; i < size; i++) {
+      final Pointer<NativeSealdTMRAccess> nativeTmrAccess =
+          _bindings.SealdTMRAccessArray_Get(nativeArray, i);
+      // not freeing nativeTmrAccess here, as they will be freed when calling SealdTMRAccessArray_Free
+      final SealdTmrAccess tmrA =
+          SealdTmrAccess._fromC(nativeTmrAccess, free: false);
+      tmrAccesses.add(tmrA);
+    }
+    // We HAVE to call the specific SealdTMRAccessArray_Free function, because it's actually a Go instance
+    if (free) _bindings.SealdTMRAccessArray_Free(nativeArray);
+    return tmrAccesses;
+  }
+}
+
+/// Holds information about a Seald recipient.
+///
+/// {@category Helpers}
+class SealdSealdRecipient {
+  /// The Seald ID of the user.
+  final String sealdId;
+
+  /// The ID of the user who created this access.
+  final String addedById;
+
+  /// Time of the first access to the session.
+  final DateTime? readFirst;
+
+  /// Time of the last access to the session.
+  final DateTime? readLast;
+
+  /// Number of access to the session.
+  final int readTime;
+
+  /// The rights for the access
+  final SealdRecipientRights rights;
+
+  SealdSealdRecipient({
+    required this.sealdId,
+    required this.addedById,
+    this.readFirst,
+    this.readLast,
+    required this.readTime,
+    required this.rights,
+  });
+
+  SealdSealdRecipient._fromC(Pointer<NativeSealdSealdRecipient> ssR,
+      {bool free = true})
+      : sealdId = ssR.ref.SealdId.toDartString(),
+        addedById = ssR.ref.AddedById.toDartString(),
+        readFirst = ssR.ref.ReadFirst != 0
+            ? DateTime.fromMillisecondsSinceEpoch(ssR.ref.ReadFirst)
+            : null,
+        readLast = ssR.ref.ReadFirst != 0
+            ? DateTime.fromMillisecondsSinceEpoch(ssR.ref.ReadLast)
+            : null,
+        readTime = ssR.ref.ReadTime,
+        rights = SealdRecipientRights(
+            read: ssR.ref.ReadRight == 1,
+            forward: ssR.ref.ForwardRight == 1,
+            revoke: ssR.ref.RevokeRight == 1) {
+    // Cleanup what we don't need anymore
+    if (free) _bindings.SealdSealdRecipient_Free(ssR);
+  }
+
+  static List<SealdSealdRecipient> _fromCArray(
+      Pointer<NativeSealdSealdRecipientArray> nativeArray,
+      {bool free = true}) {
+    final int size = _bindings.SealdSealdRecipientArray_Size(nativeArray);
+    final List<SealdSealdRecipient> sRecipients = [];
+    for (int i = 0; i < size; i++) {
+      final Pointer<NativeSealdSealdRecipient> nativeSSR =
+          _bindings.SealdSealdRecipientArray_Get(nativeArray, i);
+      // not freeing nativeSSR here, as they will be freed when calling SealdSealdRecipientArray_Free
+      final SealdSealdRecipient ssR =
+          SealdSealdRecipient._fromC(nativeSSR, free: false);
+      sRecipients.add(ssR);
+    }
+    // We HAVE to call the specific SealdSealdRecipientArray_Free function, because it's actually a Go instance
+    if (free) _bindings.SealdSealdRecipientArray_Free(nativeArray);
+    return sRecipients;
+  }
+}
+
+/// Holds a list of all recipients from a session.
+///
+/// {@category Helpers}
+class SealdRecipientsList {
+  /// An array of [SealdSealdRecipient] that can access the session.
+  final List<SealdSealdRecipient> sealdRecipients;
+
+  /// An array of [SealdTmrAccess] that can access the session.
+  final List<SealdTmrAccess> tmrAccesses;
+
+  /// An array of [SealdProxySession] that can access the session.
+  final List<SealdProxySession> proxySessions;
+
+  /// An array of [SealdSymEncKey] that can access the session.
+  final List<SealdSymEncKey> symEncKeys;
+
+  SealdRecipientsList({
+    required this.sealdRecipients,
+    required this.tmrAccesses,
+    required this.proxySessions,
+    required this.symEncKeys,
+  });
+
+  SealdRecipientsList._fromC(Pointer<NativeSealdRecipientsList> nRL)
+      : sealdRecipients = SealdSealdRecipient._fromCArray(
+            nRL.ref.SealdRecipients,
+            free: false),
+        tmrAccesses =
+            SealdTmrAccess._fromCArray(nRL.ref.TMRAccesses, free: false),
+        proxySessions =
+            SealdProxySession._fromCArray(nRL.ref.ProxySessions, free: false),
+        symEncKeys =
+            SealdSymEncKey._fromCArray(nRL.ref.SymEncKeys, free: false) {
+    // Cleanup what we don't need anymore
+    _bindings.SealdRecipientsList_Free(nRL);
   }
 }

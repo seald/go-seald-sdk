@@ -36,11 +36,23 @@ func (device testPrivateDevice) getEncryptionKeys() []*asymkey.PrivateKey {
 }
 
 func Test_EncryptionSession(t *testing.T) {
+	credentials, err := test_utils.GetCredentials()
+	require.NoError(t, err)
+
 	allRights := &RecipientRights{
 		Read:    true,
 		Revoke:  true,
 		Forward: true,
 	}
+
+	// Instantiate a ssks-backend for TMR auth
+	options1 := &ssks_tmr.PluginTMRInitializeOptions{
+		SsksURL:      credentials.SsksUrl,
+		AppId:        credentials.AppId,
+		InstanceName: "plugin-tmr-tests-1",
+		Platform:     "go-tests",
+	}
+	pluginInstance1 := ssks_tmr.NewPluginTMR(options1)
 
 	t.Parallel()
 	t.Run("decryptMessageKey", func(t *testing.T) {
@@ -359,6 +371,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.ErrorContains(t, err, "illegal base64 data at input byte 0")
 		})
 	})
+
 	t.Run("EncryptionSession — RetrieveEncryptionSession from sealdMessage", func(t *testing.T) {
 		account, err := createTestAccount("sdk_session_retrieve_message")
 		require.NoError(t, err)
@@ -959,6 +972,15 @@ func Test_EncryptionSession(t *testing.T) {
 		recipientDevice1 := &RecipientWithRights{Id: currentDevice1.UserId, Rights: allRights}
 		recipientDevice2 := &RecipientWithRights{Id: currentDevice2.UserId, Rights: allRights}
 		recipientDevice3 := &RecipientWithRights{Id: currentDevice3.UserId, Rights: allRights}
+		preGeneratedKeys, err := getPreGeneratedKeys()
+		require.NoError(t, err)
+		groupId, err := account1.CreateGroup(
+			"Test Group - EncryptionSession - AddRecipients",
+			[]string{currentDevice1.UserId, currentDevice2.UserId},
+			[]string{currentDevice1.UserId, currentDevice2.UserId},
+			preGeneratedKeys,
+		)
+		require.NoError(t, err)
 
 		t.Parallel()
 		t.Run("AddRecipients allows user to retrieve session", func(t *testing.T) {
@@ -1009,6 +1031,26 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NotNil(t, resp)
 			assert.Equal(t, map[string]AddKeysResponse{currentDevice2.DeviceId: {StatusCode: 200}}, resp.Status)
 		})
+
+		t.Run("AddRecipients to a session we just created without being a direct recipient", func(t *testing.T) {
+			// Create a session to which the user only has access through group
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{{Id: groupId, Rights: allRights}},
+				CreateEncryptionSessionOptions{UseCache: true},
+			)
+			require.NoError(t, err)
+
+			// Session retrieval flow is "Created"
+			assert.Equal(t, EncryptionSessionRetrievalCreated, session.RetrievalDetails.Flow)
+
+			// Calling AddRecipients on this session
+			// This can cause a problem because the session is not retrieved through a group (it was created),
+			// but we only have access through the group
+			resp, err := session.AddRecipients([]*RecipientWithRights{recipientDevice3})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, map[string]AddKeysResponse{currentDevice3.DeviceId: {StatusCode: 200}}, resp.Status)
+		})
 	})
 
 	t.Run("EncryptionSession - RevokeRecipients", func(t *testing.T) {
@@ -1037,7 +1079,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Equal(t, session.Key, session2.Key)
 
 			// Calling revokeRecipients to remove account2
-			resp, err := session.RevokeRecipients([]string{currentDevice2.UserId}, nil)
+			resp, err := session.RevokeRecipients(&RecipientsToRevoke{SealdIds: []string{currentDevice2.UserId}})
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 			assert.Equal(t, map[string]string{currentDevice2.UserId: "ok"}, resp.UserIds)
@@ -1048,6 +1090,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Nil(t, session2b)
 			assert.ErrorIs(t, err, ErrorNoTokenForYou)
 		})
+
 		t.Run("RevokeRecipients with proxySessions", func(t *testing.T) {
 			// Create a proxySession and a session
 			proxySession, err := account1.CreateEncryptionSession(
@@ -1072,7 +1115,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Equal(t, proxySession.Id, session2.RetrievalDetails.ProxySessionId)
 
 			// Calling RevokeRecipients to remove proxySession
-			resp, err := session.RevokeRecipients(nil, []string{proxySession.Id})
+			resp, err := session.RevokeRecipients(&RecipientsToRevoke{ProxySessionsIds: []string{proxySession.Id}})
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 			assert.Equal(t, map[string]string{proxySession.Id: "ok"}, resp.ProxyMkIds)
@@ -1083,6 +1126,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Nil(t, session2b)
 			assert.ErrorIs(t, err, ErrorNoTokenForYou)
 		})
+
 		t.Run("RevokeRecipients does not error when user is not recipient", func(t *testing.T) {
 			// Create a session without account2
 			session, err := account1.CreateEncryptionSession(
@@ -1092,11 +1136,12 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// Calling revokeRecipients to double-revoke account2 (no error, but response will be "ko")
-			resp, err := session.RevokeRecipients([]string{currentDevice2.UserId}, nil)
+			resp, err := session.RevokeRecipients(&RecipientsToRevoke{SealdIds: []string{currentDevice2.UserId}})
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 			assert.Equal(t, map[string]string{currentDevice2.UserId: "ko"}, resp.UserIds)
 		})
+
 		t.Run("RevokeRecipients with invalid userIds as input", func(t *testing.T) {
 			// Create a session
 			session, err := account1.CreateEncryptionSession(
@@ -1106,14 +1151,159 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// Calling revokeRecipients with bad inputs
-			resp, err := session.RevokeRecipients([]string{currentDevice2.DeviceId}, nil) // Not a userId, to have a valid uuid but invalid userId
+			resp, err := session.RevokeRecipients(&RecipientsToRevoke{SealdIds: []string{currentDevice2.DeviceId}}) // Not a userId, to have a valid uuid but invalid userId
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 			assert.Equal(t, map[string]string{currentDevice2.DeviceId: "ko"}, resp.UserIds)
-			resp2, err := session.RevokeRecipients([]string{"bad-uuid"}, nil)
+			resp2, err := session.RevokeRecipients(&RecipientsToRevoke{SealdIds: []string{"bad-uuid"}})
 			assert.Error(t, err)
 			assert.Nil(t, resp2)
 			assert.ErrorIs(t, err, utils.APIError{Status: 400, Code: "UNKNOWN"})
+		})
+
+		t.Run("RevokeRecipients SymEncKeys", func(t *testing.T) {
+			t.Parallel()
+			// Create an encryptionSession
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
+			require.NoError(t, err)
+
+			// Add a SymEncKey
+			symEncKeyPassword, err := utils.GenerateRandomNonce()
+			symEncKey, err := session.AddSymEncKeyFromPassword(symEncKeyPassword, &RecipientRights{Read: true, Forward: false, Revoke: false})
+			require.NoError(t, err)
+
+			// account2 can retrieve the session via SymEncKey
+			sessionBySymEncKey, err := account2.RetrieveEncryptionSessionWithSymEncKeyPassword(session.Id, symEncKey.SymEncKeyId, symEncKeyPassword, false)
+			require.NoError(t, err)
+			require.NoError(t, err)
+			assert.Equal(t, session.Id, sessionBySymEncKey.Id)
+			assert.Equal(t, session.Key, sessionBySymEncKey.Key)
+			assert.Equal(t, EncryptionSessionRetrievalViaSymEncKey, sessionBySymEncKey.RetrievalDetails.Flow)
+			assert.Equal(t, symEncKey.SymEncKeyId, sessionBySymEncKey.RetrievalDetails.SymEncKeyId)
+
+			// Calling RevokeRecipients to remove SymEncKeys
+			resp, err := session.RevokeRecipients(&RecipientsToRevoke{SymEncKeysIds: []string{symEncKey.SymEncKeyId}})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, map[string]string{symEncKey.SymEncKeyId: "ok"}, resp.SymEncKeyIds)
+
+			// account2 now cannot retrieve the session
+			sessionFail, err := account2.RetrieveEncryptionSessionWithSymEncKeyPassword(session.Id, symEncKey.SymEncKeyId, symEncKeyPassword, false)
+			require.Error(t, err)
+			assert.Nil(t, sessionFail)
+			assert.ErrorIs(t, err, ErrorUnknownSymEncKey)
+		})
+
+		t.Run("RevokeRecipients TmrAccessIds", func(t *testing.T) {
+			t.Parallel()
+			// Create an encryptionSession
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
+			require.NoError(t, err)
+
+			// Add a TMR access
+			nonce, err := utils.GenerateRandomNonce()
+			userEmail := fmt.Sprintf("user-tmr-%s@test.com", nonce[0:15])
+			authFactor := &common_models.AuthFactor{Value: userEmail, Type: "EM"}
+
+			overEncryptionKey, err := symmetric_key.Generate()
+			require.NoError(t, err)
+			overEncryptionKeyBytes := overEncryptionKey.Encode()
+
+			tmrRecipient := &TmrRecipientWithRights{
+				AuthFactor:        authFactor,
+				OverEncryptionKey: overEncryptionKeyBytes,
+				Rights:            allRights,
+			}
+			tmrAccessId, err := session.AddTmrAccess(tmrRecipient)
+			require.NoError(t, err)
+
+			// account2 can retrieve the session via TMR access
+			// Retrieve a TMR token
+			backend := test_utils.NewSSKS2MRBackendApiClient(credentials.SsksUrl, credentials.AppId, credentials.SsksBackendAppKey)
+			userTmrId := account2.storage.currentDevice.get().UserId
+			challSendRep, err := backend.ChallengeSend(userTmrId, authFactor, true, true)
+			require.NoError(t, err)
+			factorToken, err := pluginInstance1.GetFactorToken(challSendRep.SessionId, authFactor, credentials.SsksTMRChallenge)
+			require.NoError(t, err)
+
+			// Retrieve an ES with the TMR token
+			sessionByTMR, err := account2.RetrieveEncryptionSessionByTmr(factorToken.Token, session.Id, overEncryptionKeyBytes, nil, false, false)
+			require.NoError(t, err)
+			assert.Equal(t, session.Id, sessionByTMR.Id)
+			assert.Equal(t, session.Key, sessionByTMR.Key)
+			assert.Equal(t, EncryptionSessionRetrievalViaTmrAccess, sessionByTMR.RetrievalDetails.Flow)
+
+			// Calling RevokeRecipients to remove proxySession
+			resp, err := session.RevokeRecipients(&RecipientsToRevoke{TmrAccessIds: []string{tmrAccessId}})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, map[string]string{fmt.Sprintf("ID/%s", tmrAccessId): "ok"}, resp.TMRKeys)
+
+			// account2 now cannot retrieve the session
+			sessionFail, err := account2.RetrieveEncryptionSessionByTmr(factorToken.Token, session.Id, overEncryptionKeyBytes, nil, false, false)
+			require.Error(t, err)
+			assert.Nil(t, sessionFail)
+			assert.ErrorIs(t, err, ErrorRetrieveEncryptionSessionByTmrAccessNotFound)
+		})
+
+		t.Run("RevokeRecipients TmrAccessAuthFactors", func(t *testing.T) {
+			// Create an encryptionSession
+			session, err := account1.CreateEncryptionSession(
+				[]*RecipientWithRights{recipientDevice1},
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
+			require.NoError(t, err)
+
+			// Add a TMR access
+			nonce, err := utils.GenerateRandomNonce()
+			userEmail := fmt.Sprintf("user-tmr-%s@test.com", nonce[0:15])
+			authFactor := &common_models.AuthFactor{Value: userEmail, Type: "EM"}
+
+			overEncryptionKey, err := symmetric_key.Generate()
+			require.NoError(t, err)
+			overEncryptionKeyBytes := overEncryptionKey.Encode()
+
+			tmrRecipient := &TmrRecipientWithRights{
+				AuthFactor:        authFactor,
+				OverEncryptionKey: overEncryptionKeyBytes,
+				Rights:            allRights,
+			}
+			tmrAccessId, err := session.AddTmrAccess(tmrRecipient)
+			require.NoError(t, err)
+
+			// account2 can retrieve the session via TMR access
+			// Retrieve a TMR token
+			backend := test_utils.NewSSKS2MRBackendApiClient(credentials.SsksUrl, credentials.AppId, credentials.SsksBackendAppKey)
+			userTmrId := account2.storage.currentDevice.get().UserId
+			challSendRep, err := backend.ChallengeSend(userTmrId, authFactor, true, true)
+			require.NoError(t, err)
+			factorToken, err := pluginInstance1.GetFactorToken(challSendRep.SessionId, authFactor, credentials.SsksTMRChallenge)
+			require.NoError(t, err)
+
+			// Retrieve an ES with the TMR token
+			sessionByTMR, err := account2.RetrieveEncryptionSessionByTmr(factorToken.Token, session.Id, overEncryptionKeyBytes, nil, false, false)
+			require.NoError(t, err)
+			assert.Equal(t, session.Id, sessionByTMR.Id)
+			assert.Equal(t, session.Key, sessionByTMR.Key)
+			assert.Equal(t, EncryptionSessionRetrievalViaTmrAccess, sessionByTMR.RetrievalDetails.Flow)
+
+			// Calling RevokeRecipients to remove proxySession
+			resp, err := session.RevokeRecipients(&RecipientsToRevoke{TmrAccessAuthFactors: []*common_models.AuthFactor{{Value: userEmail, Type: "EM"}}})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, map[string]string{fmt.Sprintf("EM/%s/%s", userEmail, tmrAccessId): "ok"}, resp.TMRKeys)
+
+			// account2 now cannot retrieve the session
+			sessionFail, err := account2.RetrieveEncryptionSessionByTmr(factorToken.Token, session.Id, overEncryptionKeyBytes, nil, false, false)
+			require.Error(t, err)
+			assert.Nil(t, sessionFail)
+			assert.ErrorIs(t, err, ErrorRetrieveEncryptionSessionByTmrAccessNotFound)
 		})
 	})
 
@@ -1460,7 +1650,7 @@ func Test_EncryptionSession(t *testing.T) {
 		assert.Equal(t, 2, countOccurrences(resultFromCache, true))
 
 		// Revoking other does not affect cache
-		_, err = esAcc2.RevokeRecipients([]string{currentDevice3.UserId}, nil)
+		_, err = esAcc2.RevokeRecipients(&RecipientsToRevoke{SealdIds: []string{currentDevice3.UserId}})
 		require.NoError(t, err)
 		assert.Equal(t, 1, account2.storage.encryptionSessionsCache.len())
 		retrieveES, err = account2.storage.encryptionSessionsCache.get(esAcc1.Id)
@@ -1470,7 +1660,7 @@ func Test_EncryptionSession(t *testing.T) {
 		assert.Equal(t, esAcc1.Key.Encode(), retrieveES.Symkey.Encode())
 
 		// Revoking yourself deletes session from your cache
-		_, err = esAcc2.RevokeRecipients([]string{currentDevice2.UserId}, nil)
+		_, err = esAcc2.RevokeRecipients(&RecipientsToRevoke{SealdIds: []string{currentDevice2.UserId}})
 		require.NoError(t, err)
 		assert.Equal(t, 0, account2.storage.encryptionSessionsCache.len())
 		retrieveES, err = account2.storage.encryptionSessionsCache.get(esAcc1.Id)
@@ -1675,7 +1865,7 @@ func Test_EncryptionSession(t *testing.T) {
 		// es1 removed from cache when group revoked from session
 		es1CacheBefore, err := account2.storage.encryptionSessionsCache.get(es1.Id)
 		assert.NotNil(t, es1CacheBefore)
-		_, err = retrieveES12.RevokeRecipients([]string{groupId}, nil)
+		_, err = retrieveES12.RevokeRecipients(&RecipientsToRevoke{SealdIds: []string{groupId}})
 		require.NoError(t, err)
 		assert.Equal(t, 1, account2.storage.encryptionSessionsCache.len())
 		es1CacheAfter, err := account2.storage.encryptionSessionsCache.get(es1.Id)
@@ -1776,7 +1966,7 @@ func Test_EncryptionSession(t *testing.T) {
 		// es1 removed from cache when proxy revoked
 		es1CacheBefore, err := account2.storage.encryptionSessionsCache.get(es1.Id)
 		assert.NotNil(t, es1CacheBefore)
-		_, err = retrieveES12.RevokeRecipients(nil, []string{proxySession.Id})
+		_, err = retrieveES12.RevokeRecipients(&RecipientsToRevoke{ProxySessionsIds: []string{proxySession.Id}})
 		require.NoError(t, err)
 		assert.Equal(t, 1, account2.storage.encryptionSessionsCache.len())
 		es1CacheAfter, err := account2.storage.encryptionSessionsCache.get(es1.Id)
@@ -1794,8 +1984,6 @@ func Test_EncryptionSession(t *testing.T) {
 
 	t.Run("TMR access", func(t *testing.T) {
 		t.Run("TMR access create/retrieve/convert", func(t *testing.T) {
-			credentials, err := test_utils.GetCredentials()
-			require.NoError(t, err)
 
 			overEncryptionKey, err := symmetric_key.Generate()
 			require.NoError(t, err)
@@ -1847,15 +2035,6 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, 1, list.NbPage)
 			assert.Equal(t, 1, len(list.TmrMKs))
-
-			// Instantiate a ssks-backend for TMR auth
-			options1 := &ssks_tmr.PluginTMRInitializeOptions{
-				SsksURL:      credentials.SsksUrl,
-				AppId:        credentials.AppId,
-				InstanceName: "plugin-tmr-tests-1",
-				Platform:     "go-tests",
-			}
-			pluginInstance1 := ssks_tmr.NewPluginTMR(options1)
 
 			// Retrieve a TMR token
 			backend := test_utils.NewSSKS2MRBackendApiClient(credentials.SsksUrl, credentials.AppId, credentials.SsksBackendAppKey)
@@ -2004,6 +2183,356 @@ func Test_EncryptionSession(t *testing.T) {
 		})
 	})
 
+	t.Run("Serialize / Deserialize", func(t *testing.T) {
+		// Create account
+		account, err := createTestAccount("sdk_session_serialize_deserialize")
+		require.NoError(t, err)
+
+		// Create encryption session
+		currentDevice := account.storage.currentDevice.get()
+		recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
+		session, err := account.CreateEncryptionSession(
+			[]*RecipientWithRights{recipientCurrentDevice},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
+		require.NoError(t, err)
+
+		// Serialize
+		serializedSession, err := session.Serialize()
+		require.NoError(t, err)
+
+		// Can deserialize
+		deserializedSession, err := account.DeserializeEncryptionSession(serializedSession)
+		require.NoError(t, err)
+
+		assert.Equal(t, session.Id, deserializedSession.Id)
+		assert.Equal(t, session.Key.Encode(), deserializedSession.Key.Encode())
+		assert.Equal(t, session.RetrievalDetails, deserializedSession.RetrievalDetails)
+
+		// Cannot deserialize bad base64
+		_, err = account.DeserializeEncryptionSession("This is not valid base64")
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "illegal base64 data at input byte")
+
+		// Cannot deserialize bad bson
+		_, err = account.DeserializeEncryptionSession(base64.StdEncoding.EncodeToString([]byte("This is not valid BSON")))
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "invalid document length")
+	})
+
+	t.Run("listRecipients", func(t *testing.T) {
+		t.Parallel()
+		// Create 12 account
+		accounts := []*State{}
+		accountsSealdIds := []string{}
+		accountRecipients := []*RecipientWithRights{}
+		for i := 0; i < 12; i++ {
+			account, err := createTestAccount(fmt.Sprintf("sdk_listRecipients_%d", i))
+			require.NoError(t, err)
+			accounts = append(accounts, account)
+
+			accountInfo := account.storage.currentDevice.get()
+			accountsSealdIds = append(accountsSealdIds, accountInfo.UserId)
+			accountRecipients = append(accountRecipients, &RecipientWithRights{Id: accountInfo.UserId, Rights: allRights})
+		}
+
+		// Create encryption session, with 12 recipients of all type, then revoke one of each.
+
+		// First, create the session with 12 sealdRecipients
+		session, err := accounts[0].CreateEncryptionSession(
+			accountRecipients,
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
+		require.NoError(t, err)
+
+		// Generate data for ACLs
+		_, err = accounts[1].RetrieveEncryptionSession(session.Id, false, false, false)
+		require.NoError(t, err)
+		_, err = accounts[1].RetrieveEncryptionSession(session.Id, false, false, false)
+		require.NoError(t, err)
+
+		// Generate 12 ProxySession and SymEncKey. So we can revoke one and still have pagination
+		symEncKeyPassword, err := utils.GenerateRandomNonce()
+		require.NoError(t, err)
+		symEncKeyCreated := []*SymEncKey{}
+		type proxySessionTest struct {
+			SessionId      string
+			ProxySessionId string
+			Rights         *RecipientRights
+		}
+		proxySessionCreated := []*proxySessionTest{}
+		for i := 0; i < 12; i++ {
+			symEncKeyAdded, err := session.AddSymEncKeyFromPassword(symEncKeyPassword, &RecipientRights{Read: true, Forward: false, Revoke: false})
+			require.NoError(t, err)
+			symEncKeyCreated = append(symEncKeyCreated, symEncKeyAdded)
+
+			proxySession, err := accounts[1].CreateEncryptionSession(
+				accountRecipients[:2],
+				CreateEncryptionSessionOptions{UseCache: false},
+			)
+			err = session.AddProxySession(proxySession.Id, &RecipientRights{Read: true, Forward: false, Revoke: false})
+			require.NoError(t, err)
+			proxySessionCreated = append(proxySessionCreated, &proxySessionTest{
+				SessionId:      session.Id,
+				ProxySessionId: proxySession.Id,
+				Rights:         &RecipientRights{Read: true, Forward: false, Revoke: false},
+			})
+		}
+
+		// Add 11 TMR accesses
+		overEncryptionKey, err := symmetric_key.Generate()
+		require.NoError(t, err)
+		overEncryptionKeyBytes := overEncryptionKey.Encode()
+
+		nonce, err := utils.GenerateRandomNonce()
+		require.NoError(t, err)
+
+		tmrAccessesToAdd := []*TmrRecipientWithRights{}
+		for i := 0; i < 13; i++ {
+			userEmail := fmt.Sprintf("tmr-%s-%d@test.com", nonce[0:15], i)
+			authFactor := &common_models.AuthFactor{Value: userEmail, Type: "EM"}
+			tmrAccessesToAdd = append(tmrAccessesToAdd, &TmrRecipientWithRights{
+				AuthFactor:        authFactor,
+				OverEncryptionKey: overEncryptionKeyBytes,
+				Rights:            &RecipientRights{Read: true, Forward: false, Revoke: false},
+			})
+		}
+
+		tmrCreated, err := session.AddMultipleTmrAccesses(tmrAccessesToAdd)
+		require.NoError(t, err)
+
+		tmrAccessRevokedById := tmrCreated.Status[tmrAccessesToAdd[12].AuthFactor.Value].TmrKey.Id
+		tmrAccessRevokedByValueId := tmrCreated.Status[tmrAccessesToAdd[11].AuthFactor.Value].TmrKey.Id
+
+		// Revoke one of each recipient type.
+		rToRevoke := &RecipientsToRevoke{
+			SealdIds:             []string{accountsSealdIds[11]},
+			ProxySessionsIds:     []string{proxySessionCreated[11].ProxySessionId},
+			SymEncKeysIds:        []string{symEncKeyCreated[11].SymEncKeyId},
+			TmrAccessIds:         []string{tmrAccessRevokedById},
+			TmrAccessAuthFactors: []*common_models.AuthFactor{tmrAccessesToAdd[11].AuthFactor},
+		}
+		_, err = session.RevokeRecipients(rToRevoke)
+		require.NoError(t, err)
+
+		// List recipients. That's the whole point of this test.
+		allRecipients, err := session.ListRecipients()
+		require.NoError(t, err)
+
+		// Assert Seald recipients
+		assert.Equal(t, 11, len(allRecipients.SealdRecipients))
+		// We need the index of account2 to cheat on ACL read and revoke time.
+		account2Index := -1
+		for i, sr := range allRecipients.SealdRecipients {
+			if sr.SealdId == accountsSealdIds[1] {
+				account2Index = i
+				break
+			}
+		}
+		require.True(t, account2Index >= 0)
+
+		// Assert SealdRecipient account2
+		assert.Equal(t, allRecipients.SealdRecipients[account2Index].SealdId, accountsSealdIds[1])
+		assert.Equal(t, allRecipients.SealdRecipients[account2Index].AddedById, accountsSealdIds[0])
+		assert.NotNil(t, allRecipients.SealdRecipients[account2Index].ReadFirst)
+		assert.NotNil(t, allRecipients.SealdRecipients[account2Index].ReadLast)
+		assert.Equal(t, allRecipients.SealdRecipients[account2Index].ReadTime, 2)
+		assert.Nil(t, allRecipients.SealdRecipients[account2Index].RevokedDate)
+		assert.Equal(t, allRights, allRecipients.SealdRecipients[account2Index].Rights)
+
+		// Assert TMR Accesses
+		assert.Equal(t, 11, len(allRecipients.TmrAccesses))
+		expectedTMRAccesses := []*TmrAccess{}
+		for _, tmrA := range tmrCreated.Status {
+			if tmrA.TmrKey.Id == tmrAccessRevokedById {
+				continue
+			}
+			if tmrA.TmrKey.Id == tmrAccessRevokedByValueId {
+				continue
+			}
+
+			expectedTMRAccesses = append(expectedTMRAccesses, &TmrAccess{
+				Id:             tmrA.TmrKey.Id,
+				Created:        tmrA.TmrKey.Created,
+				AuthFactorType: tmrA.TmrKey.AuthFactorType,
+				Rights: &RecipientRights{
+					Read:    tmrA.TmrKey.AclRead,
+					Forward: tmrA.TmrKey.AclForward,
+					Revoke:  tmrA.TmrKey.AclRevoke,
+				}})
+		}
+		assert.ElementsMatch(t, expectedTMRAccesses, allRecipients.TmrAccesses)
+
+		// Assert Proxy session
+		assert.Equal(t, 11, len(allRecipients.ProxySessions))
+
+		proxySessionListed := []*proxySessionTest{}
+		for _, listedPS := range allRecipients.ProxySessions {
+			proxySessionListed = append(proxySessionListed, &proxySessionTest{
+				SessionId:      listedPS.SessionId,
+				ProxySessionId: listedPS.ProxySessionId,
+				Rights:         &RecipientRights{Read: true, Forward: false, Revoke: false},
+			})
+		}
+		assert.ElementsMatch(t, proxySessionCreated[:11], proxySessionListed)
+
+		// Assert SymEncKeys
+		assert.Equal(t, 11, len(allRecipients.SymEncKeys))
+		assert.ElementsMatch(t, symEncKeyCreated[:11], allRecipients.SymEncKeys)
+	})
+
+	t.Run("SymEncKeys Password", func(t *testing.T) {
+		t.Parallel()
+		// Create account
+		account, err := createTestAccount("sdk_session_sym_enc_key")
+		require.NoError(t, err)
+		account2, err := createTestAccount("sdk_session_sym_enc_key_2")
+		require.NoError(t, err)
+		account3, err := createTestAccount("sdk_session_sym_enc_key_3_self_add")
+		require.NoError(t, err)
+
+		// Create encryption session
+		currentDevice := account.storage.currentDevice.get()
+		accountRecipient := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
+		session, err := account.CreateEncryptionSession(
+			[]*RecipientWithRights{accountRecipient},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
+		require.NoError(t, err)
+
+		initialMessage := "A message"
+		encryptedMessage, err := session.EncryptMessage(initialMessage)
+		require.NoError(t, err)
+
+		symEncKeyPassword, err := utils.GenerateRandomNonce()
+		require.NoError(t, err)
+		symEncKeyAdded, err := session.AddSymEncKeyFromPassword(symEncKeyPassword, allRights)
+		require.NoError(t, err)
+
+		t.Run("Retrieve with SymEncKey", func(t *testing.T) {
+			t.Parallel()
+			sessionBySymEncKey, err := account2.RetrieveEncryptionSessionWithSymEncKeyPassword(session.Id, symEncKeyAdded.SymEncKeyId, symEncKeyPassword, false)
+			require.NoError(t, err)
+
+			decryptedMessage, err := sessionBySymEncKey.DecryptMessage(encryptedMessage)
+			require.NoError(t, err)
+			assert.Equal(t, initialMessage, decryptedMessage)
+		})
+
+		t.Run("Self add with SymEncKey", func(t *testing.T) {
+			t.Parallel()
+			_, err := account3.RetrieveEncryptionSession(session.Id, false, false, false)
+			assert.ErrorContains(t, err, "NO_TOKEN_FOR_YOU - Can't decipher this session")
+
+			selfAddSess, err := account3.SelfAddToEncryptionSessionWithSymEncKeyPassword(session.Id, symEncKeyAdded.SymEncKeyId, symEncKeyPassword, allRights, false)
+			require.NoError(t, err)
+			assert.Equal(t, EncryptionSessionRetrievalViaSymEncKey, selfAddSess.RetrievalDetails.Flow)
+			assert.Equal(t, symEncKeyAdded.SymEncKeyId, selfAddSess.RetrievalDetails.SymEncKeyId)
+
+			decryptedMessageSelfAdd, err := selfAddSess.DecryptMessage(encryptedMessage)
+			require.NoError(t, err)
+			assert.Equal(t, initialMessage, decryptedMessageSelfAdd)
+
+			retrievedSession, err := account3.RetrieveEncryptionSession(session.Id, false, false, false)
+			require.NoError(t, err)
+			assert.Equal(t, EncryptionSessionRetrievalDirect, retrievedSession.RetrievalDetails.Flow)
+
+			decryptedMessage, err := retrievedSession.DecryptMessage(encryptedMessage)
+			require.NoError(t, err)
+			assert.Equal(t, initialMessage, decryptedMessage)
+		})
+
+		t.Run("change SymEncKey rights and delete", func(t *testing.T) {
+			t.Parallel()
+			symEncKeyPassword := "password"
+			symEncKeyToBeDeleted, err := session.AddSymEncKeyFromPassword(symEncKeyPassword, allRights)
+			require.NoError(t, err)
+
+			rightsReadOnly := &RecipientRights{
+				Read:    true,
+				Revoke:  false,
+				Forward: false,
+			}
+
+			newRights, err := session.ChangeSymEncKeyRights(symEncKeyToBeDeleted.SymEncKeyId, rightsReadOnly)
+			require.NoError(t, err)
+			assert.True(t, newRights.Rights.Read)
+			assert.False(t, newRights.Rights.Forward)
+			assert.False(t, newRights.Rights.Revoke)
+
+			revoked, err := session.RevokeRecipients(&RecipientsToRevoke{SymEncKeysIds: []string{symEncKeyToBeDeleted.SymEncKeyId}})
+			require.NoError(t, err)
+			assert.Equal(t, 1, len(revoked.SymEncKeyIds))
+			assert.Equal(t, map[string]string{symEncKeyToBeDeleted.SymEncKeyId: "ok"}, revoked.SymEncKeyIds)
+		})
+	})
+
+	t.Run("SymEncKeys raw keys", func(t *testing.T) {
+		t.Parallel()
+		// Create account
+		account, err := createTestAccount("sdk_session_sym_enc_key_raw")
+		require.NoError(t, err)
+		account2, err := createTestAccount("sdk_session_sym_enc_key_raw_2")
+		require.NoError(t, err)
+		account3, err := createTestAccount("sdk_session_sym_enc_key_raw_3_self_add")
+		require.NoError(t, err)
+
+		// Create encryption session
+		currentDevice := account.storage.currentDevice.get()
+		accountRecipient := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
+		session, err := account.CreateEncryptionSession(
+			[]*RecipientWithRights{accountRecipient},
+			CreateEncryptionSessionOptions{UseCache: false},
+		)
+		require.NoError(t, err)
+
+		initialMessage := "A message"
+		encryptedMessage, err := session.EncryptMessage(initialMessage)
+		require.NoError(t, err)
+
+		rawSecret, err := utils.GenerateRandomNonce()
+		require.NoError(t, err)
+		rawEncryptionKey, err := symmetric_key.Generate()
+		require.NoError(t, err)
+		encodedRawEncryptionKey := rawEncryptionKey.Encode()
+
+		symEncKeyAdded, err := session.AddSymEncKeyFromRawKeys(rawSecret, encodedRawEncryptionKey, allRights)
+		require.NoError(t, err)
+
+		t.Run("Retrieve with SymEncKey", func(t *testing.T) {
+			t.Parallel()
+			sessionBySymEncKey, err := account2.RetrieveEncryptionSessionWithSymEncKeyFromRawKeys(session.Id, symEncKeyAdded.SymEncKeyId, rawSecret, encodedRawEncryptionKey, true)
+			require.NoError(t, err)
+
+			decryptedMessage, err := sessionBySymEncKey.DecryptMessage(encryptedMessage)
+			require.NoError(t, err)
+			assert.Equal(t, initialMessage, decryptedMessage)
+		})
+
+		t.Run("Self add with SymEncKey", func(t *testing.T) {
+			t.Parallel()
+			_, err := account3.RetrieveEncryptionSession(session.Id, false, false, false)
+			assert.ErrorContains(t, err, "NO_TOKEN_FOR_YOU - Can't decipher this session")
+
+			selfAddSess, err := account3.SelfAddToEncryptionSessionWithSymEncKeyFromRawKeys(session.Id, symEncKeyAdded.SymEncKeyId, rawSecret, encodedRawEncryptionKey, allRights, false)
+			require.NoError(t, err)
+			assert.Equal(t, EncryptionSessionRetrievalViaSymEncKey, selfAddSess.RetrievalDetails.Flow)
+			assert.Equal(t, symEncKeyAdded.SymEncKeyId, selfAddSess.RetrievalDetails.SymEncKeyId)
+
+			decryptedMessageSelfAdd, err := selfAddSess.DecryptMessage(encryptedMessage)
+			require.NoError(t, err)
+			assert.Equal(t, initialMessage, decryptedMessageSelfAdd)
+
+			retrievedSession, err := account3.RetrieveEncryptionSession(session.Id, false, false, false)
+			require.NoError(t, err)
+			assert.Equal(t, EncryptionSessionRetrievalDirect, retrievedSession.RetrievalDetails.Flow)
+
+			decryptedMessage, err := retrievedSession.DecryptMessage(encryptedMessage)
+			require.NoError(t, err)
+			assert.Equal(t, initialMessage, decryptedMessage)
+		})
+	})
+
 	t.Run("Compatible with JS", func(t *testing.T) {
 		t.Parallel()
 		t.Run("Import from JS", func(t *testing.T) {
@@ -2024,6 +2553,15 @@ func Test_EncryptionSession(t *testing.T) {
 			require.NoError(t, err)
 			session, err := account.RetrieveEncryptionSession(string(sessionId), false, false, false)
 			require.NoError(t, err)
+
+			// can deserialize session
+			serializedSession, err := os.ReadFile(filepath.Join(testArtifactsDir, "serialized_session"))
+			require.NoError(t, err)
+			deserializedSession, err := account.DeserializeEncryptionSession(string(serializedSession))
+			require.NoError(t, err)
+			assert.Equal(t, session.Id, deserializedSession.Id)
+			assert.Equal(t, session.Key.Encode(), deserializedSession.Key.Encode())
+			assert.Equal(t, EncryptionSessionRetrievalCreated, deserializedSession.RetrievalDetails.Flow)
 
 			// session can decrypt message
 			encryptedMessage, err := os.ReadFile(filepath.Join(testArtifactsDir, "encrypted_message"))
@@ -2061,7 +2599,7 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Equal(t, "file content2", string(decryptedFile2.FileContent))
 			assert.Equal(t, "test2.txt", decryptedFile2.Filename)
 
-			// can open proxied session via proxy
+			// Retrieve session by proxy es
 			proxySessionId, err := os.ReadFile(filepath.Join(testArtifactsDir, "proxysession_id"))
 			require.NoError(t, err)
 			proxiedSessionId, err := os.ReadFile(filepath.Join(testArtifactsDir, "proxiedsession_id"))
@@ -2071,7 +2609,39 @@ func Test_EncryptionSession(t *testing.T) {
 			assert.Equal(t, proxiedSession.RetrievalDetails.Flow, EncryptionSessionRetrievalViaProxy)
 			assert.Equal(t, proxiedSession.RetrievalDetails.ProxySessionId, string(proxySessionId))
 
-			// can retrieve session via TMR access
+			// Retrieve session by symEncKey password
+			symEncKeyPasswordId, err := os.ReadFile(filepath.Join(testArtifactsDir, "symEncKey_symEncKeyPasswordId"))
+			require.NoError(t, err)
+			symEncKeyPassword, err := os.ReadFile(filepath.Join(testArtifactsDir, "symEncKey_symEncKeyPassword"))
+			require.NoError(t, err)
+
+			retrievedSessionSKP, err := account.RetrieveEncryptionSessionWithSymEncKeyPassword(string(sessionId), string(symEncKeyPasswordId), string(symEncKeyPassword), false)
+			require.NoError(t, err)
+			assert.Equal(t, retrievedSessionSKP.RetrievalDetails.Flow, EncryptionSessionRetrievalViaSymEncKey)
+			assert.Equal(t, retrievedSessionSKP.RetrievalDetails.SymEncKeyId, string(symEncKeyPasswordId))
+
+			decryptedMessageSKP, err := retrievedSessionSKP.DecryptMessage(string(encryptedMessage))
+			require.NoError(t, err)
+			assert.Equal(t, "message content", decryptedMessageSKP)
+
+			// Retrieve session by symEncKey raw keys
+			symEncKeyRawKeyId, err := os.ReadFile(filepath.Join(testArtifactsDir, "symEncKey_symEncKeyRawKeyId"))
+			require.NoError(t, err)
+			rawSymKey, err := os.ReadFile(filepath.Join(testArtifactsDir, "symEncKey_rawSymKey"))
+			require.NoError(t, err)
+			symEncKeySecret, err := os.ReadFile(filepath.Join(testArtifactsDir, "symEncKey_symEncKeySecret"))
+			require.NoError(t, err)
+
+			retrievedSessionSKRawKey, err := account.RetrieveEncryptionSessionWithSymEncKeyFromRawKeys(string(sessionId), string(symEncKeyRawKeyId), string(symEncKeySecret), rawSymKey, false)
+			require.NoError(t, err)
+			assert.Equal(t, retrievedSessionSKRawKey.RetrievalDetails.Flow, EncryptionSessionRetrievalViaSymEncKey)
+			assert.Equal(t, retrievedSessionSKRawKey.RetrievalDetails.SymEncKeyId, string(symEncKeyRawKeyId))
+
+			decryptedMessageSKRawKey, err := retrievedSessionSKRawKey.DecryptMessage(string(encryptedMessage))
+			require.NoError(t, err)
+			assert.Equal(t, "message content", decryptedMessageSKRawKey)
+
+			// Retrieve session by TMR Access
 			userTmrId, err := os.ReadFile(filepath.Join(testArtifactsDir, "tmrAccess_userId"))
 			require.NoError(t, err)
 			tmrAccessEm, err := os.ReadFile(filepath.Join(testArtifactsDir, "tmrAccess_em"))
@@ -2116,13 +2686,17 @@ func Test_EncryptionSession(t *testing.T) {
 			currentDevice := account.storage.currentDevice.get()
 			recipientCurrentDevice := &RecipientWithRights{Id: currentDevice.UserId, Rights: allRights}
 
-			// create a session, with a message and a file
+			// create a session, and serialize it, with a message and a file
 			session, err := account.CreateEncryptionSession(
 				[]*RecipientWithRights{recipientCurrentDevice},
 				CreateEncryptionSessionOptions{UseCache: false},
 			)
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(testArtifactsDir, "session_id"), []byte(session.Id), 0o700)
+			require.NoError(t, err)
+			serializedSession, err := session.Serialize()
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "serialized_session"), []byte(serializedSession), 0o700)
 			require.NoError(t, err)
 			encryptedMessage, err := session.EncryptMessage("message content")
 			require.NoError(t, err)
@@ -2154,6 +2728,32 @@ func Test_EncryptionSession(t *testing.T) {
 			encryptedFile2, err := session2.EncryptFile([]byte("file content2"), "test2.txt")
 			require.NoError(t, err)
 			err = os.WriteFile(filepath.Join(testArtifactsDir, "encrypted_file2"), encryptedFile2, 0o700)
+			require.NoError(t, err)
+
+			// create a symEncKey password
+			symEncKeyPassword, err := utils.GenerateRandomNonce()
+			require.NoError(t, err)
+			symEncKeyPasswordAdded, err := session.AddSymEncKeyFromPassword(symEncKeyPassword, allRights)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "symEncKey_symEncKeyPasswordId"), []byte(symEncKeyPasswordAdded.SymEncKeyId), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "symEncKey_symEncKeyPassword"), []byte(symEncKeyPassword), 0o700)
+			require.NoError(t, err)
+
+			// create a symEncKey raw keys
+
+			rawSecret, err := utils.GenerateRandomNonce()
+			require.NoError(t, err)
+			rawEncryptionKey, err := symmetric_key.Generate()
+			require.NoError(t, err)
+			encodedRawEncryptionKey := rawEncryptionKey.Encode()
+			symEncKeyRawKeyAdded, err := session.AddSymEncKeyFromRawKeys(rawSecret, encodedRawEncryptionKey, allRights)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "symEncKey_symEncKeyRawKeyId"), []byte(symEncKeyRawKeyAdded.SymEncKeyId), 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "symEncKey_rawSymKey"), encodedRawEncryptionKey, 0o700)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(testArtifactsDir, "symEncKey_symEncKeySecret"), []byte(rawSecret), 0o700)
 			require.NoError(t, err)
 
 			// create proxy session and session openable via proxy

@@ -54,6 +54,6 @@ This should not be instantiated directly, and should be either created with [Sea
 or retrieved with [SealdSDK.retrieveEncryptionSession]
 or [SealdSDK.retrieveEncryptionSessionFromMessage].
 
-© 2024 Seald SAS
+© 2025 Seald SAS
 
 You can find the license information of Open Source libraries used in Seald SDK for mobile at <https://download.seald.io/download/mobile_dependencies_licenses_##VERSION##.txt>.

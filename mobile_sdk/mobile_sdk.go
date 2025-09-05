@@ -446,6 +446,14 @@ func (mSDK MobileSDK) RetrieveMultipleEncryptionSessions(sessionIds *StringArray
 	return mobileEncryptionSessionArrayFromCommon(array), nil
 }
 
+func (mSDK MobileSDK) DeserializeEncryptionSession(serializedSession string) (*MobileEncryptionSession, error) {
+	es, err := mSDK.sdk.DeserializeEncryptionSession(serializedSession)
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+	return mobileEncryptionSessionFromCommon(es), nil
+}
+
 // Connectors
 
 func (mSDK MobileSDK) GetSealdIdsFromConnectors(connectorTypeValues *ConnectorTypeValueArray) (*StringArray, error) {

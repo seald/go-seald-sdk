@@ -69,15 +69,33 @@ func SealdEncryptionSession_AddProxySession(es *C.SealdEncryptionSession, proxyS
 	return C.int(0)
 }
 
-//export SealdEncryptionSession_RevokeRecipients
-func SealdEncryptionSession_RevokeRecipients(es *C.SealdEncryptionSession, recipientsIds *C.SealdStringArray, proxySessionsIds *C.SealdStringArray, result **C.SealdRevokeResult, err_ **C.SealdError) C.int {
-	resp, err := encryptionSessionToGo(es).RevokeRecipients(stringArrayToGo(recipientsIds).getSlice(), stringArrayToGo(proxySessionsIds).getSlice())
+//export SealdEncryptionSession_ListRecipients
+func SealdEncryptionSession_ListRecipients(es *C.SealdEncryptionSession, result **C.SealdRecipientsList, err_ **C.SealdError) C.int {
+	resp, err := encryptionSessionToGo(es).ListRecipients()
 	if err != nil {
 		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
 		return C.int(-1)
 	}
 
-	*result = revokeResultFromGo(resp.UserIds, resp.ProxyMkIds)
+	*result = listedRecipientsFromGo(resp)
+	return C.int(0)
+}
+
+//export SealdEncryptionSession_RevokeRecipients
+func SealdEncryptionSession_RevokeRecipients(es *C.SealdEncryptionSession, recipientsIds *C.SealdStringArray, proxySessionsIds *C.SealdStringArray, SymEncKeysIds *C.SealdStringArray, tmrAccessIds *C.SealdStringArray, tmrAccessAuthFactors *C.SealdAuthFactorArray, result **C.SealdRevokeResult, err_ **C.SealdError) C.int {
+	resp, err := encryptionSessionToGo(es).RevokeRecipients(&sdk.RecipientsToRevoke{
+		SealdIds:             stringArrayToGo(recipientsIds).getSlice(),
+		ProxySessionsIds:     stringArrayToGo(proxySessionsIds).getSlice(),
+		SymEncKeysIds:        stringArrayToGo(SymEncKeysIds).getSlice(),
+		TmrAccessIds:         stringArrayToGo(tmrAccessIds).getSlice(),
+		TmrAccessAuthFactors: sealdAuthFactorArrayToGo(tmrAccessAuthFactors).getSlice(),
+	})
+	if err != nil {
+		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
+		return C.int(-1)
+	}
+
+	*result = revokeResultFromGo(resp.UserIds, resp.ProxyMkIds, resp.SymEncKeyIds, resp.TMRKeys)
 	return C.int(0)
 }
 
@@ -89,7 +107,7 @@ func SealdEncryptionSession_RevokeAll(es *C.SealdEncryptionSession, result **C.S
 		return C.int(-1)
 	}
 
-	*result = revokeResultFromGo(resp.RevokeAll.UserIds, resp.RevokeAll.ProxyMkIds)
+	*result = revokeResultFromGo(resp.RevokeAll.UserIds, resp.RevokeAll.ProxyMkIds, resp.RevokeAll.SymEncKeyIds, resp.RevokeAll.TMRKeys)
 	return C.int(0)
 }
 
@@ -101,7 +119,7 @@ func SealdEncryptionSession_RevokeOthers(es *C.SealdEncryptionSession, result **
 		return C.int(-1)
 	}
 
-	*result = revokeResultFromGo(resp.RevokeAll.UserIds, resp.RevokeAll.ProxyMkIds)
+	*result = revokeResultFromGo(resp.RevokeAll.UserIds, resp.RevokeAll.ProxyMkIds, resp.RevokeAll.SymEncKeyIds, resp.RevokeAll.TMRKeys)
 	return C.int(0)
 }
 
@@ -206,5 +224,17 @@ func SealdEncryptionSession_AddMultipleTmrAccesses(es *C.SealdEncryptionSession,
 	}
 
 	*result = actionStatusArrayFromAddTmrAccess(resp)
+	return C.int(0)
+}
+
+//export SealdEncryptionSession_Serialize
+func SealdEncryptionSession_Serialize(es *C.SealdEncryptionSession, result **C.char, err_ **C.SealdError) C.int {
+	res, err := encryptionSessionToGo(es).Serialize()
+	if err != nil {
+		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
+		return C.int(-1)
+	}
+
+	*result = C.CString(res)
 	return C.int(0)
 }

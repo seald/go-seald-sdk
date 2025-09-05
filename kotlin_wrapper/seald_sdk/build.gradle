@@ -71,7 +71,7 @@ tasks.register('combineInternalsAar') {
     doLast { // "doLast" so it is only run during "execution" phase of gradle, not the "configuration" phase
         def aarFile = file("${buildDir}/outputs/aar/${project.name}-release.aar")
         if (aarFile.exists()) {
-            exec {
+            project.services.get(org.gradle.process.ExecOperations).exec {
                 workingDir project.rootDir
                 executable = 'bash'
                 args '-c', "./merge-aar.sh --input1 ${aarFile.absolutePath} --input2 ./goLibs/seald-sdk-internals.aar --output ${aarFile.absolutePath}"

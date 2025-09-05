@@ -71,8 +71,30 @@ func (encryptionSession *MobileEncryptionSession) AddProxySession(proxySessionId
 	return nil
 }
 
-func (encryptionSession *MobileEncryptionSession) RevokeRecipients(recipientsIds *StringArray, proxySessionsIds *StringArray) (*RevokeResult, error) {
-	resp, err := encryptionSession.es.RevokeRecipients(recipientsIds.getSlice(), proxySessionsIds.getSlice())
+func (encryptionSession *MobileEncryptionSession) ListRecipients() (*RecipientsList, error) {
+	resp, err := encryptionSession.es.ListRecipients()
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+	return recipientsListFromCommon(resp), nil
+}
+
+type RecipientsToRevoke struct {
+	SealdIds             *StringArray
+	ProxySessionsIds     *StringArray
+	SymEncKeysIds        *StringArray
+	TmrAccessIds         *StringArray
+	TmrAccessAuthFactors *AuthFactorArray
+}
+
+func (encryptionSession *MobileEncryptionSession) RevokeRecipients(recipientsToRevoke *RecipientsToRevoke) (*RevokeResult, error) {
+	resp, err := encryptionSession.es.RevokeRecipients(&sdk.RecipientsToRevoke{
+		SealdIds:             recipientsToRevoke.SealdIds.getSlice(),
+		ProxySessionsIds:     recipientsToRevoke.ProxySessionsIds.getSlice(),
+		SymEncKeysIds:        recipientsToRevoke.SymEncKeysIds.getSlice(),
+		TmrAccessIds:         recipientsToRevoke.TmrAccessIds.getSlice(),
+		TmrAccessAuthFactors: recipientsToRevoke.TmrAccessAuthFactors.getSlice(),
+	})
 	if err != nil {
 		return nil, utils.ToSerializableError(tracerr.Wrap(err))
 	}
@@ -172,4 +194,13 @@ func (encryptionSession *MobileEncryptionSession) AddMultipleTmrAccesses(recipie
 		msArray.Add(as)
 	}
 	return msArray, nil
+}
+
+func (encryptionSession *MobileEncryptionSession) Serialize() (string, error) {
+	res, err := encryptionSession.es.Serialize()
+	if err != nil {
+		return "", utils.ToSerializableError(tracerr.Wrap(err))
+	}
+
+	return res, nil
 }

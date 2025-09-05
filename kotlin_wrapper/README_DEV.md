@@ -123,7 +123,7 @@ Two rules are disabled in `.editorconfig`:
 - `standard:package-name`: the package is already published, let's not change the package name now ¯\_(ツ)_/¯
 - `standard:no-wildcard-imports` : wildcard import is recommended by `kotlinx.coroutines` doc
 
-To install KtLint, follow the documentation: <https://pinterest.github.io/ktlint/1.0.0/install/cli/>.
+To install KtLint, follow the documentation: <https://pinterest.github.io/ktlint/latest/install/cli/>.
 
 To verify formatting, you can simply run `ktlint` in the `kotlin_wrapper` directory.
 

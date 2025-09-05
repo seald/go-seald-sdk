@@ -424,3 +424,30 @@ func Ternary[T any](condition bool, valTrue T, valFalse T) T {
 	}
 	return valFalse
 }
+
+func DeriveSecret(prefix string, appId string, itemId string, password string) ([]byte, error) {
+	salt := NormalizeString(fmt.Sprintf("%s|%s|%s", prefix, appId, itemId))
+	N := 16384
+	r := 8
+	p := 1
+	bytes, err := scrypt.Key(NormalizeString(password), salt, N, r, p, 64)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	return bytes, nil
+}
+
+func DeriveKey(prefix string, appId string, itemId string, password string, salt []byte) ([]byte, error) {
+	fullSalt := append([]byte{}, salt...)
+	fullSalt = append(fullSalt, NormalizeString(fmt.Sprintf("%s|%s|%s", prefix, appId, itemId))...)
+	N := 16384
+	r := 8
+	p := 1
+	bytes, err := scrypt.Key(NormalizeString(password), fullSalt, N, r, p, 64)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	return bytes, nil
+}

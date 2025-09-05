@@ -20,9 +20,13 @@ Linting rules are defined in `uncrustify.cfg` in the root directory. Configurati
 
 To install `uncrustify`, use `brew` on macos (`brew install uncrustify`), or your package manager on linux.
 
-To verify formatting, you can run `uncrustify -c ../uncrustify.cfg --check -l OC ./SealdSdk/Classes/*.h ./SealdSdk/Classes/*.m` in the `ios_wrapper` directory.
+To verify formatting, you can run in the `ios_wrapper` directory:
+- For the Seald SDK : `uncrustify -c ../uncrustify.cfg --check -l OC ./SealdSdk/Classes/*.h ./SealdSdk/Classes/*.m`
+- For the ObjC example: `uncrustify -c ../uncrustify.cfg --check -l OC ./example_objc/SealdSDK/*.h ./example_objc/SealdSDK/*.m`
 
-To fix formatting, you can run `uncrustify -c ../uncrustify.cfg --no-backup -l OC ./SealdSdk/Classes/*.h ./SealdSdk/Classes/*.m`.
+To fix formatting, you can run in the `ios_wrapper` directory:
+- For the Seald SDK : `uncrustify -c ../uncrustify.cfg --no-backup -l OC ./SealdSdk/Classes/*.h ./SealdSdk/Classes/*.m`
+- For the ObjC example: `uncrustify -c ../uncrustify.cfg --no-backup -l OC ./example_objc/SealdSDK/*.h ./example_objc/SealdSDK/*.m`
 
 ### Linting Swift code
 

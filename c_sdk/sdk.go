@@ -462,6 +462,17 @@ func SealdSdk_RetrieveMultipleEncryptionSessions(sealdSdk *C.SealdSdk, sessionId
 	return C.int(0)
 }
 
+//export SealdSdk_DeserializeEncryptionSession
+func SealdSdk_DeserializeEncryptionSession(sealdSdk *C.SealdSdk, serializedSession *C.char, result **C.SealdEncryptionSession, err_ **C.SealdError) C.int {
+	es, err := sdkToGo(sealdSdk).DeserializeEncryptionSession(C.GoString(serializedSession))
+	if err != nil {
+		*err_ = sealdErrorFromGo(tracerr.Wrap(err))
+		return C.int(-1)
+	}
+	*result = goEncryptionSessionToC(es)
+	return C.int(0)
+}
+
 // Connectors
 
 //export SealdSdk_GetSealdIdsFromConnectors

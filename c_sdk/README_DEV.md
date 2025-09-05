@@ -160,8 +160,14 @@ LD_LIBRARY_PATH=./build ./build/test
 On macOS, you may need to run:
 ```bash
 brew install curl
-brew install libjwt
 brew install cjson
+
+# For libjwt, we need to install v1.x or v2.x, but homebrew updated to v3.x which has a different signature, so we need to install the older one manually
+mkdir -p ~/old-formulas
+curl -o ~/old-formulas/libjwt.rb https://raw.githubusercontent.com/Homebrew/homebrew-core/b2d4174292e975726c195fd7d9eefa981785bdbf/Formula/lib/libjwt.rb
+brew install ~/old-formulas/libjwt.rb # install from file
+brew pin libjwt # prevent Homebrew from upgrading it automatically
+brew list --versions libjwt # confirm version
 ```
 
 On macOS, the build command will be:
