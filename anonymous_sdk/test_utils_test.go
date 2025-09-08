@@ -44,13 +44,13 @@ func getPreGeneratedKeys() (*sdk.PreGeneratedKeys, error) {
 	return &sdk.PreGeneratedKeys{EncryptionKey: encryptionKey, SigningKey: signingKey}, nil
 }
 
-func createTestAccount() (*sdk.State, error) {
+func getInMemoryInitializeOptions() (*sdk.InitializeOptions, error) {
 	credentials, err := test_utils.GetCredentials()
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
 
-	initOptions := &sdk.InitializeOptions{
+	return &sdk.InitializeOptions{
 		ApiURL:                    credentials.ApiUrl,
 		Database:                  &sdk.MemoryStorage{},
 		KeySize:                   1024,
@@ -58,6 +58,13 @@ func createTestAccount() (*sdk.State, error) {
 		EncryptionSessionCacheTTL: 24 * time.Hour,
 		LogLevel:                  zerolog.TraceLevel,
 		Platform:                  "go-tests",
+	}, nil
+}
+
+func createTestAccount() (*sdk.State, error) {
+	initOptions, err := getInMemoryInitializeOptions()
+	if err != nil {
+		return nil, tracerr.Wrap(err)
 	}
 
 	account, err := sdk.Initialize(initOptions)

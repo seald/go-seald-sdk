@@ -1,4 +1,4 @@
-package api
+package anonymous_sdk
 
 import (
 	"encoding/json"
@@ -158,7 +158,7 @@ type TMRMessageKey struct {
 type MessageCreateRequest struct {
 	EncryptedMessageKeys []*EncryptedMessageKey `json:"encrypted_message_keys"`
 	TMRMessageKeys       []*TMRMessageKey       `json:"tmr_message_keys,omitempty"`
-	Metadata             string                 `json:"metadata"`
+	Metadata             string                 `json:"metadata,omitempty"`
 }
 
 func (apiClient ApiClient) MessageCreate(token string, request *MessageCreateRequest) (*MessageCreateResponse, error) {
@@ -186,23 +186,36 @@ func (apiClient ApiClient) MessageCreate(token string, request *MessageCreateReq
 	return &result, nil
 }
 
-func (apiClient ApiClient) TestGetAnonymousSDKUser(DebugApiSecret string) (*TestGetAnonymousSDKUserResponse, error) {
-	responseBody, err := apiClient.MakeRequest(
-		"GET",
-		"/devapi/get_anonymous_sdk_user",
-		nil,
-		[]api_helper.Header{{Name: "X-APIVIEW-SECRET", Value: DebugApiSecret}},
-		200,
-	)
+type RetrieveSessionRequest struct {
+	Id     string `json:"id"`
+	Secret string `json:"secret"`
+}
+type RetrieveSessionResponse struct {
+	Status        string `json:"status"`
+	SymEncKeyData string `json:"sym_enc_key_data"`
+}
 
+func (apiClient ApiClient) RetrieveSession(token string, request *RetrieveSessionRequest) (*RetrieveSessionResponse, error) {
+	requestBody, err := json.Marshal(request)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
 
-	var result TestGetAnonymousSDKUserResponse
+	responseBody, err := apiClient.MakeRequest(
+		"POST",
+		"/api/anonymous/sym_enc_key_find/",
+		requestBody,
+		[]api_helper.Header{{Name: "Authorization", Value: "Bearer " + token}},
+		200,
+	)
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+	var result RetrieveSessionResponse
 	err = json.Unmarshal(responseBody, &result)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
 	}
 	return &result, nil
+
 }

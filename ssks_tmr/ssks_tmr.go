@@ -148,11 +148,15 @@ func (pluginTMR *PluginTMR) RetrieveIdentity(sessionId string, authFactor *commo
 	if authFactor == nil {
 		return nil, tracerr.Wrap(ErrorRetrieveIdentityNoAuthFactor)
 	}
-	challengeValidated, err := pluginTMR.ssksTMRApiClient.challengeValidate(challenge, *authFactor, sessionId)
-	if err != nil {
-		return nil, tracerr.Wrap(err)
+
+	authenticatedSessionId := sessionId
+	if challenge != "" {
+		challengeValidated, err := pluginTMR.ssksTMRApiClient.challengeValidate(challenge, *authFactor, sessionId)
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		authenticatedSessionId = challengeValidated.NewSessionId
 	}
-	authenticatedSessionId := challengeValidated.NewSessionId
 
 	searchResult, err := pluginTMR.ssksTMRApiClient.search(authenticatedSessionId)
 	if err != nil {

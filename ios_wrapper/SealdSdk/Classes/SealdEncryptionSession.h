@@ -6,8 +6,8 @@
 //  Copyright © 2023 Seald SAS. All rights reserved.
 //
 
-#ifndef EncryptionSession_h
-#define EncryptionSession_h
+#ifndef SealdEncryptionSession_h
+#define SealdEncryptionSession_h
 
 #import <Foundation/Foundation.h>
 #import <SealdSdkInternals/SealdSdkInternals.h>
@@ -41,7 +41,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param recipients The Seald IDs with the associated rights of users to add to this session.
  * @param error The error that occurred while adding the recipients, if any.
- * @return A [NSMutableDictionary<NSString*, SealdActionStatus*>*] instance.
+ * @return A `NSMutableDictionary<NSString*, SealdActionStatus*>*` instance.
  */
 - (NSDictionary<NSString*, SealdActionStatus*>*) addRecipients:(const NSArray<SealdRecipientWithRights*>*)recipients
                                                          error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
@@ -51,7 +51,7 @@ NS_ASSUME_NONNULL_BEGIN
  * These recipients will be able to read all encrypted messages of this session.
  *
  * @param recipients The Seald IDs with the associated rights of users to add to this session.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [NSMutableDictionary<NSString*, SealdActionStatus*>*] instance. and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSMutableDictionary<NSString*, SealdActionStatus*>*` instance. and a `NSError*` that indicates if any error occurred.
  */
 - (void) addRecipientsAsync:(const NSArray<SealdRecipientWithRights*>*)recipients
           completionHandler:(void (^)(NSDictionary<NSString*, SealdActionStatus*>* result, NSError*_Nullable error))completionHandler;
@@ -74,7 +74,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Any recipient of the proxy session will also be able to retrieve this session.
  * The current user has to be a direct recipient of the proxy session.
  *
- * @param proxySessionId The ID of the session to add as proxy. It will be given default `RecipientsRights`.
+ * @param proxySessionId The ID of the session to add as proxy. It will be given default SealdRecipientRights.
  * @param error The error that occurred while adding the proxy, if any.
  */
 - (void) addProxySession:(const NSString*)proxySessionId
@@ -87,7 +87,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param proxySessionId The ID of the session to add as proxy.
  * @param rights The rights to assign to this proxy.
- * @param completionHandler A callback called after function execution. This callback take a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a `NSError*` that indicates if any error occurred.
  */
 - (void) addProxySessionAsync:(const NSString*)proxySessionId
                        rights:(const SealdRecipientRights*)rights
@@ -98,8 +98,8 @@ NS_ASSUME_NONNULL_BEGIN
  * Any recipient of the proxy session will also be able to retrieve this session.
  * The current user has to be a direct recipient of the proxy session.
  *
- * @param proxySessionId The ID of the session to add as proxy. It will be given default `RecipientsRights`.
- * @param completionHandler A callback called after function execution. This callback take a `NSError*` that indicates if any error occurred.
+ * @param proxySessionId The ID of the session to add as proxy. It will be given default SealdRecipientRights.
+ * @param completionHandler A callback called after function execution. This callback takes a `NSError*` that indicates if any error occurred.
  */
 - (void) addProxySessionAsync:(const NSString*)proxySessionId
             completionHandler:(void (^)(NSError*_Nullable error))completionHandler;
@@ -109,40 +109,52 @@ NS_ASSUME_NONNULL_BEGIN
  * If you want to revoke all recipients, see SealdEncryptionSession.revokeAll: instead.
  * If you want to revoke all recipients besides yourself, see SealdEncryptionSession.revokeOthers:.
  *
- * @param recipientsIds The Seald IDs of users to revoke from this session.
+ * @param sealdIds The Seald IDs of users to revoke from this session.
  * @param proxySessionsIds The IDs of proxy sessions to revoke from this session.
+ * @param symEncKeysIds The IDs of symEncKeys to revoke from this session.
+ * @param tmrAccessIds The IDs of tmrAccess to revoke from this session.
+ * @param tmrAccessAuthFactors The AuthFactor of tmrAccess to revoke from this session.
  * @param error The error that occurred while revoking, if any.
- * @return A [SealdRevokeResult] instance.
+ * @return A SealdRevokeResult instance.
  */
-- (SealdRevokeResult*) revokeRecipientsIds:(const NSArray<NSString*>*)recipientsIds
-                          proxySessionsIds:(const NSArray<NSString*>*)proxySessionsIds
-                                     error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+- (SealdRevokeResult*) revokeRecipientsWithSealdIds:(const NSArray<NSString*>*_Nullable)sealdIds
+                                   proxySessionsIds:(const NSArray<NSString*>*_Nullable)proxySessionsIds
+                                      symEncKeysIds:(const NSArray<NSString*>*_Nullable)symEncKeysIds
+                                       tmrAccessIds:(const NSArray<NSString*>*_Nullable)tmrAccessIds
+                               tmrAccessAuthFactors:(const NSArray<SealdTmrAuthFactor*>*_Nullable)tmrAccessAuthFactors
+                                              error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 
 /**
  * Revoke some recipients or proxy sessions from this session.
  * If you want to revoke all recipients, see SealdEncryptionSession.revokeAll: instead.
  * If you want to revoke all recipients besides yourself, see SealdEncryptionSession.revokeOthers:.
  *
- * @param recipientsIds The Seald IDs of users to revoke from this session.
+ * @param sealdIds The Seald IDs of users to revoke from this session.
  * @param proxySessionsIds The IDs of proxy sessions to revoke from this session.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [SealdRevokeResult] instance. and a `NSError*` that indicates if any error occurred.
+ * @param symEncKeysIds The IDs of symEncKeys to revoke from this session.
+ * @param tmrAccessIds The IDs of tmrAccess to revoke from this session.
+ * @param tmrAccessAuthFactors The AuthFactor of tmrAccess to revoke from this session.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdRevokeResult instance. and a `NSError*` that indicates if any error occurred.
  */
-- (void) revokeRecipientsIdsAsync:(const NSArray<NSString*>*)recipientsIds
-                 proxySessionsIds:(const NSArray<NSString*>*)proxySessionsIds
-                completionHandler:(void (^)(SealdRevokeResult* result, NSError*_Nullable error))completionHandler;
+- (void) revokeRecipientsAsyncWithSealdIds:(const NSArray<NSString*>*_Nullable)sealdIds
+                          proxySessionsIds:(const NSArray<NSString*>*_Nullable)proxySessionsIds
+                             symEncKeysIds:(const NSArray<NSString*>*_Nullable)symEncKeysIds
+                              tmrAccessIds:(const NSArray<NSString*>*_Nullable)tmrAccessIds
+                      tmrAccessAuthFactors:(const NSArray<SealdTmrAuthFactor*>*_Nullable)tmrAccessAuthFactors
+                         completionHandler:(void (^)(SealdRevokeResult* result, NSError*_Nullable error))completionHandler;
 
 /**
  * Revoke this session entirely.
  *
  * @param error The error that occurred while revoking, if any.
- * @return A [SealdRevokeResult] instance.
+ * @return A SealdRevokeResult instance.
  */
 - (SealdRevokeResult*) revokeAll:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 
 /**
  * Revoke this session entirely.
  *
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [SealdRevokeResult] instance. and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdRevokeResult instance. and a `NSError*` that indicates if any error occurred.
  */
 - (void) revokeAllAsyncWithCompletionHandler:(void (^)(SealdRevokeResult* result, NSError*_Nullable error))completionHandler;
 
@@ -150,17 +162,30 @@ NS_ASSUME_NONNULL_BEGIN
  * Revoke all recipients besides yourself from this session.
  *
  * @param error The error that occurred while revoking, if any.
- * @return A [SealdRevokeResult] instance.
+ * @return A SealdRevokeResult instance.
  */
 - (SealdRevokeResult*) revokeOthers:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 
 /**
  * Revoke all recipients besides yourself from this session.
  *
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [SealdRevokeResult] instance. and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdRevokeResult instance. and a `NSError*` that indicates if any error occurred.
  */
 - (void) revokeOthersAsyncWithCompletionHandler:(void (^)(SealdRevokeResult* result, NSError*_Nullable error))completionHandler;
 
+/**
+ * List all recipients from this session.
+ *
+ * @return A RecipientsList instance.
+ */
+- (SealdRecipientsList*) listRecipients:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
+/**
+ * List all recipients from this session.
+ *
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdRecipientsList instance. and a `NSError*` that indicates if any error occurred.
+ */
+- (void) listRecipientsAsyncWithCompletionHandler:(void (^)(SealdRecipientsList* result, NSError*_Nullable error))completionHandler;
 /**
  * Encrypt a clear-text string into an encrypted message, for the recipients of this session.
  *
@@ -174,7 +199,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Encrypt a clear-text string into an encrypted message, for the recipients of this session.
  *
- * @param completionHandler A callback called after function execution. This callback take two arguments, a NSString* containing the encrypted string, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a NSString* containing the encrypted string, and a `NSError*` that indicates if any error occurred.
  */
 - (void) encryptMessageAsync:(const NSString*)clearMessage
            completionHandler:(void (^)(NSString* encryptedString, NSError*_Nullable error))completionHandler;
@@ -193,7 +218,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Decrypt an encrypted message string into the corresponding clear-text string.
  *
  * @param encryptedMessage The encrypted message to decrypt.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a NSString* containing the decrypted string, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a NSString* containing the decrypted string, and a `NSError*` that indicates if any error occurred.
  */
 - (void) decryptMessageAsync:(const NSString*)encryptedMessage
            completionHandler:(void (^)(NSString* decryptedString, NSError*_Nullable error))completionHandler;
@@ -215,7 +240,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param clearFile A `NSData*` of the clear-text content of the file to encrypt.
  * @param filename The name of the file to encrypt.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a NSData containing the encrypted file, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a NSData containing the encrypted file, and a `NSError*` that indicates if any error occurred.
  */
 - (void) encryptFileAsync:(const NSData*)clearFile
                  filename:(const NSString*)filename
@@ -235,7 +260,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Decrypts an encrypted file into the corresponding clear-text file.
  *
  * @param encryptedFile A `NSData*` of the content of the encrypted file to decrypt.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a NSData containing the decrypted file, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdClearFile containing the decrypted file, and a `NSError*` that indicates if any error occurred.
  */
 - (void) decryptFileAsync:(const NSData*)encryptedFile
         completionHandler:(void (^)(SealdClearFile* clearFile, NSError*_Nullable error))completionHandler;
@@ -254,7 +279,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Encrypt a clear-text file into an encrypted file, for the recipients of this session.
  *
  * @param clearFileURI A `NSString*` of an URI of the file to encrypt.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a NSString containing the URI of the encrypted file, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a NSString containing the URI of the encrypted file, and a `NSError*` that indicates if any error occurred.
  */
 - (void) encryptFileAsyncFromURI:(const NSString*)clearFileURI
                completionHandler:(void (^)(NSString* encryptedFileURI, NSError*_Nullable error))completionHandler;
@@ -273,7 +298,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Decrypts an encrypted file into the corresponding clear-text file.
  *
  * @param encryptedFileURI A `NSString*` of an URI of the encrypted file to decrypt.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a NSString containing the URI of the decrypted file, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a NSString containing the URI of the decrypted file, and a `NSError*` that indicates if any error occurred.
  */
 - (void) decryptFileAsyncFromURI:(const NSString*)encryptedFileURI
                completionHandler:(void (^)(NSString* clearFileURI, NSError*_Nullable error))completionHandler;
@@ -283,7 +308,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param recipient A TMR recipient with its associated rights.
  * @param error A pointer to a SealdError* where details will be stored in case of error.
- * @return A [NSString*] containing the Id of the created TMR access.
+ * @return A `NSString*` containing the Id of the created TMR access.
  */
 - (NSString*) addTmrAccess:(const SealdTmrRecipientWithRights*)recipient
                      error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
@@ -292,7 +317,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Add a TMR access to this session for the given authentication factor.
  *
  * @param recipient A TMR recipient with its associated rights.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [NSString*] instance, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSString*` instance, and a `NSError*` that indicates if any error occurred.
  */
 - (void) addTmrAccessAsync:(const SealdTmrRecipientWithRights*)recipient
          completionHandler:(void (^)(NSString* result, NSError*_Nullable error))completionHandler;
@@ -302,7 +327,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param recipients The TMR recipients with their associated rights.
  * @param error A pointer to a SealdError* where details will be stored in case of error.
- * @return A [NSMutableDictionary<NSString*, SealdActionStatus*>*] instance.
+ * @return A `NSMutableDictionary<NSString*, SealdActionStatus*>*` instance.
  */
 - (NSDictionary<NSString*, SealdActionStatus*>*) addMultipleTmrAccesses:(const NSArray<SealdTmrRecipientWithRights*>*)recipients
                                                                   error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
@@ -311,12 +336,25 @@ NS_ASSUME_NONNULL_BEGIN
  * Add multiple TMR accesses to this session for the given authentication factors.
  *
  * @param recipients The TMR recipients with their associated rights.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a [NSMutableDictionary<NSString*, SealdActionStatus*>*] instance, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSMutableDictionary<NSString*, SealdActionStatus*>*` instance, and a `NSError*` that indicates if any error occurred.
  */
 - (void) addMultipleTmrAccessesAsync:(const NSArray<SealdTmrRecipientWithRights*>*)recipients
                    completionHandler:(void (^)(NSDictionary<NSString*, SealdActionStatus*>* result, NSError*_Nullable error))completionHandler;
+
+/**
+ * Serialize the EncryptionSession to a string.
+ * This is for advanced use.
+ * May be used to keep sessions in a cache.
+ * WARNING: a user could use this cache to work around being revoked. Use with caution.
+ * WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+ * to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+ *
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Returns the serialized encryption session as a `NSString*`.
+ */
+- (NSString*) serializeWithError:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 @end
 
 NS_ASSUME_NONNULL_END
 
-#endif /* EncryptionSession_h */
+#endif /* SealdEncryptionSession_h */

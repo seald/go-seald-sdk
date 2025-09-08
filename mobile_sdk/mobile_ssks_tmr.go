@@ -2,7 +2,6 @@ package mobile_sdk
 
 import (
 	"github.com/rs/zerolog"
-	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/seald/go-seald-sdk/ssks_tmr"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
@@ -30,15 +29,6 @@ func (mOpts SsksTMRInitializeOptions) toGoOptions() *ssks_tmr.PluginTMRInitializ
 		InstanceName: mOpts.InstanceName,
 		Platform:     mOpts.Platform,
 	}
-}
-
-type AuthFactor struct {
-	Type  string `json:"type"` // 'EM' | 'SMS' no enum concept in GO, we should use a setter to ensure the value
-	Value string `json:"value"`
-}
-
-func (mAF *AuthFactor) toCommon() *common_models.AuthFactor {
-	return &common_models.AuthFactor{Type: mAF.Type, Value: mAF.Value}
 }
 
 func NewSSKSTMRPlugin(options *SsksTMRInitializeOptions) *MobileSSKSTMR {

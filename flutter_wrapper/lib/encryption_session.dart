@@ -55,19 +55,65 @@ class SealdEncryptionSession implements Finalizable {
     return encryptionSessions;
   }
 
+  /// List all recipients from this session.
+  ///
+  /// Returns a [SealdRecipientsList].
+  SealdRecipientsList listRecipients() {
+    final Pointer<Pointer<NativeSealdRecipientsList>> result =
+        calloc<Pointer<NativeSealdRecipientsList>>();
+    final Pointer<Pointer<NativeSealdError>> err =
+        calloc<Pointer<NativeSealdError>>();
+
+    final int resultCode = _bindings.SealdEncryptionSession_ListRecipients(
+        _ptr.pointer(), result, err);
+
+    if (resultCode != 0) {
+      calloc.free(result);
+      throw SealdException._fromCPtr(err);
+    } else {
+      final SealdRecipientsList res = SealdRecipientsList._fromC(result.value);
+      calloc.free(result);
+      calloc.free(err);
+      return res;
+    }
+  }
+
+  /// List all recipients from this session.
+  ///
+  /// Returns a [SealdRecipientsList].
+  Future<SealdRecipientsList> listRecipientsAsync() {
+    final _TransferablePointer<NativeSealdEncryptionSession> tPtr = _ptr;
+    return compute(
+        (_) => SealdEncryptionSession._(tPtr).listRecipients(), null);
+  }
+
   /// Revokes some recipients or proxy sessions from this session.
   /// If you want to revoke all recipients, see [SealdEncryptionSession.revokeAll] instead.
   /// If you want to revoke all recipients besides yourself, see [SealdEncryptionSession.revokeOthers].
   ///
-  /// [recipientsIds] - The Seald IDs of users to revoke from this session.
+  /// [sealdIds] - The Seald IDs of users to revoke from this session.
   /// [proxySessionsIds] - The IDs of proxy sessions to revoke from this session.
+  /// [symEncKeysIds] - The IDs of symEncKeys to revoke from this session.
+  /// [tmrAccessIds] -   The IDs of tmrAccess to revoke from this session.
+  /// [tmrAccessAuthFactors] - The AuthFactor of tmrAccess to revoke from this session.
   /// Returns a [SealdRevokeResult].
   SealdRevokeResult revokeRecipients(
-      {List<String>? recipientsIds, List<String>? proxySessionsIds}) {
+      {List<String>? sealdIds,
+      List<String>? proxySessionsIds,
+      List<String>? symEncKeysIds,
+      List<String>? tmrAccessIds,
+      List<SealdTmrAuthFactor>? tmrAccessAuthFactors}) {
     final Pointer<NativeSealdStringArray> nativeRecipientsIds =
-        _sealdStringArrayFromList(recipientsIds);
+        _sealdStringArrayFromList(sealdIds);
     final Pointer<NativeSealdStringArray> nativeProxySessionsIds =
         _sealdStringArrayFromList(proxySessionsIds);
+    final Pointer<NativeSealdStringArray> nativeSymEncKeysIds =
+        _sealdStringArrayFromList(symEncKeysIds);
+    final Pointer<NativeSealdStringArray> nativeTmrAccessIds =
+        _sealdStringArrayFromList(tmrAccessIds);
+    final Pointer<NativeSealdAuthFactorArray> nativeTmrAccessesAF =
+        SealdTmrAuthFactor._toCArray(tmrAccessAuthFactors);
+
     final Pointer<Pointer<NativeSealdRevokeResult>> result =
         calloc<Pointer<NativeSealdRevokeResult>>();
     final Pointer<Pointer<NativeSealdError>> err =
@@ -77,6 +123,9 @@ class SealdEncryptionSession implements Finalizable {
         _ptr.pointer(),
         nativeRecipientsIds,
         nativeProxySessionsIds,
+        nativeSymEncKeysIds,
+        nativeTmrAccessIds,
+        nativeTmrAccessesAF,
         result,
         err);
 
@@ -85,6 +134,15 @@ class SealdEncryptionSession implements Finalizable {
     }
     if (nativeProxySessionsIds != nullptr) {
       _bindings.SealdStringArray_Free(nativeProxySessionsIds);
+    }
+    if (nativeSymEncKeysIds != nullptr) {
+      _bindings.SealdStringArray_Free(nativeSymEncKeysIds);
+    }
+    if (nativeTmrAccessIds != nullptr) {
+      _bindings.SealdStringArray_Free(nativeTmrAccessIds);
+    }
+    if (nativeTmrAccessesAF != nullptr) {
+      _bindings.SealdAuthFactorArray_Free(nativeTmrAccessesAF);
     }
 
     if (resultCode != 0) {
@@ -102,18 +160,34 @@ class SealdEncryptionSession implements Finalizable {
   /// If you want to revoke all recipients, see [SealdEncryptionSession.revokeAll] instead.
   /// If you want to revoke all recipients besides yourself, see [SealdEncryptionSession.revokeOthers].
   ///
-  /// [recipientsIds] - The Seald IDs of users to revoke from this session.
+  /// [sealdIds] - The Seald IDs of users to revoke from this session.
   /// [proxySessionsIds] - The IDs of proxy sessions to revoke from this session.
+  /// [symEncKeysIds] - The IDs of symEncKeys to revoke from this session.
+  /// [tmrAccessIds] -   The IDs of tmrAccess to revoke from this session.
+  /// [tmrAccessAuthFactors] - The AuthFactor of tmrAccess to revoke from this session.
   /// Returns a [SealdRevokeResult].
   Future<SealdRevokeResult> revokeRecipientsAsync(
-      {List<String>? recipientsIds, List<String>? proxySessionsIds}) {
+      {List<String>? sealdIds,
+      List<String>? proxySessionsIds,
+      List<String>? symEncKeysIds,
+      List<String>? tmrAccessIds,
+      List<SealdTmrAuthFactor>? tmrAccessAuthFactors}) {
     final _TransferablePointer<NativeSealdEncryptionSession> tPtr = _ptr;
     return compute(
         (Map<String, dynamic> args) => SealdEncryptionSession._(tPtr)
             .revokeRecipients(
-                recipientsIds: args["recipientsIds"],
-                proxySessionsIds: args["proxySessionsIds"]),
-        {"recipientsIds": recipientsIds, "proxySessionsIds": proxySessionsIds});
+                sealdIds: args["sealdIds"],
+                proxySessionsIds: args["proxySessionsIds"],
+                symEncKeysIds: args["symEncKeysIds"],
+                tmrAccessIds: args["tmrAccessIds"],
+                tmrAccessAuthFactors: args["tmrAccessAuthFactors"]),
+        {
+          "sealdIds": sealdIds,
+          "proxySessionsIds": proxySessionsIds,
+          "symEncKeysIds": symEncKeysIds,
+          "tmrAccessIds": tmrAccessIds,
+          "tmrAccessAuthFactors": tmrAccessAuthFactors
+        });
   }
 
   /// Revokes this session entirely.
@@ -629,5 +703,33 @@ class SealdEncryptionSession implements Finalizable {
         (Map<String, dynamic> args) => SealdEncryptionSession._(tPtr)
             .addMultipleTmrAccesses(args["recipients"]),
         {"recipients": recipients});
+  }
+
+  /// Serialize the EncryptionSession to a string.
+  /// This is for advanced use.
+  /// May be used to keep sessions in a cache.
+  /// WARNING: a user could use this cache to work around being revoked. Use with caution.
+  /// WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+  /// to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+  ///
+  /// Returns the serialized encryption session as a String.
+  String serialize() {
+    final Pointer<Pointer<Utf8>> nativeResult = calloc<Pointer<Utf8>>();
+    final Pointer<Pointer<NativeSealdError>> err =
+        calloc<Pointer<NativeSealdError>>();
+
+    final int resultCode = _bindings.SealdEncryptionSession_Serialize(
+        _ptr.pointer(), nativeResult, err);
+
+    if (resultCode != 0) {
+      calloc.free(nativeResult);
+      throw SealdException._fromCPtr(err);
+    } else {
+      final String result = nativeResult.value.toDartString();
+      calloc.free(nativeResult.value);
+      calloc.free(nativeResult);
+      calloc.free(err);
+      return result;
+    }
   }
 }

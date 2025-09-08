@@ -392,6 +392,10 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
     res.revoke = self.revoke;
     return res;
 }
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkRecipientRights*)nativeRights
+{
+    return [[SealdRecipientRights alloc] initWithRead:nativeRights.read forward:nativeRights.forward revoke:nativeRights.revoke];
+}
 @end
 
 @implementation SealdRecipientWithRights
@@ -510,6 +514,14 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
     af.value = self.value;
     af.type = self.type;
     return af;
+}
++ (SealdSdkInternalsMobile_sdkAuthFactorArray*) toMobileSdkArray:(const NSArray<SealdTmrAuthFactor*>*)tmrAFArray
+{
+    SealdSdkInternalsMobile_sdkAuthFactorArray* afa = [[SealdSdkInternalsMobile_sdkAuthFactorArray alloc] init];
+    for (SealdTmrAuthFactor* factor in tmrAFArray) {
+        afa = [afa add:[factor toMobileSdk]];
+    }
+    return afa;
 }
 @end
 
@@ -698,5 +710,210 @@ NSArray<NSString*>* stringArrayToArray(SealdSdkInternalsMobile_sdkStringArray* s
     res.page = self.page;
     res.all = self.all;
     return res;
+}
+@end
+
+@implementation SealdAnonymousTmrRecipient
+- (instancetype) initWithAuthFactor:(SealdTmrAuthFactor*)authFactor
+               rawOverEncryptionKey:(NSData*)rawOverEncryptionKey
+{
+    self = [super init];
+    if (self) {
+        _authFactor = authFactor;
+        _rawOverEncryptionKey = rawOverEncryptionKey;
+    }
+    return self;
+}
+- (SealdSdkInternalsMobile_sdkAnonymousTmrRecipient*) toMobileSdk
+{
+    SealdSdkInternalsMobile_sdkAnonymousTmrRecipient* res = [[SealdSdkInternalsMobile_sdkAnonymousTmrRecipient alloc] init];
+    res.authFactor = [self.authFactor toMobileSdk];
+    res.rawOverEncryptionKey = self.rawOverEncryptionKey;
+    return res;
+}
++ (SealdSdkInternalsMobile_sdkAnonymousTmrRecipientArray*) toMobileSdkArray:(NSArray<SealdAnonymousTmrRecipient*>*)rArray
+                                                                      error:(NSError*_Nullable*)error
+{
+    SealdSdkInternalsMobile_sdkAnonymousTmrRecipientArray* result = [[SealdSdkInternalsMobile_sdkAnonymousTmrRecipientArray alloc] init];
+    for (SealdAnonymousTmrRecipient* tmrR in rArray) {
+        result = [result add:[tmrR toMobileSdk]];
+    }
+    return result;
+}
+@end
+
+@implementation SealdSymEncKey
+
+- (instancetype) initWithSymEncKeyId:(NSString*)symEncKeyId
+                              rights:(SealdRecipientRights*)rights
+{
+    self = [super init];
+    if (self) {
+        _symEncKeyId = symEncKeyId;
+        _rights = rights;
+    }
+    return self;
+}
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkSymEncKey*)d
+{
+    return [[SealdSymEncKey alloc] initWithSymEncKeyId:d.symEncKeyId
+                                                rights:[SealdRecipientRights fromMobileSdk:d.rights]];
+}
+
++ (NSArray<SealdSymEncKey*>*) fromMobileSdkArray:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList
+{
+    NSMutableArray<SealdSymEncKey*>* result = [NSMutableArray array];
+    for (NSInteger i = 0; i < nativeList.symEncKeysSize; i++) {
+        SealdSymEncKey* key = [self fromMobileSdk:[nativeList getSymEncKey:(long)i]];
+        [result addObject:key];
+    }
+    return result;
+}
+@end
+
+@implementation SealdProxySession
+
+- (instancetype) initWithProxySessionId:(NSString*)proxySessionId
+                                created:(NSDate*)created
+                                 rights:(SealdRecipientRights*)rights
+{
+    self = [super init];
+    if (self) {
+        _proxySessionId = proxySessionId;
+        _created = created;
+        _rights = rights;
+    }
+    return self;
+}
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkProxySession*)d
+{
+    NSDate* createdDate = [NSDate dateWithTimeIntervalSince1970:d.created];
+    return [[SealdProxySession alloc] initWithProxySessionId:d.proxySessionId
+                                                     created:createdDate
+                                                      rights:[SealdRecipientRights fromMobileSdk:d.rights]];
+}
+
++ (NSArray<SealdProxySession*>*) fromMobileSdkArray:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList
+{
+    NSMutableArray<SealdProxySession*>* result = [NSMutableArray array];
+    for (NSInteger i = 0; i < nativeList.proxySessionsSize; i++) {
+        SealdProxySession* session = [self fromMobileSdk:[nativeList getProxySession:(long)i]];
+        [result addObject:session];
+    }
+    return [result copy];
+}
+@end
+
+@implementation SealdTmrAccess
+
+- (instancetype) initWithTmrAccessId:(NSString*)tmrAccessId
+                             created:(NSDate*)created
+                      authFactorType:(NSString*)authFactorType
+                              rights:(SealdRecipientRights*)rights
+{
+    self = [super init];
+    if (self) {
+        _tmrAccessId = tmrAccessId;
+        _created = created;
+        _authFactorType = authFactorType;
+        _rights = rights;
+    }
+    return self;
+}
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkTmrAccess*)d
+{
+    NSDate* createdDate = [NSDate dateWithTimeIntervalSince1970:d.created];
+    return [[SealdTmrAccess alloc] initWithTmrAccessId:d.tmrAccessId
+                                               created:createdDate
+                                        authFactorType:d.authFactorType
+                                                rights:[SealdRecipientRights fromMobileSdk:d.rights]];
+}
+
++ (NSArray<SealdTmrAccess*>*) fromMobileSdkArray:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList
+{
+    NSMutableArray<SealdTmrAccess*>* result = [NSMutableArray array];
+    for (NSInteger i = 0; i < nativeList.tmrAccessesSize; i++) {
+        SealdTmrAccess* access = [self fromMobileSdk:[nativeList getTmrAccess:(long)i]];
+        [result addObject:access];
+    }
+    return result;
+}
+@end
+
+@implementation SealdSealdRecipient
+
+- (instancetype) initWithSealdId:(NSString*)sealdId
+                       addedById:(NSString*)addedById
+                       readFirst:(NSDate*)readFirst
+                        readLast:(NSDate*)readLast
+                        readTime:(NSInteger)readTime
+                          rights:(SealdRecipientRights*)rights
+{
+    self = [super init];
+    if (self) {
+        _sealdId = sealdId;
+        _addedById = addedById;
+        _readFirst = readFirst;
+        _readLast = readLast;
+        _readTime = readTime;
+        _rights = rights;
+    }
+    return self;
+}
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkSealdRecipient*)d
+{
+    NSDate* readFirstDate = [NSDate dateWithTimeIntervalSince1970:d.readFirst];
+    NSDate* readLastDate = [NSDate dateWithTimeIntervalSince1970:d.readLast];
+    return [[SealdSealdRecipient alloc] initWithSealdId:d.sealdId
+                                              addedById:d.addedById
+                                              readFirst:readFirstDate
+                                               readLast:readLastDate
+                                               readTime:d.readTime
+                                                 rights:[SealdRecipientRights fromMobileSdk:d.rights]];
+}
+
++ (NSArray<SealdSealdRecipient*>*) fromMobileSdkArray:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList
+{
+    NSMutableArray<SealdSealdRecipient*>* result = [NSMutableArray array];
+    for (NSInteger i = 0; i < nativeList.sealdRecipientsSize; i++) {
+        SealdSealdRecipient* recipient = [self fromMobileSdk:[nativeList getSealdRecipient:(long)i]];
+        [result addObject:recipient];
+    }
+    return result;
+}
+@end
+
+@implementation SealdRecipientsList
+
+- (instancetype) initWithSealdRecipients:(NSArray<SealdSealdRecipient*>*)sealdRecipients
+                             tmrAccesses:(NSArray<SealdTmrAccess*>*)tmrAccesses
+                           proxySessions:(NSArray<SealdProxySession*>*)proxySessions
+                              symEncKeys:(NSArray<SealdSymEncKey*>*)symEncKeys
+{
+    self = [super init];
+    if (self) {
+        _sealdRecipients = sealdRecipients;
+        _tmrAccesses = tmrAccesses;
+        _proxySessions = proxySessions;
+        _symEncKeys = symEncKeys;
+    }
+    return self;
+}
+
++ (instancetype) fromMobileSdk:(SealdSdkInternalsMobile_sdkRecipientsList*)nativeList
+{
+    NSArray<SealdSealdRecipient*>* sealdRecipients = [SealdSealdRecipient fromMobileSdkArray:nativeList];
+    NSArray<SealdTmrAccess*>* tmrAccesses = [SealdTmrAccess fromMobileSdkArray:nativeList];
+    NSArray<SealdProxySession*>* proxySessions = [SealdProxySession fromMobileSdkArray:nativeList];
+    NSArray<SealdSymEncKey*>* symEncKeys = [SealdSymEncKey fromMobileSdkArray:nativeList];
+
+    return [[SealdRecipientsList alloc] initWithSealdRecipients:sealdRecipients
+                                                    tmrAccesses:tmrAccesses
+                                                  proxySessions:proxySessions
+                                                     symEncKeys:symEncKeys];
 }
 @end

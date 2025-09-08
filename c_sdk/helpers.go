@@ -688,16 +688,354 @@ func SealdRevokeResult_Free(rr *C.SealdRevokeResult) {
 	if rr == nil {
 		return
 	}
-	SealdActionStatusArray_Free(rr.Recipients)
+	SealdActionStatusArray_Free(rr.SealdIds)
 	SealdActionStatusArray_Free(rr.ProxySessions)
+	SealdActionStatusArray_Free(rr.SymEncKeyIds)
+	SealdActionStatusArray_Free(rr.TMRAccess)
 	C.free(unsafe.Pointer(rr))
 }
 
-func revokeResultFromGo(recipients map[string]string, proxySessions map[string]string) *C.SealdRevokeResult {
+func revokeResultFromGo(sealdIds map[string]string, proxySessions map[string]string, symEncKeyIds map[string]string, TMRAccess map[string]string) *C.SealdRevokeResult {
 	res := (*C.SealdRevokeResult)(C.malloc(C.size_t(unsafe.Sizeof(C.SealdRevokeResult{}))))
-	res.Recipients = actionStatusArrayFromRevoke(recipients)
+	res.SealdIds = actionStatusArrayFromRevoke(sealdIds)
 	res.ProxySessions = actionStatusArrayFromRevoke(proxySessions)
+	res.SymEncKeyIds = actionStatusArrayFromRevoke(symEncKeyIds)
+	res.TMRAccess = actionStatusArrayFromRevoke(TMRAccess)
 	return res
+}
+
+// Helper SealdRecipientsList
+
+//export SealdRecipientsList_Free
+func SealdRecipientsList_Free(lr *C.SealdRecipientsList) {
+	if lr == nil {
+		return
+	}
+	SealdSealdRecipientArray_Free(lr.SealdRecipients)
+	SealdTMRAccessArray_Free(lr.TMRAccesses)
+	SealdProxySessionArray_Free(lr.ProxySessions)
+	SealdSymEncKeyArray_Free(lr.SymEncKeys)
+	C.free(unsafe.Pointer(lr))
+}
+
+func listedRecipientsFromGo(rList *sdk.RecipientsList) *C.SealdRecipientsList {
+	res := (*C.SealdRecipientsList)(C.malloc(C.size_t(unsafe.Sizeof(C.SealdRecipientsList{}))))
+	res.SealdRecipients = sealdSealdRecipientArrayFromList(rList.SealdRecipients)
+	res.TMRAccesses = sealdTMRAccessArrayFromList(rList.TmrAccesses)
+	res.ProxySessions = sealdProxySessionArrayFromList(rList.ProxySessions)
+	res.SymEncKeys = sealdSymEncKeyArrayFromList(rList.SymEncKeys)
+	return res
+}
+
+// Helper SealdSealdRecipient
+
+//export SealdSealdRecipient_Free
+func SealdSealdRecipient_Free(sr *C.SealdSealdRecipient) {
+	if sr == nil {
+		return
+	}
+	C.free(unsafe.Pointer(sr.SealdId))
+	C.free(unsafe.Pointer(sr.AddedById))
+	C.free(unsafe.Pointer(sr))
+}
+
+// Helper SealdSealdRecipientArray
+
+type SealdSealdRecipientArray struct {
+	items []*C.SealdSealdRecipient
+}
+
+var sealdSealdRecipientArrayRefMap = sync.Map{}
+
+//export SealdSealdRecipientArray_New
+func SealdSealdRecipientArray_New() *C.SealdSealdRecipientArray {
+	array := &SealdSealdRecipientArray{}
+	sealdSealdRecipientArrayRefMap.Store(uintptr(unsafe.Pointer(array)), array)
+	return (*C.SealdSealdRecipientArray)(unsafe.Pointer(array))
+}
+
+func sealdRecipientArrayToGo(array *C.SealdSealdRecipientArray) *SealdSealdRecipientArray {
+	return (*SealdSealdRecipientArray)(unsafe.Pointer(array))
+}
+
+//export SealdSealdRecipientArray_Add
+func SealdSealdRecipientArray_Add(array *C.SealdSealdRecipientArray, as *C.SealdSealdRecipient) {
+	goArray := sealdRecipientArrayToGo(array)
+	goArray.items = append(goArray.items, as)
+}
+
+//export SealdSealdRecipientArray_Free
+func SealdSealdRecipientArray_Free(array *C.SealdSealdRecipientArray) {
+	goArray := sealdRecipientArrayToGo(array)
+	items := goArray.items
+	goArray.items = nil
+	for _, as := range items {
+		SealdSealdRecipient_Free(as)
+	}
+	sealdSealdRecipientArrayRefMap.Delete(uintptr(unsafe.Pointer(array)))
+}
+
+//export SealdSealdRecipientArray_Size
+func SealdSealdRecipientArray_Size(array *C.SealdSealdRecipientArray) C.int {
+	goArray := sealdRecipientArrayToGo(array)
+	return C.int(len(goArray.items))
+}
+
+//export SealdSealdRecipientArray_Get
+func SealdSealdRecipientArray_Get(array *C.SealdSealdRecipientArray, i C.int) *C.SealdSealdRecipient {
+	goArray := sealdRecipientArrayToGo(array)
+	return goArray.items[int(i)]
+}
+
+func sealdSealdRecipientArrayFromList(sRecipients []*sdk.SealdRecipient) *C.SealdSealdRecipientArray {
+	ssRArray := SealdSealdRecipientArray_New()
+	for _, nativeR := range sRecipients {
+		ssR := (*C.SealdSealdRecipient)(C.malloc(C.size_t(unsafe.Sizeof(C.SealdSealdRecipient{}))))
+		ssR.SealdId = C.CString(nativeR.SealdId)
+		ssR.AddedById = C.CString(nativeR.AddedById)
+		ssR.ReadTime = C.int(nativeR.ReadTime)
+		ssR.ReadRight = boolToCInt(nativeR.Rights.Read)
+		ssR.ForwardRight = boolToCInt(nativeR.Rights.Forward)
+		ssR.RevokeRight = boolToCInt(nativeR.Rights.Revoke)
+		if nativeR.ReadFirst != nil {
+			ssR.ReadFirst = C.longlong(nativeR.ReadFirst.Unix())
+		}
+		if nativeR.ReadLast != nil {
+			ssR.ReadLast = C.longlong(nativeR.ReadLast.Unix())
+		}
+
+		SealdSealdRecipientArray_Add(ssRArray, ssR)
+	}
+	return ssRArray
+}
+
+// Helper SealdTMRAccess
+
+//export SealdTMRAccess_Free
+func SealdTMRAccess_Free(tA *C.SealdTMRAccess) {
+	if tA == nil {
+		return
+	}
+	C.free(unsafe.Pointer(tA.TmrAccessId))
+	C.free(unsafe.Pointer(tA.AuthFactorType))
+	C.free(unsafe.Pointer(tA))
+}
+
+// Helper SealdTMRAccessArray
+
+type SealdTMRAccessArray struct {
+	items []*C.SealdTMRAccess
+}
+
+var sealdTMRAccessArrayRefMap = sync.Map{}
+
+//export SealdTMRAccessArray_New
+func SealdTMRAccessArray_New() *C.SealdTMRAccessArray {
+	array := &SealdSealdRecipientArray{}
+	sealdTMRAccessArrayRefMap.Store(uintptr(unsafe.Pointer(array)), array)
+	return (*C.SealdTMRAccessArray)(unsafe.Pointer(array))
+}
+
+func tMRAccessArrayToGo(array *C.SealdTMRAccessArray) *SealdTMRAccessArray {
+	return (*SealdTMRAccessArray)(unsafe.Pointer(array))
+}
+
+//export SealdTMRAccessArray_Add
+func SealdTMRAccessArray_Add(array *C.SealdTMRAccessArray, as *C.SealdTMRAccess) {
+	goArray := tMRAccessArrayToGo(array)
+	goArray.items = append(goArray.items, as)
+}
+
+//export SealdTMRAccessArray_Free
+func SealdTMRAccessArray_Free(array *C.SealdTMRAccessArray) {
+	goArray := tMRAccessArrayToGo(array)
+	items := goArray.items
+	goArray.items = nil
+	for _, as := range items {
+		SealdTMRAccess_Free(as)
+	}
+	sealdTMRAccessArrayRefMap.Delete(uintptr(unsafe.Pointer(array)))
+}
+
+//export SealdTMRAccessArray_Size
+func SealdTMRAccessArray_Size(array *C.SealdTMRAccessArray) C.int {
+	goArray := tMRAccessArrayToGo(array)
+	return C.int(len(goArray.items))
+}
+
+//export SealdTMRAccessArray_Get
+func SealdTMRAccessArray_Get(array *C.SealdTMRAccessArray, i C.int) *C.SealdTMRAccess {
+	goArray := tMRAccessArrayToGo(array)
+	return goArray.items[int(i)]
+}
+
+func sealdTMRAccessArrayFromList(nativeTMRAccesses []*sdk.TmrAccess) *C.SealdTMRAccessArray {
+	tmrArray := SealdTMRAccessArray_New()
+	for _, nativeTA := range nativeTMRAccesses {
+		ta := (*C.SealdTMRAccess)(C.malloc(C.size_t(unsafe.Sizeof(C.SealdTMRAccess{}))))
+		ta.TmrAccessId = C.CString(nativeTA.Id)
+		ta.AuthFactorType = C.CString(nativeTA.AuthFactorType)
+		ta.ReadRight = boolToCInt(nativeTA.Rights.Read)
+		ta.ForwardRight = boolToCInt(nativeTA.Rights.Forward)
+		ta.RevokeRight = boolToCInt(nativeTA.Rights.Revoke)
+		if nativeTA.Created != nil {
+			ta.Created = C.longlong(nativeTA.Created.Unix())
+		}
+
+		SealdTMRAccessArray_Add(tmrArray, ta)
+	}
+	return tmrArray
+}
+
+// Helper SealdProxySession
+
+//export SealdProxySession_Free
+func SealdProxySession_Free(pS *C.SealdProxySession) {
+	if pS == nil {
+		return
+	}
+	C.free(unsafe.Pointer(pS.ProxySessionId))
+	C.free(unsafe.Pointer(pS.SessionId))
+	C.free(unsafe.Pointer(pS))
+}
+
+// Helper SealdProxySessionArray
+
+type SealdProxySessionArray struct {
+	items []*C.SealdProxySession
+}
+
+var sealdProxySessionArrayRefMap = sync.Map{}
+
+//export SealdProxySessionArray_New
+func SealdProxySessionArray_New() *C.SealdProxySessionArray {
+	array := &SealdProxySessionArray{}
+	sealdProxySessionArrayRefMap.Store(uintptr(unsafe.Pointer(array)), array)
+	return (*C.SealdProxySessionArray)(unsafe.Pointer(array))
+}
+
+func proxySessionArrayToGo(array *C.SealdProxySessionArray) *SealdProxySessionArray {
+	return (*SealdProxySessionArray)(unsafe.Pointer(array))
+}
+
+//export SealdProxySessionArray_Add
+func SealdProxySessionArray_Add(array *C.SealdProxySessionArray, as *C.SealdProxySession) {
+	goArray := proxySessionArrayToGo(array)
+	goArray.items = append(goArray.items, as)
+}
+
+//export SealdProxySessionArray_Free
+func SealdProxySessionArray_Free(array *C.SealdProxySessionArray) {
+	goArray := proxySessionArrayToGo(array)
+	items := goArray.items
+	goArray.items = nil
+	for _, as := range items {
+		SealdProxySession_Free(as)
+	}
+	sealdProxySessionArrayRefMap.Delete(uintptr(unsafe.Pointer(array)))
+}
+
+//export SealdProxySessionArray_Size
+func SealdProxySessionArray_Size(array *C.SealdProxySessionArray) C.int {
+	goArray := proxySessionArrayToGo(array)
+	return C.int(len(goArray.items))
+}
+
+//export SealdProxySessionArray_Get
+func SealdProxySessionArray_Get(array *C.SealdProxySessionArray, i C.int) *C.SealdProxySession {
+	goArray := proxySessionArrayToGo(array)
+	return goArray.items[int(i)]
+}
+
+func sealdProxySessionArrayFromList(nativeProxySessions []*sdk.ProxySession) *C.SealdProxySessionArray {
+	psArray := SealdProxySessionArray_New()
+	for _, nativePS := range nativeProxySessions {
+		ps := (*C.SealdProxySession)(C.malloc(C.size_t(unsafe.Sizeof(C.SealdProxySession{}))))
+		ps.SessionId = C.CString(nativePS.SessionId)
+		ps.ProxySessionId = C.CString(nativePS.ProxySessionId)
+		ps.ReadRight = boolToCInt(nativePS.Rights.Read)
+		ps.ForwardRight = boolToCInt(nativePS.Rights.Forward)
+		ps.RevokeRight = boolToCInt(nativePS.Rights.Revoke)
+		if nativePS.Created != nil {
+			ps.Created = C.longlong(nativePS.Created.Unix())
+		}
+
+		SealdProxySessionArray_Add(psArray, ps)
+	}
+	return psArray
+}
+
+// Helper SealdSymEncKey
+
+//export SealdSymEncKey_Free
+func SealdSymEncKey_Free(sek *C.SealdSymEncKey) {
+	if sek == nil {
+		return
+	}
+	C.free(unsafe.Pointer(sek.SymEncKeyId))
+	C.free(unsafe.Pointer(sek))
+}
+
+// Helper SealdSymEncKeyArray
+
+type SealdSymEncKeyArray struct {
+	items []*C.SealdSymEncKey
+}
+
+var sealdSymEncKeyArrayRefMap = sync.Map{}
+
+//export SealdSymEncKeyArray_New
+func SealdSymEncKeyArray_New() *C.SealdSymEncKeyArray {
+	array := &SealdSymEncKeyArray{}
+	sealdSymEncKeyArrayRefMap.Store(uintptr(unsafe.Pointer(array)), array)
+	return (*C.SealdSymEncKeyArray)(unsafe.Pointer(array))
+}
+
+func symEncKeyArrayToGo(array *C.SealdSymEncKeyArray) *SealdSymEncKeyArray {
+	return (*SealdSymEncKeyArray)(unsafe.Pointer(array))
+}
+
+//export SealdSymEncKeyArray_Add
+func SealdSymEncKeyArray_Add(array *C.SealdSymEncKeyArray, as *C.SealdSymEncKey) {
+	goArray := symEncKeyArrayToGo(array)
+	goArray.items = append(goArray.items, as)
+}
+
+//export SealdSymEncKeyArray_Free
+func SealdSymEncKeyArray_Free(array *C.SealdSymEncKeyArray) {
+	goArray := symEncKeyArrayToGo(array)
+	items := goArray.items
+	goArray.items = nil
+	for _, as := range items {
+		SealdSymEncKey_Free(as)
+	}
+	sealdSymEncKeyArrayRefMap.Delete(uintptr(unsafe.Pointer(array)))
+}
+
+//export SealdSymEncKeyArray_Size
+func SealdSymEncKeyArray_Size(array *C.SealdSymEncKeyArray) C.int {
+	goArray := symEncKeyArrayToGo(array)
+	return C.int(len(goArray.items))
+}
+
+//export SealdSymEncKeyArray_Get
+func SealdSymEncKeyArray_Get(array *C.SealdSymEncKeyArray, i C.int) *C.SealdSymEncKey {
+	goArray := symEncKeyArrayToGo(array)
+	return goArray.items[int(i)]
+}
+
+func sealdSymEncKeyArrayFromList(nativeSEK []*sdk.SymEncKey) *C.SealdSymEncKeyArray {
+	sekArray := SealdSymEncKeyArray_New()
+	for _, nSEK := range nativeSEK {
+		sek := (*C.SealdSymEncKey)(C.malloc(C.size_t(unsafe.Sizeof(C.SealdSymEncKey{}))))
+		sek.SymEncKeyId = C.CString(nSEK.SymEncKeyId)
+		sek.ReadRight = boolToCInt(nSEK.Rights.Read)
+		sek.ForwardRight = boolToCInt(nSEK.Rights.Forward)
+		sek.RevokeRight = boolToCInt(nSEK.Rights.Revoke)
+
+		SealdSymEncKeyArray_Add(sekArray, sek)
+	}
+	return sekArray
 }
 
 // Helper SealdEncryptionSessionRetrievalDetails
@@ -1059,4 +1397,62 @@ func searchGroupTMRTemporaryKeysOptsToGo(cOpts *C.SealdSearchGroupTMRTemporaryKe
 		Page:    int(cOpts.Page),
 		All:     int(cOpts.All) != 0,
 	}
+}
+
+// Helper SealdAuthFactorArray
+
+type SealdAuthFactorArray struct {
+	items []*common_models.AuthFactor
+}
+
+func sealdAuthFactorArrayToGo(array *C.SealdAuthFactorArray) *SealdAuthFactorArray {
+	if array == nil {
+		return nil
+	}
+	return (*SealdAuthFactorArray)(unsafe.Pointer(array))
+}
+
+var sealdAuthFactorArrayRefMap = sync.Map{}
+
+//export SealdAuthFactorArray_New
+func SealdAuthFactorArray_New() *C.SealdAuthFactorArray {
+	array := &SealdAuthFactorArray{}
+	sealdAuthFactorArrayRefMap.Store(uintptr(unsafe.Pointer(array)), array)
+	return (*C.SealdAuthFactorArray)(unsafe.Pointer(array))
+}
+
+//export SealdAuthFactorArray_Free
+func SealdAuthFactorArray_Free(array *C.SealdAuthFactorArray) {
+	sealdAuthFactorArrayRefMap.Delete(uintptr(unsafe.Pointer(array)))
+}
+
+//export SealdAuthFactorArray_Add
+func SealdAuthFactorArray_Add(array *C.SealdAuthFactorArray, authFactorType *C.char, authFactorValue *C.char) {
+	goArray := sealdAuthFactorArrayToGo(array)
+	goArray.items = append(goArray.items, &common_models.AuthFactor{
+		Type:  C.GoString(authFactorType),
+		Value: C.GoString(authFactorValue),
+	})
+}
+
+//export SealdAuthFactorArray_Get
+func SealdAuthFactorArray_Get(array *C.SealdAuthFactorArray, i C.int, authFactorType **C.char, authFactorValue **C.char) {
+	goArray := sealdAuthFactorArrayToGo(array)
+	af := goArray.items[int(i)]
+
+	*authFactorType = C.CString(af.Type)
+	*authFactorValue = C.CString(af.Value)
+}
+
+//export SealdAuthFactorArray_Size
+func SealdAuthFactorArray_Size(array *C.SealdAuthFactorArray) C.int {
+	goArray := sealdAuthFactorArrayToGo(array)
+	return C.int(len(goArray.items))
+}
+
+func (array *SealdAuthFactorArray) getSlice() []*common_models.AuthFactor {
+	if array == nil {
+		return nil
+	}
+	return array.items
 }

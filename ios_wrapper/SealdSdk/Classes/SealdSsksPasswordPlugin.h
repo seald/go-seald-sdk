@@ -58,7 +58,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param userId The ID of the userId.
  * @param password The password to encrypt the key.
  * @param identity The identity to save.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSString*` containing the SSKS ID of the stored identity, which can be used by your backend to manage it, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSString*` containing the SSKS ID of the stored identity, which can be used by your backend to manage it, and a `NSError*` that indicates if any error occurred.
  */
 - (void) saveIdentityAsyncWithUserId:(const NSString*)userId
                             password:(const NSString*)password
@@ -88,7 +88,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param rawStorageKey The key under which identity keys are stored. This *MUST* be a secret known only to this user of your app, and never to other users, as learning it will allow deleting the stored identities. Useful to change if you want to store multiple identities for the same `userId`. Allowed characters : `A-Za-z0-9+/=-_@.`. Max length is 256 characters.
  * @param rawEncryptionKey The raw encryption key used to encrypt / decrypt the stored identity keys. This *MUST* be a cryptographically random NSData of 64 bytes.
  * @param identity The identity to save.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSString*` containing the SSKS ID of the stored identity, which can be used by your backend to manage it, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSString*` containing the SSKS ID of the stored identity, which can be used by your backend to manage it, and a `NSError*` that indicates if any error occurred.
  */
 - (void) saveIdentityAsyncWithUserId:(const NSString*)userId
                        rawStorageKey:(const NSString*)rawStorageKey
@@ -121,7 +121,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param userId The ID of the userId.
  * @param password The password to encrypt the key.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSData*` containing the retrieved identity, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSData*` containing the retrieved identity, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveIdentityAsyncWithUserId:(const NSString*)userId
                                 password:(const NSString*)password
@@ -155,7 +155,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param userId The ID of the userId.
  * @param rawStorageKey The key under which identity keys are stored. This *MUST* be a secret known only to this user of your app, and never to other users, as learning it will allow deleting the stored identities. Useful to change if you want to store multiple identities for the same `userId`. Allowed characters : `A-Za-z0-9+/=-_@.`. Max length is 256 characters.
  * @param rawEncryptionKey The raw encryption key used to encrypt / decrypt the stored identity keys. This *MUST* be a cryptographically random NSData of 64 bytes.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSData*` containing the retrieved identity, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSData*` containing the retrieved identity, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveIdentityAsyncWithUserId:(const NSString*)userId
                            rawStorageKey:(const NSString*)rawStorageKey
@@ -182,7 +182,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param userId The ID of the userId.
  * @param currentPassword The user's current password.
  * @param newPassword The new password.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSString*` containing the new SSKS ID of the stored identity, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSString*` containing the new SSKS ID of the stored identity, and a `NSError*` that indicates if any error occurred.
  */
 - (void) changeIdentityPasswordAsyncWithUserId:(const NSString*)userId
                                currentPassword:(const NSString*)currentPassword

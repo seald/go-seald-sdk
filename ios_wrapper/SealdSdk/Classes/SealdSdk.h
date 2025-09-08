@@ -14,6 +14,8 @@
 // All headers must be imported here, for SwiftPackageManager to be happy
 #import "Helpers.h"
 #import "SealdEncryptionSession.h"
+#import "SealdAnonymousEncryptionSession.h"
+#import "SealdAnonymousSdk.h"
 #import "SealdSsksPasswordPlugin.h"
 #import "SealdSsksTMRPlugin.h"
 #import "Utils.h"
@@ -67,7 +69,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
 /**
  * Close the current SDK instance. This frees any lock on the current database. After calling close, the instance cannot be used anymore.
  *
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 - (void) closeAsyncWithCompletionHandler:(void (^)(NSError*_Nullable error))completionHandler;
 
@@ -75,14 +77,14 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * Generate private keys.
  *
  * @param error Error pointer.
- * @return A SealdGeneratedPrivateKeys instance that can be used with methods that need private keys.
+ * @return A SealdGeneratedPrivateKeys* instance that can be used with methods that need private keys.
  */
 - (SealdGeneratedPrivateKeys*) generatePrivateKeysWithError:(NSError*_Nullable*)error;
 
 /**
  * Generate private keys.
  *
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdGeneratedPrivateKeys*` representing the generated private keys and a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `SealdGeneratedPrivateKeys*` representing the generated private keys and a `NSError` that indicates if any error occurred.
  */
 - (void) generatePrivateKeysAsyncWithCompletionHandler:(void (^)(SealdGeneratedPrivateKeys* privateKeys, NSError*_Nullable error))completionHandler;
 
@@ -114,7 +116,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param displayName A name for the user to create. This is metadata, useful on the Seald Dashboard for recognizing this user.
  * @param privateKeys Optional. Pre-generated private keys, returned by a call to SealdSdk.generatePrivateKeysWithError:.
  * @param expireAfter The duration during which the created device key will be valid without renewal. Optional, defaults to 5 years.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdAccountInfo*` representing the created user and a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdAccountInfo representing the created user and a `NSError` that indicates if any error occurred.
  */
 - (void) createAccountAsyncWithSignupJwt:(const NSString*)signupJwt
                               deviceName:(const NSString*)deviceName
@@ -133,7 +135,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
 /**
  * Return information about the current account, or `nil` if there is none.
  *
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdAccountInfo*` containing the current user infos and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdAccountInfo* containing the current user infos and a `NSError*` that indicates if any error occurred.
  */
 - (void) getCurrentAccountInfoAsyncWithCompletionHandler:(void (^)(SealdAccountInfo*_Nullable))completionHandler __attribute__((swift_async_name("getCurrentAccountInfoAsync()")));
 
@@ -155,7 +157,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * which can happen if migrating from an older version of the SDK,
  * or if the internal call to updateCurrentDevice failed when calling SealdSdk.importIdentity:error:.
  *
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 - (void) updateCurrentDeviceAsyncWithCompletionHandler:(void (^)(NSError*_Nullable error))completionHandler;
 
@@ -174,7 +176,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * Prepare a private key renewal, so it can be stored on SSKS without risk of loss during the actual renew.
  *
  * @param privateKeys Optional. Pre-generated private keys, returned by a call to SealdSdk.generatePrivateKeysWithError:.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSData*` representing the prepared renewal and a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSData*` representing the prepared renewal and a `NSError` that indicates if any error occurred.
  */
 - (void) prepareRenewAsyncWithPrivateKeys:(nullable SealdGeneratedPrivateKeys*)privateKeys
                         completionHandler:(void (^)(NSData* preparedRenewal, NSError*_Nullable error))completionHandler;
@@ -204,7 +206,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param preparedRenewal Optional. The preparedRenewal generated by calling SealdSdk.prepareRenew:error:.
  * @param privateKeys Optional. Pre-generated private keys, returned by a call to SealdSdk.generatePrivateKeysWithError:.
  * @param expireAfter The duration during which the renewed device key will be valid without further renewal. Optional, defaults to 5 years.
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 - (void) renewKeysAsyncWithPreparedRenewal:(nullable const NSData*)preparedRenewal
                                privateKeys:(nullable SealdGeneratedPrivateKeys*)privateKeys
@@ -235,7 +237,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param deviceName An optional name for the device to create. This is metadata, useful on the Seald Dashboard for recognizing this device. Optional.
  * @param privateKeys Optional. Pre-generated private keys, returned by a call to SealdSdk.generatePrivateKeysWithError:.
  * @param expireAfter The duration during which the device key for the device to create will be valid without renewal. Optional, defaults to 5 years.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdCreateSubIdentityResponse*` representing the created sub-identity and a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdCreateSubIdentityResponse* representing the created sub-identity and a `NSError` that indicates if any error occurred.
  */
 - (void) createSubIdentityAsyncWithDeviceName:(const NSString*)deviceName
                                   privateKeys:(nullable SealdGeneratedPrivateKeys*)privateKeys
@@ -257,7 +259,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * This function can only be called if the current SDK instance does not have an account yet.
  *
  * @param identity The identity export that this SDK instance should import.
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 - (void) importIdentityAsyncWithIdentity:(const NSData*)identity
                        completionHandler:(void (^)(NSError*_Nullable error))completionHandler;
@@ -273,7 +275,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
 /**
  * Export the current device as an identity export.
  *
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSData*` containing the exported identity, and a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSData*` containing the exported identity, and a `NSError` that indicates if any error occurred.
  */
 - (void) exportIdentityAsyncWithCompletionHandler:(void (^)(NSData* identity, NSError*_Nullable error))completionHandler;
 
@@ -290,7 +292,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * Push a given JWT to the Seald server, for example to add a connector to the current account.
  *
  * @param jwt The JWT to push
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 - (void) pushJWTAsyncWithJWT:(const NSString*)jwt
            completionHandler:(void (^)(NSError*_Nullable error))completionHandler;
@@ -307,7 +309,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * Just call the Seald server, without doing anything.
  * This may be used for example to verify that the current instance has a valid identity.
  *
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 - (void) heartbeatAsyncWithCompletionHandler:(void (^)(NSError*_Nullable error))completionHandler;
 
@@ -339,7 +341,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param members The Seald IDs of the members to add to the group. Must include yourself.
  * @param admins The Seald IDs of the members to also add as group admins. Must include yourself.
  * @param privateKeys Optional. Pre-generated private keys, returned by a call to SealdSdk.generatePrivateKeysWithError:.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSString*` containint the ID of the created group and a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSString*` containing the ID of the created group and a `NSError` that indicates if any error occurred.
  */
 - (void) createGroupAsyncWithGroupName:(const NSString*)groupName
                                members:(const NSArray<NSString*>*)members
@@ -373,7 +375,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param membersToAdd The Seald IDs of the members to add to the group.
  * @param adminsToSet The Seald IDs of the newly added members to also set as group admins.
  * @param privateKeys Optional. Pre-generated private keys, returned by a call to SealdSdk.generatePrivateKeysWithError:.
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 - (void) addGroupMembersAsyncWithGroupId:(const NSString*)groupId
                             membersToAdd:(const NSArray<NSString*>*)membersToAdd
@@ -404,7 +406,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param groupId The group from which to remove members.
  * @param membersToRemove The Seald IDs of the members to remove from the group.
  * @param privateKeys Optional. Pre-generated private keys, returned by a call to SealdSdk.generatePrivateKeysWithError:.
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 - (void) removeGroupMembersAsyncWithGroupId:(const NSString*)groupId
                             membersToRemove:(const NSArray<NSString*>*)membersToRemove
@@ -431,7 +433,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  *
  * @param groupId The group for which to renew the private key.
  * @param privateKeys Optional. Pre-generated private keys, returned by a call to SealdSdk.generatePrivateKeysWithError:.
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 - (void) renewGroupKeyAsyncWithGroupId:(const NSString*)groupId
                            privateKeys:(nullable SealdGeneratedPrivateKeys*)privateKeys
@@ -458,7 +460,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param groupId The group for which to set admins.
  * @param addToAdmins The Seald IDs of existing group members to add as group admins.
  * @param removeFromAdmins The Seald IDs of existing group members to remove from group admins.
- * @param completionHandler A callback called after function execution. This callback take a pointer to a `NSError` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes a pointer to a `NSError` that indicates if any error occurred.
  */
 
 - (void) setGroupAdminsAsyncWithGroupId:(const NSString*)groupId
@@ -493,7 +495,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param recipients The Seald IDs with the associated rights of users who should be able to retrieve this session.
  * @param metadata Arbitrary metadata string, not encrypted, for later reference. Max 1024 characters long.
  * @param useCache Whether or not to use the cache (if enabled globally).
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdEncryptionSession*` containing the created encryption session, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* containing the created encryption session, and a `NSError*` that indicates if any error occurred.
  */
 - (void) createEncryptionSessionAsyncWithRecipients:(const NSArray<SealdRecipientWithRights*>*)recipients
                                            metadata:(const NSString*_Nullable)metadata
@@ -525,7 +527,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param useCache Whether or not to use the cache (if enabled globally).
  * @param lookupProxyKey Whether or not to try retrieving the session via a proxy.
  * @param lookupGroupKey Whether or not to try retrieving the session via a group.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdEncryptionSession*` instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveEncryptionSessionAsyncWithSessionId:(const NSString*)sessionId
                                             useCache:(const BOOL)useCache
@@ -558,7 +560,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param useCache Whether or not to use the cache (if enabled globally).
  * @param lookupProxyKey Whether or not to try retrieving the session via a proxy.
  * @param lookupGroupKey Whether or not to try retrieving the session via a group.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdEncryptionSession*` instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveEncryptionSessionAsyncFromMessage:(const NSString*_Nonnull)message
                                           useCache:(const BOOL)useCache
@@ -591,7 +593,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param useCache Whether or not to use the cache (if enabled globally).
  * @param lookupProxyKey Whether or not to try retrieving the session via a proxy.
  * @param lookupGroupKey Whether or not to try retrieving the session via a group.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdEncryptionSession*` instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveEncryptionSessionAsyncFromFile:(const NSString*_Nonnull)fileURI
                                        useCache:(const BOOL)useCache
@@ -624,7 +626,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param useCache Whether or not to use the cache (if enabled globally).
  * @param lookupProxyKey Whether or not to try retrieving the session via a proxy.
  * @param lookupGroupKey Whether or not to try retrieving the session via a group.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdEncryptionSession*` instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveEncryptionSessionAsyncFromBytes:(const NSData*_Nonnull)fileBytes
                                         useCache:(const BOOL)useCache
@@ -661,7 +663,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param tmrAccessesFilters Retrieval tmr accesses filters. If multiple TMR Accesses for this session are associated with the auth factor, filter out the unwanted ones.
  * @param tryIfMultiple If multiple accesses are found for this session associated with the auth factor, whether or not to loop over all of them to find the wanted one.
  * @param useCache Whether or not to use the cache (if enabled globally).
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdEncryptionSession*` instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveEncryptionSessionAsyncByTmr:(const NSString*)tmrJWT
                                    sessionId:(const NSString*)sessionId
@@ -698,13 +700,24 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param useCache Whether or not to use the cache (if enabled globally).
  * @param lookupProxyKey Whether or not to try retrieving the sessions via proxies.
  * @param lookupGroupKey Whether or not to try retrieving the sessions via groups.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `NSArray<SealdEncryptionSession*>*` instance of the retrieved encryption sessions, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSArray<SealdEncryptionSession*>*` instance of the retrieved encryption sessions, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveMultipleEncryptionSessionsAsync:(const NSArray<NSString*>*)sessionIds
                                         useCache:(const BOOL)useCache
                                   lookupProxyKey:(const BOOL)lookupProxyKey
                                   lookupGroupKey:(const BOOL)lookupGroupKey
                                completionHandler:(void (^)(NSArray<SealdEncryptionSession*>* encryptionSessions, NSError*_Nullable error))completionHandler;
+
+/**
+ * Deserialize a serialized session.
+ * For advanced use.
+ *
+ * @param serializedSession The serialized encryption session to deserialize.
+ * @param error The error that occurred while retrieving the session, if any.
+ * @return The deserialized SealdEncryptionSession, or null if an error occurred.
+ */
+- (SealdEncryptionSession*) deserializeEncryptionSession:(const NSString*_Nonnull)serializedSession
+                                                   error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
 
 // Connectors
 /**
@@ -727,7 +740,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * with the details of the missing connector.
  *
  * @param connectorTypeValues An Array of ConnectorTypeValue instances.
- * @param completionHandler A callback called after function execution. This callback take two arguments, an Array of NSString with the Seald IDs of the users corresponding to these connectors, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, an Array of NSString with the Seald IDs of the users corresponding to these connectors, and a `NSError*` that indicates if any error occurred.
  */
 - (void) getSealdIdsAsyncFromConnectors:(const NSArray<SealdConnectorTypeValue*>*)connectorTypeValues
                       completionHandler:(void (^)(NSArray<NSString*>* sealdIds, NSError*_Nullable error))completionHandler __attribute__((swift_async_name("getSealdIdsAsyncFromConnectors(connectorTypeValues:)")));
@@ -746,7 +759,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * List all connectors know locally for a given sealdId.
  *
  * @param sealdId The Seald ID for which to list connectors
- * @param completionHandler A callback called after function execution. This callback take two arguments, an `NSArray` of `SealdConnector*` instances, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, an `NSArray` of SealdConnector* instances, and a `NSError*` that indicates if any error occurred.
  */
 - (void) getConnectorsAsyncFromSealdId:(const NSString*)sealdId
                      completionHandler:(void (^)(NSArray<SealdConnector*>* connectors, NSError*_Nullable error))completionHandler __attribute__((swift_async_name("getConnectorsAsyncFromSealdId(sealdId:)")));
@@ -772,7 +785,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  *
  * @param value The value of the connector to add.
  * @param connectorType The type of the connector.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdConnector*` instances of the added connector, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdConnector* instances of the added connector, and a `NSError*` that indicates if any error occurred.
  */
 - (void) addConnectorAsyncWithValue:(const NSString*)value
                       connectorType:(const NSString*)connectorType
@@ -796,7 +809,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  *
  * @param connectorId The ID of the connector to validate.
  * @param challenge The challenge.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdConnector*` instances of the validated connector, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdConnector* instances of the validated connector, and a `NSError*` that indicates if any error occurred.
  */
 - (void) validateConnectorAsyncWithConnectorId:(const NSString*)connectorId
                                      challenge:(const NSString*)challenge
@@ -816,7 +829,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * Remove a connector belonging to the current account.
  *
  * @param connectorId The ID of the connector to remove.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdConnector*` instances of the removed connector, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdConnector* instances of the removed connector, and a `NSError*` that indicates if any error occurred.
  */
 - (void) removeConnectorAsyncWithConnectorId:(const NSString*)connectorId
                            completionHandler:(void (^)(SealdConnector* connector, NSError*_Nullable error))completionHandler;
@@ -832,7 +845,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
 /**
  * List connectors associated to the current account.
  *
- * @param completionHandler A callback called after function execution. This callback take two arguments, an `NSArray` of `SealdConnector*` instances of the listed connectors, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, an `NSArray` of SealdConnector* instances of the listed connectors, and a `NSError*` that indicates if any error occurred.
  */
 - (void) listConnectorsAsyncWithCompletionHandler:(void (^)(NSArray<SealdConnector*>* connectors, NSError*_Nullable error))completionHandler;
 
@@ -850,7 +863,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * Retrieve a connector by its `connectorId`, then updates the local cache of connectors.
  *
  * @param connectorId The ID of the connector to retrieve.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdConnector*` instance of the retrieved connector, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdConnector* instance of the retrieved connector, and a `NSError*` that indicates if any error occurred.
  */
 - (void) retrieveConnectorAsyncWithConnectorId:(const NSString*)connectorId
                              completionHandler:(void (^)(SealdConnector* connector, NSError*_Nullable error))completionHandler;
@@ -873,7 +886,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  *
  * @param deviceId The ID of the device for which to re-rencrypt.
  * @param options A SealdMassReencryptOptions instance, or `nil` to use default options.
- * @param completionHandler A callback called after function execution. This callback take two arguments, a `SealdMassReencryptResponse*` instance containing the number of re-encrypted keys of the retrieved connector, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdMassReencryptResponse* instance containing the number of re-encrypted keys of the retrieved connector, and a `NSError*` that indicates if any error occurred.
  */
 - (void) massReencryptAsyncWithDeviceId:(const NSString*)deviceId
                                 options:(const SealdMassReencryptOptions*)options
@@ -895,7 +908,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * so you can call SealdSdk.massReencryptWithDeviceId:options:error: for them.
  *
  * @param forceLocalAccountUpdate Whether to update the local account
- * @param completionHandler A callback called after function execution. This callback take two arguments, an `NSArray` of SealdDeviceMissingKeys instances, containing the ID of the device, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, an `NSArray` of SealdDeviceMissingKeys instances, containing the ID of the device, and a `NSError*` that indicates if any error occurred.
  */
 - (void) devicesMissingKeysAsyncWithForceLocalAccountUpdate:(const BOOL)forceLocalAccountUpdate
                                           completionHandler:(void (^)(NSArray<SealdDeviceMissingKeys*>* devices, NSError*_Nullable error))completionHandler;
@@ -915,7 +928,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  *
  * @param userId The Seald ID of the concerned user.
  * @param position Get the hash at the given position. -1 to get the last. Default to -1.
- * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdGetSigchainResponse` instance containing the hash, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, an SealdGetSigchainResponse instance containing the hash, and a `NSError*` that indicates if any error occurred.
  */
 - (void) getSigchainHashAsyncWithUserId:(const NSString*)userId
                                position:(const NSInteger)position
@@ -940,7 +953,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param userId The Seald ID of the concerned user.
  * @param expectedHash The expected sigchain hash.
  * @param position Position of the sigchain transaction against which to check the hash. -1 to check if the hash exist in the sigchain. Default to -1.
- * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdCheckSigchainResponse` instance containing the response, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, an SealdCheckSigchainResponse instance containing the response, and a `NSError*` that indicates if any error occurred.
  */
 - (void) checkSigchainHashAsyncWithUserId:(const NSString*)userId
                              expectedHash:(const NSString*)expectedHash
@@ -972,7 +985,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param overEncryptionKey TMR over-encryption key. This *MUST* be a cryptographically random NSData of 64 bytes.
  * @param conversionFilters Convert tmr accesses filters. If multiple TMR Accesses with the auth factor, filter out the unwanted ones.
  * @param deleteOnConvert Whether or not to delete the TMR access after conversion.
- * @param completionHandler A callback called after function execution. This callback take two arguments, an `convertTmrAccessesAsync` instance containing the response, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdConvertTmrAccessesResult instance containing the response, and a `NSError*` that indicates if any error occurred.
  */
 - (void) convertTmrAccessesAsync:(const NSString*)tmrJWT
                overEncryptionKey:(const NSData*)overEncryptionKey
@@ -1003,7 +1016,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param authFactor Authentication method of this user, to which SSKS has sent a challenge at the request of your app's server.
  * @param isAdmin Should this TMR temporary key give the group admin status.
  * @param rawOverEncryptionKey TMR over-encryption key. This *MUST* be a cryptographically random buffer of 64 bytes.
- * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdGroupTmrTemporaryKey` instance containing the response, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, an SealdGroupTmrTemporaryKey instance containing the response, and a `NSError*` that indicates if any error occurred.
  */
 - (void) createGroupTMRTemporaryKeyAsyncWithGroupId:(const NSString*)groupId
                                          authFactor:(const SealdTmrAuthFactor*)authFactor
@@ -1031,7 +1044,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param groupId The Id of the group for which to list TMR keys.
  * @param page Page number to fetch.
  * @param all Should list all pages after `page`.
- * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdListedGroupTMRTemporaryKeys` instance containing the response, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdListedGroupTMRTemporaryKeys instance containing the response, and a `NSError*` that indicates if any error occurred.
  */
 - (void) listGroupTMRTemporaryKeysAsyncWithGroupId:(const NSString*)groupId
                                               page:(const NSInteger)page
@@ -1055,7 +1068,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  *
  * @param tmrJWT TMR JWT to use.
  * @param options Option to filter the search results.
- * @param completionHandler A callback called after function execution. This callback take two arguments, an `SealdListedGroupTMRTemporaryKeys` instance containing the response, and a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, an SealdListedGroupTMRTemporaryKeys instance containing the response, and a `NSError*` that indicates if any error occurred.
  */
 - (void) searchGroupTMRTemporaryKeysAsyncWithTmrJWT:(const NSString*)tmrJWT
                                             options:(SealdSearchGroupTMRTemporaryKeys*_Nullable)options
@@ -1086,7 +1099,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  * @param tmrJWT TMR JWT to use
  * @param rawOverEncryptionKey The raw encryption key to use. This *MUST* be a cryptographically random buffer of 64 bytes.
  * @param deleteOnConvert Should the temporary key be deleted after conversion.
- * @param completionHandler A callback called after function execution. This callback take one argument, a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes one argument, a `NSError*` that indicates if any error occurred.
  */
 - (void) convertGroupTMRTemporaryKeyAsyncWithGroupId:(const NSString*)groupId
                                       temporaryKeyId:(const NSString*)temporaryKeyId
@@ -1111,7 +1124,7 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
  *
  * @param groupId The Id of the group for which to delete a TMR key.
  * @param temporaryKeyId Id of the TMR key to delete.
- * @param completionHandler A callback called after function execution. This callback take one argument, a `NSError*` that indicates if any error occurred.
+ * @param completionHandler A callback called after function execution. This callback takes one argument, a `NSError*` that indicates if any error occurred.
  */
 - (void) deleteGroupTMRTemporaryKeyAsyncWithGroupId:(const NSString*)groupId
                                      temporaryKeyId:(const NSString*)temporaryKeyId

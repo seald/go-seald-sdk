@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <JWT/JWT.h>
+#import <SealdSdk/SealdSdk.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -22,6 +23,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString*) signupJWT;
 - (NSString*) connectorJWTWithCustomUserId:(const NSString*)customUserId
                                      appId:(const NSString*)appId;
+- (NSString*) anonymousFindKeyJWTWithRecipients:(const NSArray<NSString*>*)recipients;
+- (NSString*) anonymousCreateMessageJWTWithOwnerId:(NSString*)ownerId
+                                        recipients:(const NSArray<NSString*>*)recipients
+                                     tmrRecipients:(const NSArray<SealdAnonymousTmrRecipient*>*)tmrRecipients;
 @end
 
 NS_ASSUME_NONNULL_END

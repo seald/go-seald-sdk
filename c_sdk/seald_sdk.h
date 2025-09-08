@@ -89,6 +89,57 @@ char* SealdStringArray_Get(SealdStringArray* array, int i);
 int SealdStringArray_Size(SealdStringArray* array);
 
 
+// Helper SealdAuthFactorArray
+
+/**
+ * SealdAuthFactorArray holds an array of strings.
+ */
+typedef struct SealdAuthFactorArray SealdAuthFactorArray;
+
+/**
+ * SealdAuthFactorArray instantiates a new SealdAuthFactorArray.
+ *
+ * @return The newly created SealdAuthFactorArray.
+ */
+SealdAuthFactorArray* SealdAuthFactorArray_New();
+
+/**
+ * SealdAuthFactorArray_Free frees the memory allocated for the SealdAuthFactorArray itself, and all strings contained therein.
+ *
+ * @param array The SealdAuthFactorArray to free.
+ */
+void SealdAuthFactorArray_Free(SealdAuthFactorArray* array);
+
+/**
+ * SealdAuthFactorArray_Add adds a given string to the array.
+ * SealdAuthFactorArray_Add does *not* take ownership of the given strings. It creates a copy for itself.
+ *
+ * @param array The SealdAuthFactorArray to add a string to.
+ * @param authFactorType The type of the authFactor to add.
+ * @param authFactorValue The value of the authFactor to add.
+ */
+void SealdAuthFactorArray_Add(SealdAuthFactorArray* array, char* authFactorType, char* authFactorValue);
+
+/**
+ * SealdAuthFactorArray_Get returns the string at position i.
+ * The caller is responsible for calling `free` on this returned string when no longer necessary.
+ *
+ * @param array The SealdAuthFactorArray from which to retrieve an element.
+ * @param i The position from which we want to retrieve the string.
+ * @param authFactorType A pointer to which to write the authFactor type at position i.
+ * @param authFactorValue A pointer to which to write the authFactor value at position i.
+ */
+void SealdAuthFactorArray_Get(SealdAuthFactorArray* array, int i, char** authFactorType, char** authFactorValue);
+
+/**
+ * SealdAuthFactorArray_Size returns the size of the given SealdAuthFactorArray.
+ *
+ * @param array The SealdAuthFactorArray for which to retrieve the size.
+ * @return The size of the given SealdAuthFactorArray.
+ */
+int SealdAuthFactorArray_Size(SealdAuthFactorArray* array);
+
+
 // Helper SealdActionStatus
 
 /**
@@ -170,9 +221,13 @@ SealdActionStatus* SealdActionStatusArray_Get(SealdActionStatusArray* array, int
  */
 typedef struct {
     /** The Seald recipients the revocation operation acted on */
-    SealdActionStatusArray* Recipients;
+    SealdActionStatusArray* SealdIds;
     /** The proxy sessions the revocation operation acted on */
     SealdActionStatusArray* ProxySessions;
+    /** The SymEncKey the revocation operation acted on */
+    SealdActionStatusArray* SymEncKeyIds;
+    /** The TMR access the revocation operation acted on */
+    SealdActionStatusArray* TMRAccess;
 } SealdRevokeResult;
 
 /**
@@ -181,6 +236,342 @@ typedef struct {
  * @param d The SealdRevokeResult to free.
  */
 void SealdRevokeResult_Free(SealdRevokeResult* d);
+
+
+// Helper SealdSealdRecipient
+
+/**
+ * SealdSealdRecipient holds information about a recipient of a session.
+ */
+typedef struct {
+    /** The Seald ID of the user */
+    char* SealdId;
+    /** The IDs of proxy sessions to revoke from this session */
+    char* AddedById;
+    /** Time of the first access to the session */
+    long long ReadFirst;
+    /** Time of the last access to the session */
+    long long ReadLast;
+    /** Number of accesses to the session */
+    int ReadTime;
+    /** The read right for the recipient */
+    int ReadRight;
+    /** The forward right for the recipient */
+    int ForwardRight;
+    /** The revoke right for the recipient */
+    int RevokeRight;
+} SealdSealdRecipient;
+
+/**
+ * SealdSealdRecipient_Free frees the memory allocated for the SealdSealdRecipient itself, and all fields within.
+ *
+ * @param ssr The SealdSealdRecipient to free.
+ */
+void SealdSealdRecipient_Free(SealdSealdRecipient* ssr);
+
+
+// Helper SealdSealdRecipientArray
+
+/**
+ * SealdSealdRecipientArray holds an array of SealdSealdRecipient instances.
+ */
+typedef struct SealdSealdRecipientArray SealdSealdRecipientArray;
+
+/**
+ * SealdSealdRecipientArray instantiates a new SealdSealdRecipientArray.
+ *
+ * @return The newly created SealdSealdRecipientArray.
+ */
+SealdSealdRecipientArray* SealdSealdRecipientArray_New();
+
+/**
+ * SealdSealdRecipientArray_Add adds a given SealdSealdRecipient instance to the array.
+ * SealdSealdRecipientArray_Add *takes ownership* of the given SealdSealdRecipient.
+ * The caller *must not* use it anymore, and must not call `free` on it.
+ *
+ * @param array The SealdSealdRecipientArray to add a SealdSealdRecipient instance to.
+ * @param d The SealdSealdRecipient instance to add.
+ */
+void SealdSealdRecipientArray_Add(SealdSealdRecipientArray* array, SealdSealdRecipient* d);
+
+/**
+ * SealdSealdRecipientArray_Free frees the memory allocated for the SealdSealdRecipientArray itself, and all SealdSealdRecipient instances contained therein.
+ *
+ * @param array The SealdSealdRecipientArray to free.
+ */
+void SealdSealdRecipientArray_Free(SealdSealdRecipientArray* array);
+
+/**
+ * SealdSealdRecipientArray_Size returns the size of the given SealdSealdRecipientArray.
+ *
+ * @param array The SealdSealdRecipientArray for which to retrieve the size.
+ * @return The size of the given SealdSealdRecipientArray.
+ */
+int SealdSealdRecipientArray_Size(SealdSealdRecipientArray* array);
+
+/**
+ * SealdSealdRecipientArray_Get returns a reference to the SealdSealdRecipient instance at position i.
+ * The caller *must not* call `free` on it.
+ *
+ * @param array The SealdSealdRecipientArray from which to retrieve an element.
+ * @param i The position from which we want to retrieve the SealdSealdRecipient instance.
+ * @return The SealdSealdRecipient instance at position i.
+ */
+SealdSealdRecipient* SealdSealdRecipientArray_Get(SealdSealdRecipientArray* array, int i);
+
+
+// Helper SealdTMRAccess
+
+/**
+ * SealdTMRAccess holds information about a TMR access.
+ */
+typedef struct {
+    /** The TMR access ID */
+    char* TmrAccessId;
+    /** Date of creation */
+    long long Created;
+    /** The type of authentication factor. 'EM' or 'SMS' */
+    char* AuthFactorType;
+    /** The read right for the recipient */
+    int ReadRight;
+    /** The forward right for the recipient */
+    int ForwardRight;
+    /** The revoke right for the recipient */
+    int RevokeRight;
+} SealdTMRAccess;
+
+/**
+ * SealdTMRAccess_Free frees the memory allocated for the SealdTMRAccess itself, and all fields within.
+ *
+ * @param tmra The SealdTMRAccess to free.
+ */
+void SealdTMRAccess_Free(SealdTMRAccess* tmra);
+
+
+// Helper SealdTMRAccessArray
+
+/**
+ * SealdTMRAccessArray holds an array of SealdTMRAccess instances.
+ */
+typedef struct SealdTMRAccessArray SealdTMRAccessArray;
+
+/**
+ * SealdTMRAccessArray instantiates a new SealdTMRAccessArray.
+ *
+ * @return The newly created SealdTMRAccessArray.
+ */
+SealdTMRAccessArray* SealdTMRAccessArray_New();
+
+/**
+ * SealdTMRAccessArray_Add adds a given SealdTMRAccess instance to the array.
+ * SealdTMRAccessArray_Add *takes ownership* of the given SealdTMRAccess.
+ * The caller *must not* use it anymore, and must not call `free` on it.
+ *
+ * @param array The SealdTMRAccessArray to add a SealdTMRAccess instance to.
+ * @param d The SealdTMRAccess instance to add.
+ */
+void SealdTMRAccessArray_Add(SealdTMRAccessArray* array, SealdTMRAccess* d);
+
+/**
+ * SealdTMRAccessArray_Free frees the memory allocated for the SealdTMRAccessArray itself, and all SealdTMRAccess instances contained therein.
+ *
+ * @param array The SealdTMRAccessArray to free.
+ */
+void SealdTMRAccessArray_Free(SealdTMRAccessArray* array);
+
+/**
+ * SealdTMRAccessArray_Size returns the size of the given SealdTMRAccessArray.
+ *
+ * @param array The SealdTMRAccessArray for which to retrieve the size.
+ * @return The size of the given SealdTMRAccessArray.
+ */
+int SealdTMRAccessArray_Size(SealdTMRAccessArray* array);
+
+/**
+ * SealdTMRAccessArray_Get returns a reference to the SealdTMRAccess instance at position i.
+ * The caller *must not* call `free` on it.
+ *
+ * @param array The SealdTMRAccessArray from which to retrieve an element.
+ * @param i The position from which we want to retrieve the SealdTMRAccess instance.
+ * @return The SealdTMRAccess instance at position i.
+ */
+SealdTMRAccess* SealdTMRAccessArray_Get(SealdTMRAccessArray* array, int i);
+
+
+// Helper SealdProxySession
+
+/**
+ * SealdProxySession holds information about a proxy session.
+ */
+typedef struct {
+    /** The ID proxy access  */
+    char* ProxySessionId;
+    /** The ID of the proxy session */
+    char* SessionId;
+    /** Date of creation */
+    long long Created;
+    /** The read right for the recipient */
+    int ReadRight;
+    /** The forward right for the recipient */
+    int ForwardRight;
+    /** The revoke right for the recipient */
+    int RevokeRight;
+} SealdProxySession;
+
+/**
+ * SealdProxySession_Free frees the memory allocated for the SealdProxySession itself, and all fields within.
+ *
+ * @param ps The SealdProxySession to free.
+ */
+void SealdProxySession_Free(SealdProxySession* ps);
+
+
+// Helper SealdProxySessionArray
+
+/**
+ * SealdProxySessionArray holds an array of SealdProxySession instances.
+ */
+typedef struct SealdProxySessionArray SealdProxySessionArray;
+
+/**
+ * SealdProxySessionArray instantiates a new SealdProxySessionArray.
+ *
+ * @return The newly created SealdProxySessionArray.
+ */
+SealdProxySessionArray* SealdProxySessionArray_New();
+
+/**
+ * SealdProxySessionArray_Add adds a given SealdProxySession instance to the array.
+ * SealdProxySessionArray_Add *takes ownership* of the given SealdProxySession.
+ * The caller *must not* use it anymore, and must not call `free` on it.
+ *
+ * @param array The SealdProxySessionArray to add a SealdProxySession instance to.
+ * @param d The SealdProxySession instance to add.
+ */
+void SealdProxySessionArray_Add(SealdProxySessionArray* array, SealdProxySession* d);
+
+/**
+ * SealdProxySessionArray_Free frees the memory allocated for the SealdProxySessionArray itself, and all SealdProxySession instances contained therein.
+ *
+ * @param array The SealdProxySessionArray to free.
+ */
+void SealdProxySessionArray_Free(SealdProxySessionArray* array);
+
+/**
+ * SealdProxySessionArray_Size returns the size of the given SealdProxySessionArray.
+ *
+ * @param array The SealdProxySessionArray for which to retrieve the size.
+ * @return The size of the given SealdProxySessionArray.
+ */
+int SealdProxySessionArray_Size(SealdProxySessionArray* array);
+
+/**
+ * SealdProxySessionArray_Get returns a reference to the SealdProxySession instance at position i.
+ * The caller *must not* call `free` on it.
+ *
+ * @param array The SealdProxySessionArray from which to retrieve an element.
+ * @param i The position from which we want to retrieve the SealdProxySession instance.
+ * @return The SealdProxySession instance at position i.
+ */
+SealdProxySession* SealdProxySessionArray_Get(SealdProxySessionArray* array, int i);
+
+
+// Helper SealdSymEncKey
+
+/**
+ * SealdSymEncKey holds information about a SymEncKey.
+ */
+typedef struct {
+    /** The SymEncKey ID */
+    char* SymEncKeyId;
+    /** The read right for the recipient */
+    int ReadRight;
+    /** The forward right for the recipient */
+    int ForwardRight;
+    /** The revoke right for the recipient */
+    int RevokeRight;
+} SealdSymEncKey;
+
+/**
+ * SealdSymEncKey_Free frees the memory allocated for the SealdSymEncKey itself, and all fields within.
+ *
+ * @param sek The SealdSymEncKey to free.
+ */
+void SealdSymEncKey_Free(SealdSymEncKey* sek);
+
+
+// Helper SealdSymEncKeyArray
+
+/**
+ * SealdSymEncKeyArray holds an array of SealdSymEncKey instances.
+ */
+typedef struct SealdSymEncKeyArray SealdSymEncKeyArray;
+
+/**
+ * SealdSymEncKeyArray instantiates a new SealdSymEncKeyArray.
+ *
+ * @return The newly created SealdSymEncKeyArray.
+ */
+SealdSymEncKeyArray* SealdSymEncKeyArray_New();
+
+/**
+ * SealdSymEncKeyArray_Add adds a given SealdSymEncKey instance to the array.
+ * SealdSymEncKeyArray_Add *takes ownership* of the given SealdSymEncKey.
+ * The caller *must not* use it anymore, and must not call `free` on it.
+ *
+ * @param array The SealdSymEncKeyArray to add a SealdSymEncKey instance to.
+ * @param d The SealdSymEncKey instance to add.
+ */
+void SealdSymEncKeyArray_Add(SealdSymEncKeyArray* array, SealdSymEncKey* d);
+
+/**
+ * SealdSymEncKeyArray_Free frees the memory allocated for the SealdSymEncKeyArray itself, and all SealdSymEncKey instances contained therein.
+ *
+ * @param array The SealdSymEncKeyArray to free.
+ */
+void SealdSymEncKeyArray_Free(SealdSymEncKeyArray* array);
+
+/**
+ * SealdSymEncKeyArray_Size returns the size of the given SealdSymEncKeyArray.
+ *
+ * @param array The SealdSymEncKeyArray for which to retrieve the size.
+ * @return The size of the given SealdSymEncKeyArray.
+ */
+int SealdSymEncKeyArray_Size(SealdSymEncKeyArray* array);
+
+/**
+ * SealdSymEncKeyArray_Get returns a reference to the SealdSymEncKey instance at position i.
+ * The caller *must not* call `free` on it.
+ *
+ * @param array The SealdSymEncKeyArray from which to retrieve an element.
+ * @param i The position from which we want to retrieve the SealdSymEncKey instance.
+ * @return The SealdSymEncKey instance at position i.
+ */
+SealdSymEncKey* SealdSymEncKeyArray_Get(SealdSymEncKeyArray* array, int i);
+
+
+// Helper SealdRecipientsList
+
+/**
+ * SealdRecipientsList represents the result of a revocation operation.
+ */
+typedef struct {
+    /** The Seald recipients that can access the session */
+    SealdSealdRecipientArray* SealdRecipients;
+    /** The TMR access that can access the session */
+    SealdTMRAccessArray* TMRAccesses;
+    /** The proxy sessions that can access the session */
+    SealdProxySessionArray* ProxySessions;
+    /** The SymEncKey that can access the session */
+    SealdSymEncKeyArray* SymEncKeys;
+} SealdRecipientsList;
+
+/**
+ * SealdRecipientsList_Free frees the memory allocated for the SealdRecipientsList itself, and all fields within.
+ *
+ * @param lr The SealdRecipientsList to free.
+ */
+void SealdRecipientsList_Free(SealdRecipientsList* lr);
 
 
 // Helper SealdClearFile
@@ -760,8 +1151,12 @@ typedef enum {
     SealdEncryptionSessionRetrievalViaGroup, // 2
     /** The session was retrieved through a proxy session. */
     SealdEncryptionSessionRetrievalViaProxy, // 3
+    /** The session was retrieved with a sealdMessage that include the encrypted SymKey. Should never happen. */
+    SealdEncryptionSessionRetrievalLocal, // 4
+    /** The session was retrieved through a SymEncKey. */
+    SealdEncryptionSessionRetrievalViaSymEncKey, // 5
     /** The session was retrieved through a TMR access. */
-    SealdEncryptionSessionRetrievalViaTmrAccess // 4
+    SealdEncryptionSessionRetrievalViaTmrAccess // 6
 } SealdEncryptionSessionRetrievalFlow;
 
 
@@ -883,11 +1278,24 @@ int SealdEncryptionSession_AddProxySession(SealdEncryptionSession* es, char* pro
  * @param es The SealdEncryptionSession instance.
  * @param recipientsIds The Seald IDs of users to revoke from this session.
  * @param proxySessionsIds The IDs of proxy sessions to revoke from this session.
+ * @param symEncKeysIds The IDs of symEncKeys to revoke from this session.
+ * @param tmrAccessIds The IDs of tmrAccesses to revoke from this session.
+ * @param tmrAccessAuthFactors The value of tmrAccesses to revoke from this session.
  * @param result A pointer to which to write the response.
  * @param error A pointer to a SealdError* where details will be stored in case of error.
  * @return Error code: `-1` if an error happened, `0` for success.
  */
-int SealdEncryptionSession_RevokeRecipients(SealdEncryptionSession* es, SealdStringArray* recipientsIds, SealdStringArray* proxySessionsIds, SealdRevokeResult** result, SealdError** error);
+int SealdEncryptionSession_RevokeRecipients(SealdEncryptionSession* es, SealdStringArray* recipientsIds, SealdStringArray* proxySessionsIds, SealdStringArray* symEncKeysIds, SealdStringArray* tmrAccessIds, SealdAuthFactorArray* tmrAccessAuthFactors, SealdRevokeResult** result, SealdError** error);
+
+/**
+ * List all recipients from this session.
+ *
+ * @param es The SealdEncryptionSession instance.
+ * @param result A pointer to which to write the response.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdEncryptionSession_ListRecipients(SealdEncryptionSession* es, SealdRecipientsList** result, SealdError** error);
 
 /**
  * Revoke this session entirely.
@@ -1022,6 +1430,21 @@ int SealdEncryptionSession_AddTmrAccess(SealdEncryptionSession* es, char* authFa
  * @return
  */
 int SealdEncryptionSession_AddMultipleTmrAccesses(SealdEncryptionSession* es, SealdTmrRecipientsWithRightsArray* recipients, SealdActionStatusArray** result, SealdError** error);
+
+/**
+ * Serialize the EncryptionSession to a string.
+ * This is for advanced use.
+ * May be used to keep sessions in a cache.
+ * WARNING: a user could use this cache to work around being revoked. Use with caution.
+ * WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+ * to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+ *
+ * @param es The SealdEncryptionSession instance.
+ * @param result A pointer to which to write the resulting serialized encryption session.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdEncryptionSession_Serialize(SealdEncryptionSession* es, char** result, SealdError** error);
 
 
 // Helper SealdEncryptionSessionArray
@@ -1594,6 +2017,18 @@ int SealdSdk_RetrieveEncryptionSessionByTmr(SealdSdk* sealdSdk, char* tmrJWT, ch
  */
 int SealdSdk_RetrieveMultipleEncryptionSessions(SealdSdk* sealdSdk, SealdStringArray* sessionIds, int useCache, int lookupProxyKey, int lookupGroupKey, SealdEncryptionSessionArray** result, SealdError** error);
 
+/**
+ * Deserialize a serialized session.
+ * For advanced use.
+ *
+ * @param sealdSdk The SealdSdk instance.
+ * @param serializedSession The serialized encryption session to deserialize.
+ * @param result A pointer to which to write the resulting deserialized encryption session.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdSdk_DeserializeEncryptionSession(SealdSdk* sealdSdk, char* serializedSession, SealdEncryptionSession** result, SealdError** error);
+
 /* Connectors */
 
 /**
@@ -2059,5 +2494,241 @@ int SealdUtils_PKCS1DERtoPKCS8(char* pkcs1DerRsaKey, char** result, SealdError**
  * Internal function. Do not use directly.
  */
 int SealdUtils_GeneratePrivateKey(int size, char** result, SealdError** error);
+
+// Helper SealdAnonymousInitializeOptions
+
+/**
+ * SealdAnonymousInitializeOptions is the main options object for creating an anonymous SDK instance
+ */
+typedef struct {
+    /** ApiURL is the Seald server for this instance to use. This value is given on your Seald dashboard. */
+    char* ApiURL;
+    /** AppId is the ID given by the Seald server to your app. This value is given on your Seald dashboard. */
+    char* AppId;
+    /** LogLevel is the minimum level of logs you want. All logs of this level or above will be displayed. `-1`: Trace; `0`: Debug; `1`: Info; `2`: Warn; `3`: Error; `4`: Fatal; `5`: Panic; `6`: NoLevel; `7`: Disabled. */
+    signed char LogLevel;
+    /** LogNoColor should be set to `0` if you want to enable colors in the log output, `1` if you don't. */
+    int LogNoColor;
+    /** InstanceName is an arbitrary name to give to this Seald instance. Can be useful for debugging when multiple instances are running in parallel, as it is added to logs. */
+    char* InstanceName;
+    /** Platform is a name that references the platform on which the SDK is running. */
+    char* Platform;
+} SealdAnonymousInitializeOptions;
+
+
+// Helper SealdAnonymousTmrRecipientsArray
+
+/**
+ * SealdAnonymousTmrRecipientsArray holds an array of anonymous TMR recipients.
+ */
+typedef struct SealdAnonymousTmrRecipientsArray SealdAnonymousTmrRecipientsArray;
+
+/**
+ * SealdAnonymousTmrRecipientsArray_New instantiates a new SealdAnonymousTmrRecipientsArray.
+ *
+ * @return The newly created SealdAnonymousTmrRecipientsArray.
+ */
+SealdAnonymousTmrRecipientsArray* SealdAnonymousTmrRecipientsArray_New();
+
+/**
+ * SealdAnonymousTmrRecipientsArray_Free frees the memory allocated for the SealdAnonymousTmrRecipientsArray itself, and all SealdAnonymousTmrRecipients contained therein.
+ *
+ * @param array The SealdAnonymousTmrRecipientsArray to free.
+ */
+void SealdAnonymousTmrRecipientsArray_Free(SealdAnonymousTmrRecipientsArray* array);
+
+/**
+ * SealdAnonymousTmrRecipientsArray_Add adds a tmr recipient to the array.
+ * SealdAnonymousTmrRecipientsArray_Add *does not take ownership* of the given strings and booleans. It creates copies for itself.
+ *
+ * @param array The SealdAnonymousTmrRecipientsArray to add the recipients to.
+ * @param authFactorType The type of authentication factor. 'EM' or 'SMS'
+ * @param authFactorValue The value of authentication factor.
+ * @param overEncryptionKey The TMR over-encryption key. This *MUST* be a cryptographically random buffer of 64 bytes.
+ * @param overEncryptionKeyLen The length of overEncryptionKey.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ */
+void SealdAnonymousTmrRecipientsArray_Add(SealdAnonymousTmrRecipientsArray* array, char* authFactorType, char* authFactorValue, unsigned char* overEncryptionKey, int overEncryptionKeyLen);
+
+/**
+ * SealdAnonymousTmrRecipientsArray_Get returns the TMR recipient at position i.
+ * The caller is responsible for calling `free` on the returned char** when no longer necessary.
+ *
+ * @param array The SealdAnonymousTmrRecipientsArray from which to retrieve the recipient.
+ * @param i The position from which we want to retrieve the recipient.
+ * @param authFactorType A pointer to which to write the recipient authentication factor type at position i.
+ * @param authFactorValue A pointer to which to write the recipient authentication factor value at position i.
+ * @param overEncryptionKey The TMR over-encryption key. This *MUST* be a cryptographically random buffer of 64 bytes.
+ * @param overEncryptionKeyLen The length of overEncryptionKey.
+ */
+void SealdAnonymousTmrRecipientsArray_Get(SealdAnonymousTmrRecipientsArray* array, int i, char** authFactorType, char** authFactorValue, unsigned char** overEncryptionKey, int* overEncryptionKeyLen, int* recipientRightRead, int* recipientRightForward, int* recipientRightRevoke);
+
+/**
+ * SealdAnonymousTmrRecipientsArray_Size returns the size of the given SealdAnonymousTmrRecipientsArray.
+ *
+ * @param array The SealdAnonymousTmrRecipientsArray for which to retrieve the size.
+ * @return The size of the given SealdAnonymousTmrRecipientsArray.
+ */
+int SealdAnonymousTmrRecipientsArray_Size(SealdAnonymousTmrRecipientsArray* array);
+
+
+// Class Anonymous Encryption Session
+
+/**
+ * SealdAnonymousEncryptionSession represents an anonymous encryption session, with which you can then encrypt / decrypt multiple messages.
+ * This should not be created directly, and should be created with SealdAnonymousSdk_CreateAnonymousEncryptionSession.
+ */
+typedef struct SealdAnonymousEncryptionSession SealdAnonymousEncryptionSession;
+
+/**
+ * SealdAnonymousEncryptionSession_Id returns the session ID of this anonymous encryption session.
+ *
+ * @param aes The anonymous encryption session instance for which to return the session ID.
+ * @return The session ID of the given encryption session instance. The caller must call `free` on this when no longer needed.
+ */
+char* SealdAnonymousEncryptionSession_Id(SealdAnonymousEncryptionSession* aes);
+
+/**
+ * SealdAnonymousEncryptionSession_Free frees the memory allocated for the SealdAnonymousEncryptionSession_Free.
+ *
+ * @param aes The anonymous encryption session instance to free.
+ */
+void SealdAnonymousEncryptionSession_Free(SealdAnonymousEncryptionSession* aes);
+
+/**
+ * Encrypt a clear-text string into an encrypted message, for the recipients of this session.
+ *
+ * @param aes The SealdAnonymousEncryptionSession instance.
+ * @param clearMessage The message to encrypt.
+ * @param result A pointer to which to write the resulting encrypted message.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdAnonymousEncryptionSession_EncryptMessage(SealdAnonymousEncryptionSession* aes, char* clearMessage, char** result, SealdError** error);
+
+/**
+ * Decrypt an encrypted message string into the corresponding clear-text string.
+ *
+ * @param aes The SealdAnonymousEncryptionSession instance.
+ * @param encryptedMessage The encrypted message to decrypt.
+ * @param result A pointer to which to write the resulting decrypted message.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdAnonymousEncryptionSession_DecryptMessage(SealdAnonymousEncryptionSession* aes, char* encryptedMessage, char** result, SealdError** error);
+
+/**
+ * Encrypt a clear-text file into an encrypted file, for the recipients of this session.
+ *
+ * @param aes The SealdAnonymousEncryptionSession instance.
+ * @param clearFile An array of bytes of the clear-text content of the file to encrypt.
+ * @param clearFileLen The length of clearFile.
+ * @param filename The name of the file to encrypt.
+ * @param result A pointer to which to write the resulting encrypted file.
+ * @param resultLen A pointer to which to write the length of result.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdAnonymousEncryptionSession_EncryptFile(SealdAnonymousEncryptionSession* aes, unsigned char* clearFile, int clearFileLen, char* filename, unsigned char** result, int* resultLen, SealdError** error);
+
+/**
+ * Decrypts an encrypted file into the corresponding clear-text file.
+ *
+ * @param aes The SealdAnonymousEncryptionSession instance.
+ * @param encryptedFile An array of bytes of the content of the encrypted file to decrypt.
+ * @param encryptedFileLen The length of encryptedFile.
+ * @param result A pointer to a SealdClearFile* to store the resulting decrypted file.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdAnonymousEncryptionSession_DecryptFile(SealdAnonymousEncryptionSession* aes, unsigned char* encryptedFile, int encryptedFileLen, SealdClearFile** result, SealdError** error);
+
+/**
+ * Encrypt a clear-text file into an encrypted file, for the recipients of this session.
+ *
+ * @param aes The SealdAnonymousEncryptionSession instance.
+ * @param clearFilePath The path of the file to encrypt.
+ * @param result A pointer to a char pointer where the path of the encrypted file will be stored.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdAnonymousEncryptionSession_EncryptFileFromPath(SealdAnonymousEncryptionSession* aes, char* clearFilePath, char** result, SealdError** error);
+
+/**
+ * Decrypts an encrypted file into the corresponding clear-text file.
+ *
+ * @param aes The SealdAnonymousEncryptionSession instance.
+ * @param encryptedFilePath The path of the file to encrypted file to decrypt.
+ * @param result A pointer to a char pointer where the path of the decrypted file will be stored.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdAnonymousEncryptionSession_DecryptFileFromPath(SealdAnonymousEncryptionSession* aes, char* encryptedFilePath, char** result, SealdError** error);
+
+/**
+ * Serialize the SealdAnonymousEncryptionSession to a string.
+ * This is for advanced use.
+ * May be used to keep sessions in a cache.
+ * WARNING: a user could use this cache to work around being revoked. Use with caution.
+ * WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+ * to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+ *
+ * @param aes The SealdAnonymousEncryptionSession instance.
+ * @param result A pointer to which to write the resulting serialized encryption session.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdAnonymousEncryptionSession_Serialize(SealdAnonymousEncryptionSession* aes, char** result, SealdError** error);
+
+
+// Class Anonymous SDK
+
+/**
+ * This is the main class for the Seald anonymous SDK. It represents an instance of the Seald Anonymous SDK.
+ */
+typedef struct SealdAnonymousSdk SealdAnonymousSdk;
+
+/**
+ * Initialize a Seald anonyous SDK Instance.
+ *
+ * @param options A pointer to a SealdAnonymousInitializeOptions instance.
+ * @param result A pointer to a SealdAnonymousSdk* to store the created anonymous SDK instance.
+ */
+void SealdAnonymousSdk_CreateAnonymousSDK(SealdAnonymousInitializeOptions* options, SealdAnonymousSdk** result);
+
+/**
+ * Close the current anonymous SDK instance. This frees the memory.
+ * After calling close, the instance cannot be used anymore.
+ *
+ * @param sealdAnonymousSdk The SealdAnonymousSdk instance.
+ */
+void SealdAnonymousSdk_Close(SealdAnonymousSdk* sealdAnonymousSdk);
+
+/**
+ * Create an anonymous encryption session, and returns the associated SealdAnonymousEncryptionSession instance,
+ * with which you can then encrypt / decrypt multiple messages.
+ *
+ * @param sealdAnonymousSdk The SealdAnonymousSdk instance.
+ * @param encryptionToken Mandatory. The JWT used for EncryptionSession creation.
+ * @param getKeysToken Optional. The JWT used for the key retrieval. If not supplied, the key retrieval will use `encryptionToken`.
+ * @param recipients The Seald IDs of users who should be able to retrieve this session.
+ * @param tmrRecipients The TMR recipients who should be able to retrieve this session.
+ * @param result A pointer where to store the created SealdAnonymousEncryptionSession instance.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdAnonymousSdk_CreateAnonymousEncryptionSession(SealdAnonymousSdk* sealdAnonymousSdk, char* encryptionToken, char* getKeysToken, SealdStringArray* recipients, SealdAnonymousTmrRecipientsArray* tmrRecipients, SealdAnonymousEncryptionSession** result, SealdError** error);
+
+/**
+ * Deserialize a serialized session.
+ * For advanced use.
+ *
+ * @param sealdAnonymousSdk The SealdAnonymousSdk instance.
+ * @param serializedSession The serialized encryption session to deserialize.
+ * @param result A pointer to which to write the resulting deserialized encryption session.
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return Error code: `-1` if an error happened, `0` for success.
+ */
+int SealdAnonymousSdk_DeserializeAnonymousEncryptionSession(SealdAnonymousSdk* sealdAnonymousSdk, char* serializedSession, SealdAnonymousEncryptionSession** result, SealdError** error);
 
 #endif // LIB_SEALD_SDK_H

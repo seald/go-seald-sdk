@@ -6,7 +6,7 @@ project 'SealdSDK demo app ios'
 target 'SealdSDK demo app ios_Example' do
   # pod 'SealdSdk', '0.4.0-beta.2'
   pod 'SealdSdk', :path => '../'
-  pod 'JWT', '3.0.0-beta.3'
+  pod 'JWT', '3.0.0-beta.14'
 
   # This fixes the build of Base64 (dependency of `JWT`) on certain macs.
   # Should not be necessary in an actual app which uses the SealdSDK,

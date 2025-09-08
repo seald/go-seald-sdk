@@ -6,8 +6,8 @@
 //  Copyright © 2023 Seald SAS. All rights reserved.
 //
 
-#ifndef Utils_h
-#define Utils_h
+#ifndef SealdUtils_h
+#define SealdUtils_h
 
 #import <Foundation/Foundation.h>
 #import <SealdSdkInternals/SealdSdkInternals.h>
@@ -49,4 +49,4 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-#endif /* Utils_h */
+#endif /* SealdUtils_h */

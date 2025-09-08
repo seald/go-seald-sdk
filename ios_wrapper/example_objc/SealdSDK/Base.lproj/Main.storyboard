@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="whP-gf-Uak">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23727" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="whP-gf-Uak">
     <device id="retina5_5" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23721"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -21,16 +21,16 @@
                         <autoresizingMask key="autoresizingMask" flexibleMinX="YES" widthSizable="YES" flexibleMaxX="YES" heightSizable="YES"/>
                         <subviews>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="X2c-au-27x">
-                                <rect key="frame" x="40" y="39.999999999999993" width="267" height="101.33333333333331"/>
+                                <rect key="frame" x="40" y="40.000000000000007" width="275.33333333333331" height="121.66666666666669"/>
                                 <subviews>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="version: ..." lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="bhP-GG-Szu" userLabel="Version Label">
-                                        <rect key="frame" x="0.0" y="0.0" width="267" height="20.333333333333332"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="275.33333333333331" height="20.333333333333332"/>
                                         <fontDescription key="fontDescription" name=".AppleSystemUIFont" family=".AppleSystemUIFont" pointSize="17"/>
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <view contentMode="top" placeholderIntrinsicWidth="267" placeholderIntrinsicHeight="50.000000000000007" translatesAutoresizingMaskIntoConstraints="NO" id="u8h-88-L2e" userLabel="Spacer">
-                                        <rect key="frame" x="0.0" y="20.333333333333336" width="267" height="20"/>
+                                        <rect key="frame" x="0.0" y="20.333333333333336" width="275.33333333333331" height="20"/>
                                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                                         <rect key="contentStretch" x="0.0" y="0.0" width="0.0" height="0.0"/>
                                         <constraints>
@@ -38,19 +38,25 @@
                                         </constraints>
                                     </view>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="test SDK: app starting..." lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="eyy-99-cOh">
-                                        <rect key="frame" x="0.0" y="40.333333333333329" width="267" height="20.333333333333329"/>
+                                        <rect key="frame" x="0.0" y="40.333333333333329" width="275.33333333333331" height="20.333333333333329"/>
+                                        <fontDescription key="fontDescription" name=".AppleSystemUIFont" family=".AppleSystemUIFont" pointSize="17"/>
+                                        <nil key="textColor"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="test Anonymous SDK: app starting..." lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="RdS-uY-uzi">
+                                        <rect key="frame" x="0.0" y="60.666666666666679" width="275.33333333333331" height="20.333333333333336"/>
                                         <fontDescription key="fontDescription" name=".AppleSystemUIFont" family=".AppleSystemUIFont" pointSize="17"/>
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="test SSKS Password: app starting..." textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="qWF-2f-y96">
-                                        <rect key="frame" x="0.0" y="60.666666666666679" width="267" height="20.333333333333336"/>
+                                        <rect key="frame" x="0.0" y="81" width="275.33333333333331" height="20.333333333333329"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
                                     </label>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="test SSKS TMR: app starting..." textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Htx-BP-8XR">
-                                        <rect key="frame" x="0.0" y="81" width="267" height="20.333333333333329"/>
+                                        <rect key="frame" x="0.0" y="101.33333333333334" width="275.33333333333331" height="20.333333333333329"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <nil key="textColor"/>
                                         <nil key="highlightedColor"/>
@@ -65,6 +71,7 @@
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="testAnonymousSdkLabel" destination="RdS-uY-uzi" id="BTX-cI-0R0"/>
                         <outlet property="testSdkLabel" destination="eyy-99-cOh" id="Vx5-wN-VAt"/>
                         <outlet property="testSsksPasswordLabel" destination="qWF-2f-y96" id="0ga-4t-sp2"/>
                         <outlet property="testSsksTmrLabel" destination="Htx-BP-8XR" id="MXR-TL-i3f"/>

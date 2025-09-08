@@ -107,6 +107,43 @@ String getConnectorJwt(customUserId) {
       algorithm: JWTAlgorithm.HS256);
 }
 
+String anonymousFindKeyJWT(List<String> recipients) {
+  // Create a json web token
+  // No 'jti' for the 'find keys' JWT: the request may be paginated, so done in multiple API calls
+  final JWT jwt = JWT({
+    "iss": testCredentials["jwt_shared_secret_id"]!,
+    "iat": DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    "scopes": [1],
+    "recipients": recipients
+  });
+
+  return jwt.sign(SecretKey(testCredentials["jwt_shared_secret"]!),
+      algorithm: JWTAlgorithm.HS256);
+}
+
+String anonymousCreateMessageJWT(String owner, List<String> recipients,
+    {List<SealdAnonymousTmrRecipient>? tmrRecipients}) {
+  // Create a json web token
+  final JWT jwt = JWT({
+    "iss": testCredentials["jwt_shared_secret_id"]!,
+    "jti": base64.encode(randomBuffer(16)),
+    "iat": DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    "scopes": [0],
+    "owner": owner,
+    "recipients": recipients,
+    "tmr_recipients": tmrRecipients
+            ?.map((recipient) => {
+                  "auth_factor_value": recipient.value,
+                  "auth_factor_type": recipient.type
+                })
+            .toList() ??
+        []
+  });
+
+  return jwt.sign(SecretKey(testCredentials["jwt_shared_secret"]!),
+      algorithm: JWTAlgorithm.HS256);
+}
+
 void assertEqual(actual, expected) {
   if (actual != expected) {
     print('Assert fail: expected $expected, got $actual');
@@ -153,6 +190,168 @@ Future<void> assertThrowsAsync(
   throw AssertionError('Assertion failed');
 }
 
+Future<bool> testSealdAnonymousSdk() async {
+  print('Starting Anonymous SDK tests...');
+  try {
+    // Create classic SDK users
+    final SealdSdk sdkClassicUser = SealdSdk(
+      apiURL: testCredentials["api_url"]!,
+      appId: testCredentials["app_id"]!,
+      logLevel: -1,
+      instanceName: "Dart-Instance-anonymous-full-sdk",
+    );
+    final SealdAccountInfo sdkClassicUserInfo =
+        await sdkClassicUser.createAccountAsync(getRegistrationJwt(),
+            displayName: "Dart-demo-anonymous-full-sdk",
+            deviceName: "Dart-demo-anonymous-full-sdk");
+    final SealdSdk sdkClassicUser2 = SealdSdk(
+      apiURL: testCredentials["api_url"]!,
+      appId: testCredentials["app_id"]!,
+      logLevel: -1,
+      instanceName: "Dart-Instance-anonymous-full-sdk",
+    );
+    final SealdAccountInfo sdkClassicUserInfo2 =
+        await sdkClassicUser2.createAccountAsync(getRegistrationJwt(),
+            displayName: "Dart-demo-anonymous-full-sdk2",
+            deviceName: "Dart-demo-anonymous-full-sdk2");
+
+    // Create an anonymous SDK
+    final SealdAnonymousSdk anonymousSDK = SealdAnonymousSdk(
+      apiURL: testCredentials["api_url"]!,
+      appId: testCredentials["app_id"]!,
+      logLevel: -1,
+      instanceName: "Dart-Instance-anonymous",
+    );
+
+    // Generate JWTs
+    final List<String> recipients = [sdkClassicUserInfo.userId];
+    const String authFactorType = "EM";
+    final String authFactorValue =
+        "anonymous-tmr-em-flutter-${randomString(5)}@test.com";
+    final Uint8List overEncryptionKey = randomBuffer(64);
+    final List<SealdAnonymousTmrRecipient> tmrRecipients = [
+      SealdAnonymousTmrRecipient(
+          type: authFactorType,
+          value: authFactorValue,
+          overEncryptionKey: overEncryptionKey),
+    ];
+    final String findKeyJWT = anonymousFindKeyJWT(recipients);
+    final String createMessageJWT = anonymousCreateMessageJWT(
+        sdkClassicUserInfo.userId, recipients,
+        tmrRecipients: tmrRecipients);
+
+    // Anonymous SDK can create an AnonymousSession
+    final SealdAnonymousEncryptionSession anonymousSession =
+        await anonymousSDK.createAnonymousEncryptionSessionAsync(
+            createMessageJWT, findKeyJWT, recipients,
+            tmrRecipients: tmrRecipients);
+
+    // Full SDK recipient can retrieve the EncryptionSession corresponding to the AnonymousSession
+    final SealdEncryptionSession classicES =
+        await sdkClassicUser.retrieveEncryptionSessionAsync(
+            sessionId: anonymousSession.id,
+            useCache: false,
+            lookupProxyKey: false,
+            lookupGroupKey: false);
+
+    const String initialString = "a message that needs to be encrypted!";
+    final String encryptedMessage =
+        await anonymousSession.encryptMessageAsync(initialString);
+    final String decryptedMessage =
+        await anonymousSession.decryptMessageAsync(encryptedMessage);
+    assertEqual(initialString, decryptedMessage);
+
+    final String decryptedMessageClassicES =
+        await classicES.decryptMessageAsync(encryptedMessage);
+    assertEqual(initialString, decryptedMessageClassicES);
+
+    // Full SDK non-recipient can retrieve the EncryptionSession via TMR
+    SealdSsksTMRPlugin ssksPlugin = SealdSsksTMRPlugin(
+      ssksURL: testCredentials["ssks_url"]!,
+      appId: testCredentials["app_id"]!,
+      logLevel: -1,
+      instanceName: "AnonymousTmrPlugin",
+    ); // instantiate the SSKS TMR plugin
+    SsksBackend yourCompanyDummyBackend = SsksBackend(
+        testCredentials["ssks_url"]!,
+        testCredentials["app_id"]!,
+        testCredentials[
+            "ssks_backend_app_key"]!); // instantiate the SSKS backend
+    ChallengeSendResponse authSession = await yourCompanyDummyBackend.challengeSend(
+        sdkClassicUserInfo2.userId, authFactorType, authFactorValue, true, true,
+        fakeOtp:
+            true // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
+        ); // The app backend creates an SSKS authentication session
+    SealdSsksTMRPluginGetFactorTokenResponse tmrJWT =
+        await ssksPlugin.getAuthFactorTokenAsync(
+            authSession.sessionId, authFactorType, authFactorValue,
+            challenge: testCredentials[
+                "ssks_tmr_challenge"]!); // Retrieve a JWT associated with the authentication factor from SSKS
+    final SealdEncryptionSession tmrES =
+        await sdkClassicUser2.retrieveEncryptionSessionByTmrAsync(
+            tmrJWT.token,
+            anonymousSession.id,
+            overEncryptionKey); // Retrieve the encryption session using the JWT
+    final String decryptedMessageTMRES = await tmrES.decryptMessageAsync(
+        encryptedMessage); // TMR-retrieved session can decrypt the message
+    assertEqual(initialString, decryptedMessageTMRES);
+
+    // Serialize / Deserialize session
+    final String serializedSession = anonymousSession.serialize(); // serialize
+    final SealdAnonymousEncryptionSession deserializedSession =
+        anonymousSDK.deserializeAnonymousEncryptionSession(
+            serializedSession); // deserialize
+    assertEqual(deserializedSession.id,
+        anonymousSession.id); // sessionId is as expected
+    final String decryptedMessageFromDeserialized =
+        deserializedSession.decryptMessage(encryptedMessage); // test decryption
+    assertEqual(decryptedMessageFromDeserialized,
+        initialString); // decrypted message is as expected
+
+    // Create a test file on disk that we will encrypt/decrypt
+    final Directory directory =
+        await path_provider.getApplicationDocumentsDirectory();
+    final String testPath = "${directory.path}/sdkAnonymous";
+    final Directory testDirectory = Directory(testPath);
+    await testDirectory.create();
+
+    await removeAllFilesInDirectory(testPath);
+    final String testFilePath = "$testPath/test.txt";
+    final File testFile = File(testFilePath);
+    await testFile.writeAsString(initialString);
+
+    // Encrypt the test file. Resulting file will be written alongside the source file, with `.seald` extension added
+    final String encryptedFilePath =
+        await anonymousSession.encryptFileFromPathAsync(testFilePath);
+    assertEqual(encryptedFilePath, "$testPath/test.txt.seald");
+
+    // The retrieved session can decrypt the file.
+    // The decrypted file will be named with the name it had at encryption. Any renaming of the encrypted file will be ignored.
+    // NOTE: In this example, the decrypted file will have `(1)` suffix to avoid overwriting the original clear file.
+    final String decryptedFilePath =
+        await anonymousSession.decryptFileFromPathAsync(encryptedFilePath);
+    assertEqual(decryptedFilePath, "$testPath/test (1).txt");
+
+    final File decryptedFile = File(decryptedFilePath);
+    assertEqual(await decryptedFile.exists(), true);
+    final String decryptedFileAsString = await decryptedFile.readAsString();
+    assertEqual(decryptedFileAsString, initialString);
+
+    // close SDKs
+    sdkClassicUser.close();
+    sdkClassicUser2.close();
+    anonymousSDK.close();
+
+    print('Anonymous SDK tests success!');
+    return true;
+  } catch (err, stack) {
+    print('Anonymous SDK tests failed');
+    print(err);
+    print(stack);
+    return false;
+  }
+}
+
 Future<bool> testSealdSdk() async {
   print('Starting SDK tests...');
   try {
@@ -167,7 +366,7 @@ Future<bool> testSealdSdk() async {
     // In an actual app, it should be generated at signup,
     // either on the server and retrieved from your backend at login,
     // or on the client-side directly and stored in the system's keychain.
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
     Uint8List databaseEncryptionKey = randomBuffer(64);
 
     // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
@@ -287,7 +486,7 @@ Future<bool> testSealdSdk() async {
     String authFactorType = "EM";
     String authFactorValue = "tmr-em-flutter-${randomString(5)}@test.com";
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
     Uint8List overEncryptionKey = randomBuffer(64);
 
     // Add the TMR access
@@ -408,18 +607,32 @@ Future<bool> testSealdSdk() async {
         await es1SDK1.decryptFileAsync(encryptedFileFromBytes);
     assertListEquals(clearFileBytes, decryptedFileFromBytes.fileContent);
 
+    // Serialize / Deserialize session
+    final String serializedSession = es1SDK1.serialize(); // serialize
+    final SealdEncryptionSession deserializedSession =
+        sdk1.deserializeEncryptionSession(serializedSession); // deserialize
+    assertEqual(deserializedSession.id, es1SDK1.id); // sessionId is as expected
+    final String decryptedMessageFromDeserialized =
+        deserializedSession.decryptMessage(encryptedMessage); // test decryption
+    assertEqual(decryptedMessageFromDeserialized,
+        initialString); // decrypted message is as expected
+
     // Create a test file on disk that we will encrypt/decrypt
     final Directory directory =
         await path_provider.getApplicationDocumentsDirectory();
-    await removeAllFilesInDirectory(directory.path);
-    final String testFilePath = "${directory.path}/test.txt";
+    final String testPath = '${directory.path}/sdk';
+    final Directory testDirectory = Directory(testPath);
+    await testDirectory.create();
+
+    await removeAllFilesInDirectory(testPath);
+    final String testFilePath = "$testPath/test.txt";
     final File testFile = File(testFilePath);
     await testFile.writeAsString(initialString);
 
     // Encrypt the test file. Resulting file will be written alongside the source file, with `.seald` extension added
     final String encryptedFilePath =
         await es1SDK1.encryptFileFromPathAsync(testFilePath);
-    assertEqual(encryptedFilePath, "${directory.path}/test.txt.seald");
+    assertEqual(encryptedFilePath, "$testPath/test.txt.seald");
 
     // user1 can retrieve the encryptionSession directly from the encrypted file
     final String es1SDK1RetrieveFromFileId =
@@ -437,7 +650,7 @@ Future<bool> testSealdSdk() async {
     // NOTE: In this example, the decrypted file will have `(1)` suffix to avoid overwriting the original clear file.
     final String decryptedFilePath = await es1SDK1RetrieveFromFile
         .decryptFileFromPathAsync(encryptedFilePath);
-    assertEqual(decryptedFilePath, "${directory.path}/test (1).txt");
+    assertEqual(decryptedFilePath, "$testPath/test (1).txt");
     final File decryptedFile = File(decryptedFilePath);
     assertEqual(await decryptedFile.exists(), true);
     final String decryptedFileAsString = await decryptedFile.readAsString();
@@ -541,15 +754,23 @@ Future<bool> testSealdSdk() async {
         await es1SDK3.decryptMessageAsync(encryptedMessage);
     assertEqual(decryptedMessageAfterAdd, initialString);
 
+    // We can list all session recipients.
+    final SealdRecipientsList resultList = await es1SDK1.listRecipientsAsync();
+    assertEqual(resultList.sealdRecipients.length, 4);
+    assertEqual(resultList.tmrAccesses.length, 0);
+    assertEqual(resultList.proxySessions.length, 2);
+    assertEqual(resultList.symEncKeys.length, 0);
+
     // user1 revokes user3 and proxy1 from the encryption session.
     final SealdRevokeResult resultRevoke = await es1SDK1.revokeRecipientsAsync(
-        recipientsIds: [user3AccountInfo.userId],
+        sealdIds: [user3AccountInfo.userId],
         proxySessionsIds: [proxySession1.id]);
-    assertEqual(resultRevoke.recipients.length, 1);
+    assertEqual(resultRevoke.sealdRecipients.length, 1);
     assertEqual(
-        resultRevoke.recipients.containsKey(user3AccountInfo.userId), true);
+        resultRevoke.sealdRecipients.containsKey(user3AccountInfo.userId),
+        true);
     assertEqual(
-        resultRevoke.recipients[user3AccountInfo.userId]!.success, true);
+        resultRevoke.sealdRecipients[user3AccountInfo.userId]!.success, true);
     assertEqual(resultRevoke.proxySessions.length, 1);
     assertEqual(resultRevoke.proxySessions.containsKey(proxySession1.id), true);
     assertEqual(resultRevoke.proxySessions[proxySession1.id]!.success, true);
@@ -570,14 +791,15 @@ Future<bool> testSealdSdk() async {
     // user1 revokes all other recipients from the session
     final SealdRevokeResult resultRevokeOthers = await es1SDK1
         .revokeOthersAsync(); // revoke user2 + group (user3 is already revoked) + proxy2
-    assertEqual(resultRevokeOthers.recipients.length, 2);
+    assertEqual(resultRevokeOthers.sealdRecipients.length, 2);
     assertEqual(
-        resultRevokeOthers.recipients.containsKey(user2AccountInfo.userId),
+        resultRevokeOthers.sealdRecipients.containsKey(user2AccountInfo.userId),
         true);
     assertEqual(
-        resultRevokeOthers.recipients[user2AccountInfo.userId]!.success, true);
-    assertEqual(resultRevokeOthers.recipients.containsKey(groupId), true);
-    assertEqual(resultRevokeOthers.recipients[groupId]!.success, true);
+        resultRevokeOthers.sealdRecipients[user2AccountInfo.userId]!.success,
+        true);
+    assertEqual(resultRevokeOthers.sealdRecipients.containsKey(groupId), true);
+    assertEqual(resultRevokeOthers.sealdRecipients[groupId]!.success, true);
     assertEqual(resultRevokeOthers.proxySessions.length, 1);
     assertEqual(
         resultRevokeOthers.proxySessions.containsKey(proxySession2.id), true);
@@ -597,11 +819,13 @@ Future<bool> testSealdSdk() async {
     // user1 revokes all. It can no longer retrieve it.
     final SealdRevokeResult revokeRevokeAll =
         await es1SDK1.revokeAllAsync(); // only user1 is left
-    assertEqual(revokeRevokeAll.recipients.length, 1);
+    assertEqual(revokeRevokeAll.sealdRecipients.length, 1);
     assertEqual(
-        revokeRevokeAll.recipients.containsKey(user1AccountInfo.userId), true);
+        revokeRevokeAll.sealdRecipients.containsKey(user1AccountInfo.userId),
+        true);
     assertEqual(
-        revokeRevokeAll.recipients[user1AccountInfo.userId]!.success, true);
+        revokeRevokeAll.sealdRecipients[user1AccountInfo.userId]!.success,
+        true);
     assertEqual(revokeRevokeAll.proxySessions.length, 0);
 
     // user1 cannot retrieve anymore
@@ -790,7 +1014,7 @@ Future<bool> testSealdSdk() async {
         members: [user1AccountInfo.userId],
         admins: [user1AccountInfo.userId]);
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
     Uint8List gTMRRawOverEncryptionKey = randomBuffer(64);
 
     // We defined a two man rule recipient earlier. We will use it again.
@@ -973,14 +1197,22 @@ Future<bool> testSealdSsksTMR() async {
             fakeOtp:
                 true // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
             );
-
     assertEqual(authSessionRetrieve.mustAuthenticate, true);
+
+    // Retrieving identity. Challenge is necessary as the session is not authenticated
     SealdSsksTMRPluginRetrieveIdentityResponse retrieveNotAuth =
         await ssksPlugin.retrieveIdentityAsync(
             authSessionRetrieve.sessionId, "EM", userEM, rawTMRSymKey,
             challenge: testCredentials["ssks_tmr_challenge"]!);
     assertEqual(retrieveNotAuth.shouldRenewKey, true);
     assertListEquals(retrieveNotAuth.identity, dummyIdentity);
+
+    // If we use an authenticated session, the challenge is optional.
+    SealdSsksTMRPluginRetrieveIdentityResponse retrieveAuth =
+        await ssksPlugin.retrieveIdentityAsync(
+            retrieveNotAuth.authenticatedSessionId, "EM", userEM, rawTMRSymKey);
+    assertEqual(retrieveAuth.shouldRenewKey, true);
+    assertListEquals(retrieveAuth.identity, dummyIdentity);
 
     // If initial key has been saved without being fully authenticated, you should renew the user's private key, and save it again.
     // await sdk1.renewKeysAsync();
@@ -1065,6 +1297,7 @@ Future<void> removeAllFilesInDirectory(String directoryPath) async {
 
 class _MyAppState extends State<MyApp> {
   late Future<bool> sdkTestResult;
+  late Future<bool> sdkAnonymousTestResult;
   late Future<bool> ssksPasswordTestResult;
   late Future<bool> ssksTMRTestResult;
 
@@ -1072,6 +1305,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     sdkTestResult = testSealdSdk();
+    sdkAnonymousTestResult = testSealdAnonymousSdk();
     ssksPasswordTestResult = testSealdSsksPassword();
     ssksTMRTestResult = testSealdSsksTMR();
   }
@@ -1106,6 +1340,19 @@ class _MyAppState extends State<MyApp> {
                         : 'running';
                     return Text(
                       'test SDK: $displayValue',
+                      style: textStyle,
+                      textAlign: TextAlign.left,
+                    );
+                  },
+                ),
+                FutureBuilder<bool>(
+                  future: sdkAnonymousTestResult,
+                  builder: (BuildContext context, AsyncSnapshot<bool> value) {
+                    final String displayValue = (value.hasData)
+                        ? (value.data! ? 'success' : 'fail')
+                        : 'running';
+                    return Text(
+                      'test anonymous SDK: $displayValue',
                       style: textStyle,
                       textAlign: TextAlign.left,
                     );

@@ -383,7 +383,7 @@
 			repositoryURL = "https://github.com/vapor/jwt-kit";
 			requirement = {
 				kind = exactVersion;
-				version = 5.0.1;
+				version = 5.2.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

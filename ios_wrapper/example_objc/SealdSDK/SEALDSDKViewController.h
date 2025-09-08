@@ -11,6 +11,7 @@
 @interface SEALDSDKViewController : UIViewController
 @property (weak, nonatomic) IBOutlet UILabel* versionLabel;
 @property (weak, nonatomic) IBOutlet UILabel* testSdkLabel;
+@property (weak, nonatomic) IBOutlet UILabel* testAnonymousSdkLabel;
 @property (weak, nonatomic) IBOutlet UILabel* testSsksPasswordLabel;
 @property (weak, nonatomic) IBOutlet UILabel* testSsksTmrLabel;
 @end

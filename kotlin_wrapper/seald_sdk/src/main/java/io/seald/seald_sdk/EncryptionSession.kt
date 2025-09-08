@@ -102,18 +102,32 @@ class EncryptionSession(
      * Revoke some recipients or proxy sessions from this session.
      * If you want to revoke all recipients, see [revokeAll] instead.
      * If you want to revoke all recipients besides yourself, see [revokeOthers].
-     * @param recipientsIds The Seald IDs of users to revoke from this session.
-     * @param proxySessionsIds The IDs of proxy sessions to revoke from this session.
+     * @property sealdIds The Seald IDs of users to revoke from this session.
+     * @property proxySessionsIds The IDs of proxy sessions to revoke from this session.
+     * @property symEncKeysIds The IDs of symEncKeys to revoke from this session.
+     * @property tmrAccessIds  The IDs of tmrAccess to revoke from this session.
+     * @property tmrAccessAuthFactors The AuthFactor of tmrAccess to revoke from this session.
      * @return A [RevokeResult] instance.
      * @throws SealdException
      */
     @Throws(SealdException::class)
     fun revokeRecipients(
-        recipientsIds: Array<String>,
-        proxySessionsIds: Array<String>,
+        sealdIds: Array<String> = arrayOf<String>(),
+        proxySessionsIds: Array<String> = arrayOf<String>(),
+        symEncKeysIds: Array<String> = arrayOf<String>(),
+        tmrAccessIds: Array<String> = arrayOf<String>(),
+        tmrAccessAuthFactors: Array<AuthFactor> = arrayOf<AuthFactor>(),
     ): RevokeResult {
         convertExceptions {
-            val res = es.revokeRecipients(arrayToStringArray(recipientsIds), arrayToStringArray(proxySessionsIds))
+            val recipientsToRevoke =
+                io.seald.seald_sdk_internals.mobile_sdk
+                    .RecipientsToRevoke()
+            recipientsToRevoke.sealdIds = arrayToStringArray(sealdIds)
+            recipientsToRevoke.proxySessionsIds = arrayToStringArray(proxySessionsIds)
+            recipientsToRevoke.symEncKeysIds = arrayToStringArray(symEncKeysIds)
+            recipientsToRevoke.tmrAccessIds = arrayToStringArray(tmrAccessIds)
+            recipientsToRevoke.tmrAccessAuthFactors = AuthFactor.toMobileSdkArray(tmrAccessAuthFactors)
+            val res = es.revokeRecipients(recipientsToRevoke)
             return RevokeResult.fromMobileSdk(res)
         }
     }
@@ -122,18 +136,48 @@ class EncryptionSession(
      * Revoke some recipients or proxy sessions from this session.
      * If you want to revoke all recipients, see [revokeAll] instead.
      * If you want to revoke all recipients besides yourself, see [revokeOthers].
-     * @param recipientsIds The Seald IDs of users to revoke from this session.
-     * @param proxySessionsIds The IDs of proxy sessions to revoke from this session.
+     * @property sealdIds The Seald IDs of users to revoke from this session.
+     * @property proxySessionsIds The IDs of proxy sessions to revoke from this session.
+     * @property symEncKeysIds The IDs of symEncKeys to revoke from this session.
+     * @property tmrAccessIds  The IDs of tmrAccess to revoke from this session.
+     * @property tmrAccessAuthFactors The AuthFactor of tmrAccess to revoke from this session.
      * @return A [RevokeResult] instance.
      * @throws SealdException
      */
     @Throws(SealdException::class)
     suspend fun revokeRecipientsAsync(
-        recipientsIds: Array<String>,
-        proxySessionsIds: Array<String>,
+        sealdIds: Array<String> = arrayOf<String>(),
+        proxySessionsIds: Array<String> = arrayOf<String>(),
+        symEncKeysIds: Array<String> = arrayOf<String>(),
+        tmrAccessIds: Array<String> = arrayOf<String>(),
+        tmrAccessAuthFactors: Array<AuthFactor> = arrayOf<AuthFactor>(),
     ): RevokeResult =
         withContext(Dispatchers.IO) {
-            return@withContext revokeRecipients(recipientsIds, proxySessionsIds)
+            return@withContext revokeRecipients(sealdIds, proxySessionsIds, symEncKeysIds, tmrAccessIds, tmrAccessAuthFactors)
+        }
+
+    /**
+     * List all recipients from this session.
+     * @return A [RecipientsList] instance.
+     * @throws SealdException
+     */
+    @Throws(SealdException::class)
+    fun listRecipients(): RecipientsList {
+        convertExceptions {
+            val res = es.listRecipients()
+            return RecipientsList.fromMobileSdk(res)
+        }
+    }
+
+    /**
+     * List all recipients from this session.
+     * @return A [RecipientsList] instance.
+     * @throws SealdException
+     */
+    @Throws(SealdException::class)
+    suspend fun listRecipientsAsync(): RecipientsList =
+        withContext(Dispatchers.IO) {
+            return@withContext listRecipients()
         }
 
     /**
@@ -401,4 +445,22 @@ class EncryptionSession(
         withContext(Dispatchers.Default) {
             return@withContext addMultipleTmrAccesses(recipients)
         }
+
+    /**
+     * Serialize the EncryptionSession to a string.
+     * This is for advanced use.
+     * May be used to keep sessions in a cache.
+     * WARNING: a user could use this cache to work around being revoked. Use with caution.
+     * WARNING: if the cache is accessible to another user, they could use it to decrypt messages they are not supposed
+     * to have access to. Make sure only the current user in question can access this cache, for example by encrypting it.
+     *
+     * @return Returns the serialized encryption session as a String.
+     * @throws SealdException
+     */
+    @Throws(SealdException::class)
+    fun serialize(): String {
+        convertExceptions {
+            return es.serialize()
+        }
+    }
 }

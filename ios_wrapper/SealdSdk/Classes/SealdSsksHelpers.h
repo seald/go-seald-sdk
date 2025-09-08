@@ -13,7 +13,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
- * SealdSsksSaveIdentityResponse is returned by `[SealdSsksTMRPlugin saveIdentity]` when an identity has been successfully saved
+ * SealdSsksSaveIdentityResponse is returned by SealdSsksTMRPlugin.saveIdentity:authFactor:rawTMRSymKey:identity:challenge:error: when an identity has been successfully saved
  */
 @interface SealdSsksSaveIdentityResponse : NSObject
 /** The SSKS ID of the stored identity, which can be used by your backend to manage it */
@@ -29,12 +29,12 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 /**
- * SealdSsksRetrievedIdentityResponse holds a retrieved identity
+ * SealdSsksRetrieveIdentityResponse holds a retrieved identity
  */
 @interface SealdSsksRetrieveIdentityResponse : NSObject
-/** The retrieved identity. It can be used with `[sdkInstance importIdentity]` */
+/** The retrieved identity. It can be used with SealdSdk.importIdentity:error: */
 @property (nonatomic, readonly) NSData* identity;
-/** If the boolean shouldRenewKey is set to `true`, the account MUST renew its private key using `[sealdSdk renewKeys]` */
+/** If the boolean shouldRenewKey is set to `true`, the account MUST renew its private key using SealdSdk.renewKeysWithPreparedRenewal:privateKeys:expireAfter:error: */
 @property (nonatomic, readonly) BOOL shouldRenewKey;
 /** An authenticated sessionId, that you can use to perform further SSKS TMR operations without challenge */
 @property (nonatomic, readonly) NSString* authenticatedSessionId;
@@ -51,7 +51,7 @@ NS_ASSUME_NONNULL_BEGIN
  * SealdSsksGetFactorTokenResponse holds a retrieved authentication factor token
  */
 @interface SealdSsksGetFactorTokenResponse : NSObject
-/** The retrieved token. It can be used with `[sdkInstance retrieveEncryptionSessionByTmr]` and `[sdkInstance convertTmrAccesses]`. */
+/** The retrieved token. It can be used with SealdSdk.retrieveEncryptionSessionByTmr:sessionId:overEncryptionKey:tmrAccessesFilters:tryIfMultiple:useCache:error: and SealdSdk.convertTmrAccesses:overEncryptionKey:conversionFilters:deleteOnConvert:error:. */
 @property (nonatomic, readonly) NSString* token;
 /** An authenticated sessionId, that you can use to perform further SSKS TMR operations without challenge */
 @property (nonatomic, readonly) NSString* authenticatedSessionId;

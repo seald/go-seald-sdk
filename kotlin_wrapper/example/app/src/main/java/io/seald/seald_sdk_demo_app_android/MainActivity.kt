@@ -80,6 +80,13 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 sdkResultView.text = "test SDK: ${if (sdkResult) "success" else "error"}"
             }
+            // Anonymous SDK
+            val anonymousSdkResultView: TextView = findViewById(R.id.testAnonymousSDK)
+            withContext(Dispatchers.Main) { anonymousSdkResultView.text = "test Anonymous SDK: Running..." }
+            val sdkAnonymousResult = testSealdAnonymousSDK(jwtBuilder)
+            withContext(Dispatchers.Main) {
+                anonymousSdkResultView.text = "test Anonymous SDK: ${if (sdkAnonymousResult) "success" else "error"}"
+            }
             // SSKS Password
             val ssksPasswordResultView: TextView = findViewById(R.id.testSsksPassword)
             withContext(Dispatchers.Main) {
@@ -105,19 +112,21 @@ class MainActivity : AppCompatActivity() {
         try {
             // The SealdSDK uses a local database. This database should be written to a permanent directory.
             // On android, the recommended path is returned by the kotlin getter `filesDir` (java: getFileDir())
-            val databasePath = filesDir.path
+            val databasePath = "${filesDir.path}/sdk/"
+            val databaseDir = File(databasePath)
 
             // The Seald SDK uses a local database that will persist on disk.
             // When instantiating a SealdSDK, it is highly recommended to set a symmetric key to encrypt this database.
             // In an actual app, it should be generated at signup,
             // either on the server and retrieved from your backend at login,
             // or on the client-side directly and stored in the system's keychain.
-            // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+            // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
             val databaseEncryptionKey = randomByteArray(64)
 
             // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
             // In a real app, it should never be done.
-            deleteRecursive(filesDir)
+            deleteRecursive(databaseDir)
+            databaseDir.mkdirs()
 
             // let's instantiate 3 SealdSDK. They will correspond to 3 users that will exchange messages.
             val sdk1 =
@@ -211,7 +220,7 @@ class MainActivity : AppCompatActivity() {
             val authFactorValue = "tmr-em-kotlin-${randomString(5)}@test.com"
             val tmrAuthFactor = AuthFactor(AuthFactorType.EM, authFactorValue)
 
-            // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+            // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
             val overEncryptionKey = randomByteArray(64)
 
             // Add the TMR access
@@ -313,10 +322,17 @@ class MainActivity : AppCompatActivity() {
             val decryptedMessageFromMess = es1SDK1FromMess.decryptMessageAsync(encryptedMessage)
             assert(initialString == decryptedMessageFromMess)
 
+            // Serialize / Deserialize session
+            val serializedSession = es1SDK1.serialize() // serialize
+            val deserializedSession = sdk1.deserializeEncryptionSession(serializedSession); // deserialize
+            assert(deserializedSession.sessionId == es1SDK1.sessionId); // sessionId is as expected
+            val decryptedMessageFromDeserialized = deserializedSession.decryptMessage(encryptedMessage); // test decryption
+            assert(decryptedMessageFromDeserialized == initialString); // decrypted message is as expected
+
             // Create a test file on disk that we will encrypt/decrypt
             val filename = "testfile.txt"
             val fileContent = "File clear data."
-            val clearFile = File(getFilesDir(), "/$filename")
+            val clearFile = File(databasePath, "/$filename")
             clearFile.writeText(fileContent)
 
             // Encrypt the test file. Resulting file will be written alongside the source file, with `.seald` extension added
@@ -330,7 +346,7 @@ class MainActivity : AppCompatActivity() {
             assert(es1SDK1FromFile.retrievalDetails.flow == EncryptionSessionRetrievalFlow.DIRECT)
 
             // The retrieved session can decrypt the file.
-            // The decrypted file will be named with the name it had at encryption. Any renaming of the encrypted file will be ignore.
+            // The decrypted file will be named with the name it had at encryption. Any renaming of the encrypted file will be ignored.
             // NOTE: In this example, the decrypted file will have `(1)` suffix to avoid overwriting the original clear file.
             val decryptedFileURI = es1SDK1FromFile.decryptFileFromURIAsync(encryptedFileURI)
             assertTrue { decryptedFileURI.endsWith("testfile (1).txt") }
@@ -412,8 +428,19 @@ class MainActivity : AppCompatActivity() {
             val decryptedMessageAfterAdd = es1SDK3.decryptMessageAsync(encryptedMessage)
             assert(initialString == decryptedMessageAfterAdd)
 
+            // We can list all session recipients.
+            val recipientList = es1SDK1.listRecipientsAsync()
+            assert(recipientList.sealdRecipients.size == 4)
+            assert(recipientList.symEncKeys.size == 0)
+            assert(recipientList.proxySessions.size == 2)
+            assert(recipientList.tmrAccesses.size == 0)
+
             // user1 revokes user3 and proxy1 from the encryption session.
-            val respRevoke = es1SDK1.revokeRecipientsAsync(arrayOf(user3AccountInfo.userId), arrayOf(proxySession1.sessionId))
+            val respRevoke =
+                es1SDK1.revokeRecipientsAsync(
+                    sealdIds = arrayOf(user3AccountInfo.userId),
+                    proxySessionsIds = arrayOf(proxySession1.sessionId),
+                )
             assert(respRevoke.recipients.size == 1)
             assert(respRevoke.recipients[user3AccountInfo.userId]!!.success)
             assert(respRevoke.proxySessions.size == 1)
@@ -613,7 +640,7 @@ class MainActivity : AppCompatActivity() {
             val groupTMRAdmins = arrayOf(user1AccountInfo.userId)
             val groupTMRId = sdk1.createGroupAsync(groupTMRName, groupTMRMembers, groupTMRAdmins)
 
-            // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+            // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
             val gTMRRawOverEncryptionKey = randomByteArray(64)
 
             // We defined a two man rule recipient earlier. We will use it again.
@@ -931,6 +958,167 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> {
                     println("Fatal TMR in SSKS Password tests")
+                    println(e.printStackTrace())
+                    throw e
+                }
+            }
+        }
+    }
+
+    private suspend fun testSealdAnonymousSDK(jwtBuilder: JWTBuilder): Boolean {
+        try {
+            val anonymousTestPath = "${filesDir.path}/anonymous/"
+            val anonymousTestDir = File(anonymousTestPath)
+
+            // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
+            // In a real app, it should never be done.
+            deleteRecursive(anonymousTestDir)
+            anonymousTestDir.mkdirs()
+
+            // Create classic SDK users
+            val sdkClassicUser =
+                SealdSDK(
+                    API_URL,
+                    appId = APP_ID,
+                    instanceName = "Kt-Instance-anonymous-full-sdk",
+                    logLevel = -1,
+                )
+            val sdkClassicUserInfo =
+                sdkClassicUser
+                    .createAccountAsync(jwtBuilder.signupJWT(), "Kt-demo-anonymous-full-sdk", "Kt-demo-anonymous-full-sdk")
+            val sdkClassicUser2 =
+                SealdSDK(
+                    API_URL,
+                    appId = APP_ID,
+                    instanceName = "Kt-Instance-anonymous-full-sdk2",
+                    logLevel = -1,
+                )
+            val sdkClassicUserInfo2 =
+                sdkClassicUser2
+                    .createAccountAsync(jwtBuilder.signupJWT(), "Kt-demo-anonymous-full-sdk2", "Kt-demo-anonymous-full-sdk2")
+
+            // Create an anonymous SDK
+            val anonymousSDK =
+                AnonymousSealdSDK(
+                    API_URL,
+                    appId = APP_ID,
+                    instanceName = "Kt-Instance-anonymous",
+                    logLevel = -1,
+                )
+
+            // Anonymous SDK can create an AnonymousSession
+            val authFactor =
+                AuthFactor(
+                    type = AuthFactorType.EM,
+                    value = "anonymous-tmr-em-flutter-${randomString(5)}@test.com",
+                )
+            val overEncryptionKey = randomByteArray(64)
+            val tmrRecipients =
+                arrayOf(
+                    AnonymousTmrRecipient(
+                        authFactor = authFactor,
+                        rawOverEncryptionKey = overEncryptionKey,
+                    ),
+                )
+            val anonymousSession =
+                anonymousSDK.createAnonymousEncryptionSessionAsync(
+                    jwtBuilder.anonymousCreateMessageJWT(
+                        sdkClassicUserInfo.userId,
+                        arrayOf(sdkClassicUserInfo.userId),
+                        tmrRecipients
+                            .map {
+                                it.authFactor
+                            }.toTypedArray(),
+                    ),
+                    jwtBuilder.anonymousFindKeyJWT(arrayOf(sdkClassicUserInfo.userId)),
+                    arrayOf(sdkClassicUserInfo.userId),
+                    tmrRecipients,
+                )
+
+            // Full SDK recipient can retrieve the EncryptionSession corresponding to the AnonymousSession
+            val classicES = sdkClassicUser.retrieveEncryptionSessionAsync(anonymousSession.sessionId, useCache = false)
+
+            val initialString = "a message that needs to be encrypted!"
+            val encryptedMessage = anonymousSession.encryptMessageAsync(initialString)
+            val decryptedMessage = anonymousSession.decryptMessageAsync(encryptedMessage)
+            assert(initialString == decryptedMessage)
+
+            val decryptedMessageClassicES = classicES.decryptMessageAsync(encryptedMessage)
+            assert(initialString == decryptedMessageClassicES)
+
+            // Full SDK non-recipient can retrieve the EncryptionSession via TMR
+            val ssksPlugin =
+                SealdSSKSTmrPlugin(
+                    ssksURL = SSKS_URL,
+                    appId = APP_ID,
+                    instanceName = "AnonymousTmrPlugin",
+                    logLevel = -1,
+                ) // instantiate the SSKS TMR plugin
+            val yourCompanyDummyBackend = SSKSbackend(SSKS_URL, APP_ID, SSKS_BACKEND_APP_KEY) // instantiate the SSKS backend
+            val authSession =
+                yourCompanyDummyBackend
+                    .challengeSend(
+                        sdkClassicUserInfo2.userId,
+                        authFactor,
+                        createUser = true,
+                        forceAuth = true,
+                        // `fakeOtp` is only on the staging server, to force the challenge to be 'aaaaaaaa'. In production, you cannot use this.
+                        fakeOtp = true,
+                    ).await() // The app backend creates an SSKS authentication session
+            val tmrJWT =
+                ssksPlugin.getFactorTokenAsync(
+                    authSession.sessionId,
+                    authFactor = authFactor,
+                    challenge = SSKS_TMR_CHALLENGE,
+                ) // Retrieve a JWT associated with the authentication factor from SSKS
+            val tmrES =
+                sdkClassicUser2.retrieveEncryptionSessionByTmrAsync(
+                    tmrJWT.token,
+                    anonymousSession.sessionId,
+                    overEncryptionKey,
+                ) // Retrieve the encryption session using the JWT
+            val decryptedMessageTMRES = tmrES.decryptMessageAsync(encryptedMessage) // TMR-retrieved session can decrypt the message
+            assert(initialString == decryptedMessageTMRES)
+
+            // Serialize / Deserialize session
+            val serializedSession = anonymousSession.serialize() // serialize
+            val deserializedSession = anonymousSDK.deserializeAnonymousEncryptionSession(serializedSession); // deserialize
+            assert(deserializedSession.sessionId == anonymousSession.sessionId); // sessionId is as expected
+            val decryptedMessageFromDeserialized = deserializedSession.decryptMessage(encryptedMessage); // test decryption
+            assert(decryptedMessageFromDeserialized == initialString); // decrypted message is as expected
+
+            // Create a test file on disk that we will encrypt/decrypt
+            val filename = "testfile.txt"
+            val fileContent = "File clear data."
+            val clearFile = File(anonymousTestDir.path, "/$filename")
+            clearFile.writeText(fileContent)
+
+            // Encrypt the test file. Resulting file will be written alongside the source file, with `.seald` extension added
+            val encryptedFileURI = anonymousSession.encryptFileFromURIAsync(clearFile.absolutePath)
+
+            // The retrieved session can decrypt the file.
+            // The decrypted file will be named with the name it had at encryption. Any renaming of the encrypted file will be ignored.
+            // NOTE: In this example, the decrypted file will have `(1)` suffix to avoid overwriting the original clear file.
+            val decryptedFileURI = anonymousSession.decryptFileFromURIAsync(encryptedFileURI)
+            assertTrue { decryptedFileURI.endsWith("testfile (1).txt") }
+            val decryptedFile = File(decryptedFileURI)
+            assert(fileContent == decryptedFile.readText())
+
+            // close SDKs
+            sdkClassicUser.close()
+            sdkClassicUser2.close()
+
+            println("Anonymous SDK tests success!")
+            return true
+        } catch (e: Throwable) {
+            when (e) {
+                is AssertionError, is Exception -> {
+                    println("Anonymous SDK tests failed")
+                    println(e.printStackTrace())
+                    return false
+                }
+                else -> {
+                    println("Fatal error in Anonymous SDK tests")
                     println(e.printStackTrace())
                     throw e
                 }

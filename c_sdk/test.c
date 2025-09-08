@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <cjson/cJSON.h>
 #include <curl/curl.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 // Seald import
 #include "seald_sdk.h" // The Seald SDK
@@ -68,6 +70,22 @@
     } while (0)
 
 
+char* randomString(int length) {
+    static char charset[] = "abcdefghijklmnopqrstuvwxyz0123456789";
+    char* str = malloc(length + 1); // allocate memory for the string
+    if (str) {
+        srand(time(NULL)); // seed the random number generator with the current time
+        for (int i = 0; i < length; i++) {
+            int index = rand() % (sizeof(charset) - 1); // generate a random index within the range of the character set, excluding the termination symbol of the charset
+            str[i] = charset[index]; // assign the character at the random index to the string
+        }
+        str[length] = '\0'; // terminate the string
+    } else {
+        exit(1);
+    }
+    return str;
+}
+
 char* generate_registration_jwt(char* JWTSharedSecret, char* JWTSharedSecretId, char* userId, char* appId, int joinTeam) {
     if (!joinTeam && !userId) {
         printf("Cannot create a JWT with neither joinTeam nor a userId\n");
@@ -79,13 +97,14 @@ char* generate_registration_jwt(char* JWTSharedSecret, char* JWTSharedSecretId, 
     }
 
     jwt_t* jwt = NULL;
-    jwt_new(&jwt);
+    assert(jwt_new(&jwt) == 0);
 
-    jwt_add_grant(jwt, "iss", JWTSharedSecretId);
-    jwt_add_grant_int(jwt, "iat", time(NULL));
+    assert(jwt_add_grant(jwt, "iss", JWTSharedSecretId) == 0);
+    assert(jwt_add_grant_int(jwt, "iat", time(NULL)) == 0);
+    assert(jwt_add_grant(jwt, "scopes", "[3, 4]") == 0); // JWT permission join team (3) and add connector (4)
 
     if (joinTeam) {
-        jwt_add_grant_bool(jwt, "join_team", 1);
+        assert(jwt_add_grant_bool(jwt, "join_team", 1) == 0);
     }
 
     if (userId) {
@@ -93,11 +112,113 @@ char* generate_registration_jwt(char* JWTSharedSecret, char* JWTSharedSecretId, 
         char* suffix = "\"}}";
         char* value = malloc(strlen(prefix) + strlen(userId) + 1 + strlen(appId) + strlen(suffix) + 1);
         sprintf(value, "%s%s@%s%s", prefix, userId, appId, suffix);
-        jwt_add_grants_json(jwt, value);
+        assert(jwt_add_grants_json(jwt, value) == 0);
         free(value);
     }
 
-    jwt_set_alg(jwt, JWT_ALG_HS256, (const unsigned char*)JWTSharedSecret, strlen(JWTSharedSecret));
+    assert(jwt_set_alg(jwt, JWT_ALG_HS256, (const unsigned char*)JWTSharedSecret, strlen(JWTSharedSecret)) == 0);
+    char* token = jwt_encode_str(jwt);
+
+    jwt_free(jwt);
+
+    return token;
+}
+
+char* generate_tmr_recipients_claim(char** recipients, int recipientsCount) {
+    // Compute expected length
+    int total_recipients_length = 0;
+    for (int i = 0; i < recipientsCount; i++) {
+        total_recipients_length += strlen(recipients[i]);
+        total_recipients_length += 2; // "\""
+    }
+    total_recipients_length += (recipientsCount - 1) * 2 + 1; // separators: ', ' + '\0'
+    char* recipientsArray = malloc(total_recipients_length);
+    recipientsArray[0] = '\0';
+    for (int i = 0; i < recipientsCount; i++) {
+        strcat(recipientsArray, "\"");
+        strcat(recipientsArray, recipients[i]);
+        strcat(recipientsArray, "\"");
+        if (i < recipientsCount - 1) {
+            strcat(recipientsArray, ", ");
+        }
+    }
+    char* prefix = "{\"recipients\":[";
+    char* suffix = "]}";
+    char* recipientsClaim = malloc(strlen(prefix) + total_recipients_length + strlen(suffix) + 1);
+    sprintf(recipientsClaim, "%s%s%s", prefix, recipientsArray, suffix);
+
+    free(recipientsArray);
+    return recipientsClaim;
+}
+
+char* generate_create_message_jwt(char* JWTSharedSecret, char* JWTSharedSecretId, char* owner, char** recipients, int recipientsCount, char** tmrRecipientsEmail, int tmrRecipientsCount) {
+    jwt_t* jwt = NULL;
+    assert(jwt_new(&jwt) == 0);
+
+    assert(jwt_add_grant(jwt, "iss", JWTSharedSecretId) == 0);
+    assert(jwt_add_grant_int(jwt, "iat", time(NULL)) == 0);
+    char* jwtId = randomString(24);
+    assert(jwt_add_grant(jwt, "jti", jwtId) == 0);
+    free(jwtId);
+    assert(jwt_add_grant(jwt, "scopes", "[0]") == 0); // JWT permission anonymous create message (0)
+
+    assert(jwt_add_grant(jwt, "owner", owner) == 0);
+
+    char* recipientsClaim = generate_tmr_recipients_claim(recipients, recipientsCount);
+    assert(jwt_add_grants_json(jwt, recipientsClaim) == 0);
+    free(recipientsClaim);
+
+    // Generate tmrRecipient claim
+    if (tmrRecipientsCount > 0) {
+        // Compute expected length
+        int total_tmr_recipients_length = 0;
+        for (int i = 0; i < tmrRecipientsCount; i++) {
+            total_tmr_recipients_length += strlen(tmrRecipientsEmail[i]);
+            total_tmr_recipients_length += 2; // "\""
+        }
+        total_tmr_recipients_length += (tmrRecipientsCount) * 50 + (tmrRecipientsCount - 1) * 2 + 1; // { "type", "value" } (50 chars) + ", " + '\0'
+        char* tmrRecipientsArray = malloc(total_tmr_recipients_length);
+        tmrRecipientsArray[0] = '\0';
+        for (int i = 0; i < tmrRecipientsCount; i++) {
+            strcat(tmrRecipientsArray, "{ \"auth_factor_type\": \"EM\", \"auth_factor_value\": \"");
+            strcat(tmrRecipientsArray, tmrRecipientsEmail[i]);
+            strcat(tmrRecipientsArray, "\"}");
+            if (i < tmrRecipientsCount - 1) {
+                strcat(tmrRecipientsArray, ", ");
+            }
+        }
+
+        char* prefixTMR = "{\"tmr_recipients\":[";
+        char* suffixTMR = "]}";
+        char* tmrRecipientsClaim = malloc(strlen(prefixTMR) + total_tmr_recipients_length + strlen(suffixTMR) + 1);
+        sprintf(tmrRecipientsClaim, "%s%s%s", prefixTMR, tmrRecipientsArray, suffixTMR);
+
+        assert(jwt_add_grants_json(jwt, tmrRecipientsClaim) == 0);
+        free(tmrRecipientsArray);
+    }
+
+    assert(jwt_set_alg(jwt, JWT_ALG_HS256, (const unsigned char*)JWTSharedSecret, strlen(JWTSharedSecret)) == 0);
+    char* token = jwt_encode_str(jwt);
+
+    jwt_free(jwt);
+
+    return token;
+}
+
+char* generate_find_key_jwt(char* JWTSharedSecret, char* JWTSharedSecretId, char** recipients, int recipientsCount) {
+    jwt_t* jwt = NULL;
+    assert(jwt_new(&jwt) == 0);
+
+    assert(jwt_add_grant(jwt, "iss", JWTSharedSecretId) == 0);
+    assert(jwt_add_grant_int(jwt, "iat", time(NULL)) == 0);
+    // No 'jti' for the 'find keys' JWT: the request may be paginated, so done in multiple API calls
+    assert(jwt_add_grant(jwt, "scopes", "[1]") == 0); // JWT permission anonymous find key (1)
+
+    char* recipientsClaim = generate_tmr_recipients_claim(recipients, recipientsCount);
+    assert(jwt_add_grants_json(jwt, recipientsClaim) == 0);
+    free(recipientsClaim);
+
+    assert(jwt_set_alg(jwt, JWT_ALG_HS256, (const unsigned char*)JWTSharedSecret, strlen(JWTSharedSecret)) == 0);
     char* token = jwt_encode_str(jwt);
 
     jwt_free(jwt);
@@ -246,22 +367,6 @@ int array_includes(char* array[], int arrayLen, char* value) {
     return 0;
 }
 
-char* randomString(int length) {
-    static char charset[] = "abcdefghijklmnopqrstuvwxyz0123456789";
-    char* str = malloc(length + 1); // allocate memory for the string
-    if (str) {
-        srand(time(NULL)); // seed the random number generator with the current time
-        for (int i = 0; i < length; i++) {
-            int index = rand() % (sizeof(charset) - 1); // generate a random index within the range of the character set, excluding the termination symbol of the charset
-            str[i] = charset[index]; // assign the character at the random index to the string
-        }
-        str[length] = '\0'; // terminate the string
-    } else {
-        exit(1);
-    }
-    return str;
-}
-
 unsigned char* randomBuffer(int length) {
     unsigned char* buffer = malloc(length); // allocate memory for the string
     if (buffer) {
@@ -273,12 +378,310 @@ unsigned char* randomBuffer(int length) {
     return buffer;
 }
 
+int testSealdAnonymousSDK(TestCredentials* testCredentials) {
+    int errCode = 0;
+    SealdError* err = NULL;
+
+    // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
+    // In a real app, it should never be done.
+    char* sealdDir = "./test-dir/anonymous/";
+    errCode = remove_directory(sealdDir);
+    if (errCode != 0) {
+        printf("Error on remove\n");
+        // not returning, it may simply be the dir not existing
+    }
+    // Ensure that test dir exist
+    if (mkdir("./test-dir", 0777) != 0 && errno != EEXIST) {
+        printf("Could not create test dir\n");
+        return 1;
+    }
+    if (mkdir(sealdDir, 0777) != 0 && errno != EEXIST) {
+        printf("Could not create test dir\n");
+        return 1;
+    }
+
+    // Create classic SDK users
+    SealdInitializeOptions initOptions = {
+        .ApiURL = testCredentials->apiURL,
+        .AppId = testCredentials->appId,
+        .KeySize = 1024, // in production, use 4096
+        .LogLevel = -1,
+        .LogNoColor = 0,
+        .InstanceName = "C-Instance-anonymous-full-sdk",
+        .Platform = "c-tests"
+    };
+    SealdSdk* sdkClassicUser;
+    errCode = SealdSdk_Initialize(&initOptions, &sdkClassicUser, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    SealdInitializeOptions initOptions2 = {
+        .ApiURL = testCredentials->apiURL,
+        .AppId = testCredentials->appId,
+        .KeySize = 1024, // in production, use 4096
+        .LogLevel = -1,
+        .LogNoColor = 0,
+        .InstanceName = "C-Instance-anonymous-full-sdk2",
+        .Platform = "c-tests"
+    };
+    SealdSdk* sdkClassicUser2;
+    errCode = SealdSdk_Initialize(&initOptions2, &sdkClassicUser2, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+
+    char* jwt = generate_registration_jwt(testCredentials->JWTSharedSecret, testCredentials->JWTSharedSecretId, NULL, NULL, 1);
+    assert(jwt != NULL);
+    SealdAccountInfo* sdkClassicUserInfo = NULL;
+    errCode = SealdSdk_CreateAccount(
+        sdkClassicUser,
+        "C-demo-anonymous-full-sdk",
+        "C-demo-anonymous-full-sdk",
+        jwt,
+        0,
+        NULL,
+        NULL,
+        &sdkClassicUserInfo,
+        &err
+    );
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    char* jwt2 = generate_registration_jwt(testCredentials->JWTSharedSecret, testCredentials->JWTSharedSecretId, NULL, NULL, 1);
+    assert(jwt2 != NULL);
+    SealdAccountInfo* sdkClassicUserInfo2 = NULL;
+    errCode = SealdSdk_CreateAccount(
+        sdkClassicUser2,
+        "C-demo-anonymous-full-sdk2",
+        "C-demo-anonymous-full-sdk2",
+        jwt2,
+        0,
+        NULL,
+        NULL,
+        &sdkClassicUserInfo2,
+        &err
+    );
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    free(jwt);
+    free(jwt2);
+
+    // Create an anonymous SDK
+    SealdAnonymousInitializeOptions anonymousOptions = {
+        .ApiURL = testCredentials->apiURL,
+        .AppId = testCredentials->appId,
+        .LogLevel = -1,
+        .LogNoColor = 0,
+        .InstanceName =  "C-Instance-anonymous",
+        .Platform = "c-tests-anonymous"
+    };
+
+    SealdAnonymousSdk* sdkAnonymous;
+    SealdAnonymousSdk_CreateAnonymousSDK(&anonymousOptions, &sdkAnonymous);
+
+    // Generate JWTs
+    char* aesRecipients[] = {sdkClassicUserInfo->UserId};
+    char* afRandString = randomString(5);
+    char* authFactorValue = malloc(22);
+    sprintf(authFactorValue, "af_val-%s@test.com", afRandString);
+    char* tmrRecipientsEmails[] = {authFactorValue};
+    char* createMessageJWT = generate_create_message_jwt(testCredentials->JWTSharedSecret, testCredentials->JWTSharedSecretId, sdkClassicUserInfo->UserId, aesRecipients, 1, tmrRecipientsEmails, 1);
+    assert(createMessageJWT != NULL);
+    char* findKeyJWT = generate_find_key_jwt(testCredentials->JWTSharedSecret, testCredentials->JWTSharedSecretId, aesRecipients, 1);
+    assert(findKeyJWT != NULL);
+
+    // Anonymous SDK can create an AnonymousSession
+    SealdStringArray* recipients = SealdStringArray_New();
+    SealdStringArray_Add(recipients, sdkClassicUserInfo->UserId);
+    SealdAnonymousTmrRecipientsArray* tmrRecipients = SealdAnonymousTmrRecipientsArray_New();
+    unsigned char* overEncryptionKey = randomBuffer(64);
+    SealdAnonymousTmrRecipientsArray_Add(tmrRecipients, "EM", authFactorValue, overEncryptionKey, 64);
+    SealdAnonymousEncryptionSession* anonymousSession = NULL;
+    errCode = SealdAnonymousSdk_CreateAnonymousEncryptionSession(sdkAnonymous, createMessageJWT, findKeyJWT, recipients, tmrRecipients, &anonymousSession, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    free(createMessageJWT);
+    free(findKeyJWT);
+    SealdStringArray_Free(recipients);
+    SealdAnonymousTmrRecipientsArray_Free(tmrRecipients);
+
+    // Retrieve session Id
+    char* sessionId = SealdAnonymousEncryptionSession_Id(anonymousSession);
+    printf("Anonymous session ID: %s\n", sessionId);
+
+    // The SealdAnonymousEncryptionSession object can encrypt and decrypt
+    char* initialString = "a message that needs to be encrypted!";
+    char* encryptedMessage = NULL;
+    errCode = SealdAnonymousEncryptionSession_EncryptMessage(anonymousSession, initialString, &encryptedMessage, &err);
+    printf("encryptedMessage: %s\n", encryptedMessage);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    char* decryptedMessage = NULL;
+    errCode = SealdAnonymousEncryptionSession_DecryptMessage(anonymousSession, encryptedMessage, &decryptedMessage, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_EQUAL(decryptedMessage, initialString);
+    free(decryptedMessage);
+
+    // Full SDK can retrieve the EncryptionSession corresponding to the AnonymousSession
+    SealdEncryptionSession* esSDKUser = NULL;
+    errCode = SealdSdk_RetrieveEncryptionSession(sdkClassicUser, sessionId, 0, 0, 0, &esSDKUser, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+
+    char* decryptedMessageSDKUser = NULL;
+    errCode = SealdEncryptionSession_DecryptMessage(esSDKUser, encryptedMessage, &decryptedMessageSDKUser, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_EQUAL(decryptedMessageSDKUser, initialString);
+    free(decryptedMessageSDKUser);
+
+    // Full SDK non-recipient can retrieve the EncryptionSession via TMR
+    SealdSsksTMRPluginInitializeOptions initOptionsTmr = {
+        .SsksURL = testCredentials->ssksUrl,
+        .AppId = testCredentials->appId,
+        .LogLevel = -1,
+        .LogNoColor = 0,
+        .InstanceName = "AnonymousTmrPlugin",
+        .Platform = "c-tests"
+    };
+    SealdSsksTMRPlugin* ssksPlugin;
+    errCode = SealdSsksTMRPlugin_Initialize(&initOptionsTmr, &ssksPlugin, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+
+    SSKSBackend* yourCompanyDummyBackend = New_SSKSBackend( // Instantiate the SSKS backend
+        testCredentials->ssksUrl,
+        testCredentials->appId,
+        testCredentials->ssksBackendAppKey
+    );
+    ChallengeSendResponse* authSession = NULL; // The app backend creates an SSKS authentication session
+    errCode = ssks_backend_challenge_send(
+        yourCompanyDummyBackend,
+        sdkClassicUserInfo2->UserId,
+        "EM",
+        authFactorValue,
+        1, // allowAuthenticated
+        1, // fakeOtp (only for staging)
+        &authSession
+    );
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    SealdSsksTMRPluginGetFactorTokenResponse* tmrJWT = NULL; // Retrieve a JWT associated with the authentication factor from SSKS
+    errCode = SealdSsksTMRPlugin_GetFactorToken(
+        ssksPlugin,
+        authSession->SessionId,
+        "EM",
+        authFactorValue,
+        testCredentials->ssksTMRChallenge,
+        &tmrJWT,
+        &err
+    );
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    SealdEncryptionSession* tmrES = NULL; // Retrieve the encryption session using the JWT
+    errCode = SealdSdk_RetrieveEncryptionSessionByTmr(
+        sdkClassicUser2,
+        tmrJWT->Token,
+        SealdAnonymousEncryptionSession_Id(anonymousSession),
+        overEncryptionKey,
+        64,
+        NULL, // tmrAccessesRetrievalFilters
+        1, // tryIfMultiple
+        1, // useCache
+        &tmrES,
+        &err
+    );
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    char* decryptedMessageTMRES = NULL; // TMR-retrieved session can decrypt the message
+    errCode = SealdEncryptionSession_DecryptMessage(
+        tmrES,
+        encryptedMessage,
+        &decryptedMessageTMRES,
+        &err
+    );
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_EQUAL(decryptedMessageTMRES, initialString);
+    free(decryptedMessageTMRES); // Cleanup
+    SealdSsksTMRPluginGetFactorTokenResponse_Free(tmrJWT);
+    SealdEncryptionSession_Free(tmrES);
+    free(authSession);
+    SealdSsksTMRPlugin_Free(ssksPlugin);
+
+    // Serialize / Deserialize session
+    char* serializedSession = NULL;
+    errCode = SealdAnonymousEncryptionSession_Serialize(anonymousSession, &serializedSession, &err); // serialize
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    SealdAnonymousEncryptionSession* deserializedSession = NULL;
+    errCode = SealdAnonymousSdk_DeserializeAnonymousEncryptionSession(sdkAnonymous, serializedSession, &deserializedSession, &err); // deserialize
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_EQUAL(SealdAnonymousEncryptionSession_Id(deserializedSession), sessionId); // sessionId is as expected
+    char* decryptedMessageFromDeserialized = NULL; // test decryption
+    errCode = SealdAnonymousEncryptionSession_DecryptMessage(
+        deserializedSession,
+        encryptedMessage,
+        &decryptedMessageFromDeserialized,
+        &err
+    );
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_EQUAL(decryptedMessageFromDeserialized, initialString);
+    free(serializedSession); // cleanup
+    free(decryptedMessageFromDeserialized);
+    SealdAnonymousEncryptionSession_Free(deserializedSession);
+
+    // Create a test file on disk that we will encrypt/decrypt
+    char* fileContent = "File clear data.";
+    char* filePath = "./test-dir/anonymous/testfile.txt";
+    FILE* fp = fopen(filePath, "w");
+    assert(fp != NULL);
+    errCode = fputs(fileContent, fp);
+    assert(errCode >= 0);
+    errCode = fclose(fp);
+    assert(errCode == 0);
+
+    // Encrypt the test file. Resulting file will be written alongside the source file, with `.seald` extension added
+    char* encryptedFilePath = NULL;
+    errCode = SealdAnonymousEncryptionSession_EncryptFileFromPath(anonymousSession, filePath, &encryptedFilePath, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_ENDSWITH(encryptedFilePath, "/test-dir/anonymous/testfile.txt.seald");
+    char* decryptedFilePath = NULL;
+    errCode = SealdAnonymousEncryptionSession_DecryptFileFromPath(anonymousSession, encryptedFilePath, &decryptedFilePath, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_ENDSWITH(decryptedFilePath, "/test-dir/anonymous/testfile (1).txt");
+    char* decryptedFileContent = NULL;
+    FILE* f = fopen(decryptedFilePath, "r");
+    assert(f != NULL);
+    fseek(f, 0, SEEK_END);
+    long fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    decryptedFileContent = malloc(fsize + 1);
+    assert(decryptedFileContent != NULL);
+    size_t bytesRead = fread(decryptedFileContent, 1, fsize, f);
+    assert(bytesRead == fsize);
+    decryptedFileContent[fsize] = '\0';
+    fclose(f);
+    ASSERT_STRING_EQUAL(decryptedFileContent, fileContent);
+    free(decryptedFilePath);
+    free(decryptedFileContent);
+
+    free(authFactorValue);
+    free(encryptedMessage);
+    free(sessionId);
+    SealdAnonymousEncryptionSession_Free(anonymousSession);
+
+    // close SDKs
+    SealdAccountInfo_Free(sdkClassicUserInfo);
+    errCode = SealdSdk_Close(sdkClassicUser, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    SealdAccountInfo_Free(sdkClassicUserInfo2);
+    errCode = SealdSdk_Close(sdkClassicUser2, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    SealdAnonymousSdk_Close(sdkAnonymous);
+
+    printf("Anonymous SDK tests success!\n");
+    return 0;
+}
+
 int testSealdSDK(TestCredentials* testCredentials) {
     int errCode = 0;
     SealdError* err = NULL;
 
     // The SealdSDK uses a local database. This database should be written to a permanent directory.
-    char* sealdDir = "./test-dir/";
+    char* sealdDir = "./test-dir/sdk/";
+    // Ensure that test dir exist
+    if (mkdir("./test-dir", 0777) != 0 && errno != EEXIST) {
+        printf("Could not create test dir\n");
+        return 1;
+    }
+    if (mkdir(sealdDir, 0777) != 0 && errno != EEXIST) {
+        printf("Could not create test dir\n");
+        return 1;
+    }
 
     // The Seald SDK uses a local database that will persist on disk.
     // When instantiating a SealdSDK, it is highly recommended to set a symmetric key to encrypt this database.
@@ -286,7 +689,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     // either on the server and retrieved from your backend at login,
     // or on the client-side directly and stored in the system's keychain.
     int databaseEncryptionKeyLen = 64;
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
     unsigned char* databaseEncryptionKey = randomBuffer(databaseEncryptionKeyLen);
 
     // This demo expects a clean database path to create it's own data, so we need to clean what previous runs left.
@@ -322,6 +725,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdSdk* sdk1;
     errCode = SealdSdk_Initialize(&initOptions, &sdk1, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
+    free(databaseEncryptionKey);
 
     initOptions.DatabasePath = ""; // In memory only
     initOptions.InstanceName = "C-Instance-2";
@@ -472,7 +876,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     char* authFactorValue = malloc(strlen("af_val-") + strlen(afRandString) + strlen("@test.com") + 1);
     sprintf(authFactorValue, "af_val-%s@test.com", afRandString);
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
     int overEncryptionKeyLen = 64;
     unsigned char* overEncryptionKeyBytes = randomBuffer(overEncryptionKeyLen);
 
@@ -527,6 +931,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     errCode = SealdSdk_ConvertTmrAccesses(sdk2, retrievedToken->Token, overEncryptionKeyBytes, overEncryptionKeyLen, tmrAccessesConvertFilters, 1, &convertResult, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     SealdConvertTmrAccessesResult_Free(convertResult);
+    free(overEncryptionKeyBytes);
 
     // After conversion, sdk2 can retrieve the encryption session directly.
     SealdEncryptionSession* es1SDK1Converted = NULL;
@@ -600,9 +1005,30 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdEncryptionSession_Free(es1SDK1RetrieveFromMess);
     free(decryptedMessageFromMess);
 
+    // Serialize / Deserialize session
+    char* serializedSession = NULL;
+    errCode = SealdEncryptionSession_Serialize(es1SDK1, &serializedSession, &err); // serialize
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    SealdEncryptionSession* deserializedSession = NULL;
+    errCode = SealdSdk_DeserializeEncryptionSession(sdk1, serializedSession, &deserializedSession, &err); // deserialize
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_EQUAL(SealdEncryptionSession_Id(deserializedSession), sessionId); // sessionId is as expected
+    char* decryptedMessageFromDeserialized = NULL; // test decryption
+    errCode = SealdEncryptionSession_DecryptMessage(
+        deserializedSession,
+        encryptedMessage,
+        &decryptedMessageFromDeserialized,
+        &err
+    );
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    ASSERT_STRING_EQUAL(decryptedMessageFromDeserialized, initialString);
+    free(serializedSession); // cleanup
+    free(decryptedMessageFromDeserialized);
+    SealdEncryptionSession_Free(deserializedSession);
+
     // Create a test file on disk that we will encrypt/decrypt
     char* fileContent = "File clear data.";
-    char* filePath = "./test-dir/testfile.txt";
+    char* filePath = "./test-dir/sdk/testfile.txt";
     FILE* fp = fopen(filePath, "w");
     assert(fp != NULL);
     errCode = fputs(fileContent, fp);
@@ -614,7 +1040,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     char* encryptedFilePath = NULL;
     errCode = SealdEncryptionSession_EncryptFileFromPath(es1SDK1, filePath, &encryptedFilePath, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
-    ASSERT_STRING_ENDSWITH(encryptedFilePath, "/test-dir/testfile.txt.seald");
+    ASSERT_STRING_ENDSWITH(encryptedFilePath, "/test-dir/sdk/testfile.txt.seald");
 
     // User1 can parse/retrieve the encryptionSession directly from the encrypted file
     SealdEncryptionSession* es1SDK1FromFile = NULL;
@@ -632,7 +1058,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     char* decryptedFilePath = NULL;
     errCode = SealdEncryptionSession_DecryptFileFromPath(es1SDK1FromFile, encryptedFilePath, &decryptedFilePath, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
-    ASSERT_STRING_ENDSWITH(decryptedFilePath, "/test-dir/testfile (1).txt");
+    ASSERT_STRING_ENDSWITH(decryptedFilePath, "/test-dir/sdk/testfile (1).txt");
     char* decryptedFileContent = NULL;
     FILE* f = fopen(decryptedFilePath, "r");
     assert(f != NULL);
@@ -780,24 +1206,35 @@ int testSealdSDK(TestCredentials* testCredentials) {
     free(decryptedMessageAfterAdd);
     SealdEncryptionSession_Free(es1SDK3);
 
+    // We can list all session recipients.
+    SealdRecipientsList* resultList = NULL;
+    errCode = SealdEncryptionSession_ListRecipients(es1SDK1, &resultList, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    assert(SealdSealdRecipientArray_Size(resultList->SealdRecipients) == 4);
+    assert(SealdTMRAccessArray_Size(resultList->TMRAccesses) == 0);
+    assert(SealdProxySessionArray_Size(resultList->ProxySessions) == 2);
+    assert(SealdSymEncKeyArray_Size(resultList->SymEncKeys) == 0);
+
     // user1 revokes user3 and proxy1 from the encryption session.
-    SealdStringArray* recipientsToRevoke = SealdStringArray_New();
-    SealdStringArray_Add(recipientsToRevoke, createAccountResult3->UserId);
+    SealdStringArray* sealdRecipientsToRevoke = SealdStringArray_New();
+    SealdStringArray_Add(sealdRecipientsToRevoke, createAccountResult3->UserId);
     SealdStringArray* proxiesToRevoke = SealdStringArray_New();
     SealdStringArray_Add(proxiesToRevoke, proxySession1Id);
     SealdRevokeResult* resultRevoke = NULL;
-    errCode = SealdEncryptionSession_RevokeRecipients(es1SDK1, recipientsToRevoke, proxiesToRevoke, &resultRevoke, &err);
-    SealdStringArray_Free(recipientsToRevoke);
+    errCode = SealdEncryptionSession_RevokeRecipients(es1SDK1, sealdRecipientsToRevoke, proxiesToRevoke, NULL, NULL, NULL, &resultRevoke, &err);
+    SealdStringArray_Free(sealdRecipientsToRevoke);
     SealdStringArray_Free(proxiesToRevoke);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
-    assert(SealdActionStatusArray_Size(resultRevoke->Recipients) == 1);
-    SealdActionStatus* asFromListRevoke = SealdActionStatusArray_Get(resultRevoke->Recipients, 0); // no need to free
+    assert(SealdActionStatusArray_Size(resultRevoke->SealdIds) == 1);
+    SealdActionStatus* asFromListRevoke = SealdActionStatusArray_Get(resultRevoke->SealdIds, 0); // no need to free
     ASSERT_STRING_EQUAL(asFromListRevoke->Id, createAccountResult3->UserId);
     assert(asFromListRevoke->Success == 1);
     assert(SealdActionStatusArray_Size(resultRevoke->ProxySessions) == 1);
     SealdActionStatus* asFromListRevokeProxy = SealdActionStatusArray_Get(resultRevoke->ProxySessions, 0); // no need to free
     ASSERT_STRING_EQUAL(asFromListRevokeProxy->Id, proxySession1Id);
     assert(asFromListRevokeProxy->Success == 1);
+    assert(SealdActionStatusArray_Size(resultRevoke->SymEncKeyIds) == 0);
+    assert(SealdActionStatusArray_Size(resultRevoke->TMRAccess) == 0);
     SealdRevokeResult_Free(resultRevoke);
 
     // user3 cannot retrieve the session anymore, even with proxy or group
@@ -815,18 +1252,20 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdRevokeResult* resultRevokeOther = NULL;
     errCode = SealdEncryptionSession_RevokeOthers(es1SDK1, &resultRevokeOther, &err); // revoke user2 + group (user3 is already revoked) + proxy2
     ASSERT_WITH_MSG(errCode == 0, err->Id);
-    assert(SealdActionStatusArray_Size(resultRevokeOther->Recipients) == 2);
+    assert(SealdActionStatusArray_Size(resultRevokeOther->SealdIds) == 2);
     char* expectedRevokeOtherIds[] = {groupId, createAccountResult2->UserId};
-    SealdActionStatus* revokeOther0 = SealdActionStatusArray_Get(resultRevokeOther->Recipients, 0);
+    SealdActionStatus* revokeOther0 = SealdActionStatusArray_Get(resultRevokeOther->SealdIds, 0);
     assert(revokeOther0->Success == 1);
     assert(array_includes(expectedRevokeOtherIds, 3, revokeOther0->Id) == 1);
-    SealdActionStatus* revokeOther1 = SealdActionStatusArray_Get(resultRevokeOther->Recipients, 1);
+    SealdActionStatus* revokeOther1 = SealdActionStatusArray_Get(resultRevokeOther->SealdIds, 1);
     assert(revokeOther1->Success == 1);
     assert(array_includes(expectedRevokeOtherIds, 3, revokeOther1->Id) == 1);
     assert(SealdActionStatusArray_Size(resultRevokeOther->ProxySessions) == 1);
     SealdActionStatus* asFromListRevokeOtherProxy = SealdActionStatusArray_Get(resultRevokeOther->ProxySessions, 0); // no need to free
     ASSERT_STRING_EQUAL(asFromListRevokeOtherProxy->Id, proxySession2Id);
     assert(asFromListRevokeOtherProxy->Success == 1);
+    assert(SealdActionStatusArray_Size(resultRevokeOther->SymEncKeyIds) == 0);
+    assert(SealdActionStatusArray_Size(resultRevokeOther->TMRAccess) == 0);
     SealdRevokeResult_Free(resultRevokeOther);
 
     // user2 cannot retrieve the session anymore
@@ -844,10 +1283,12 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdRevokeResult* resultRevokeAll = NULL;
     errCode = SealdEncryptionSession_RevokeAll(es1SDK1, &resultRevokeAll, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
-    assert(SealdActionStatusArray_Size(resultRevokeAll->Recipients) == 1); // only user1 is left
-    SealdActionStatus* asRevokeAll0 = SealdActionStatusArray_Get(resultRevokeAll->Recipients, 0);
+    assert(SealdActionStatusArray_Size(resultRevokeAll->SealdIds) == 1); // only user1 is left
+    SealdActionStatus* asRevokeAll0 = SealdActionStatusArray_Get(resultRevokeAll->SealdIds, 0);
     ASSERT_STRING_EQUAL(asRevokeAll0->Id, createAccountResult1->UserId);
     assert(SealdActionStatusArray_Size(resultRevokeAll->ProxySessions) == 0);
+    assert(SealdActionStatusArray_Size(resultRevokeAll->SymEncKeyIds) == 0);
+    assert(SealdActionStatusArray_Size(resultRevokeAll->TMRAccess) == 0);
     SealdRevokeResult_Free(resultRevokeAll);
 
     // user1 cannot retrieve anymore
@@ -1044,7 +1485,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     ASSERT_WITH_MSG(errCode == 0, err->Id);
 
     // We can instantiate a new SealdSDK, import the exported identity
-    initOptions.DatabasePath = "./test-dir/sdk1Exported";
+    initOptions.DatabasePath = "./test-dir/sdk/sdk1Exported";
     initOptions.InstanceName = "sdk1Exported";
     SealdSdk* sdk1Exported = NULL;
     errCode = SealdSdk_Initialize(&initOptions, &sdk1Exported, &err);
@@ -1097,7 +1538,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdDeviceMissingKeysArray_Free(deviceMissingKeysArrayAfter);
 
     // We can instantiate a new SealdSDK, import the sub-device identity
-    initOptions.DatabasePath = "./test-dir/sdk1Subdevice";
+    initOptions.DatabasePath = "./test-dir/sdk/sdk1Subdevice";
     initOptions.InstanceName = "C-Instance-1-subdevice";
     SealdSdk* sdk1SubDevice = NULL;
     errCode = SealdSdk_Initialize(&initOptions, &sdk1SubDevice, &err);
@@ -1171,7 +1612,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdStringArray_Free(membersGTMR);
     SealdStringArray_Free(adminsGTMR);
 
-    // WARNING: This should be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
+    // WARNING: This MUST be a cryptographically random buffer of 64 bytes. This random generation is NOT good enough.
     int gTMRRawOverEncryptionKeyLen = 64;
     unsigned char* gTMRRawOverEncryptionKeyBytes = randomBuffer(gTMRRawOverEncryptionKeyLen);
 
@@ -1212,6 +1653,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdSsksTMRPluginGetFactorTokenResponse_Free(retrievedToken);
     SealdGroupTMRTemporaryKey_Free(gTMRCreated);
     free(authFactorValue);
+    free(gTMRRawOverEncryptionKeyBytes);
 
     // Heartbeat can be used to check if proxies and firewalls are configured properly so that the app can reach Seald's servers.
     errCode = SealdSdk_Heartbeat(sdk1, &err);
@@ -1408,12 +1850,19 @@ int testSealdSsksTMR(TestCredentials* testCredentials) {
     assert(errCode == 0);
     assert(authSessionRetrieve->MustAuthenticate == 1);
 
-    // Retrieving identity. Challenge is necessary for this.
-    SealdSsksTMRPluginRetrieveIdentityResponse* retrieveResp = NULL;
-    errCode = SealdSsksTMRPlugin_RetrieveIdentity(ssksPlugin, authSessionRetrieve->SessionId, "EM", userEM, rawTMRSymKey, rawTMRSymKeyLen, testCredentials->ssksTMRChallenge, &retrieveResp, &err);
+    // Retrieving identity. Challenge is necessary as the session is not authenticated
+    SealdSsksTMRPluginRetrieveIdentityResponse* retrieveNotAuth = NULL;
+    errCode = SealdSsksTMRPlugin_RetrieveIdentity(ssksPlugin, authSessionRetrieve->SessionId, "EM", userEM, rawTMRSymKey, rawTMRSymKeyLen, testCredentials->ssksTMRChallenge, &retrieveNotAuth, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
-    assert(retrieveResp->ShouldRenewKey == 1);
-    assert(memcmp(dummyIdentity, retrieveResp->Identity, dummyIdentityLen) == 0);
+    assert(retrieveNotAuth->ShouldRenewKey == 1);
+    assert(memcmp(dummyIdentity, retrieveNotAuth->Identity, dummyIdentityLen) == 0);
+
+    // If we use an authenticated session, the challenge is optional.
+    SealdSsksTMRPluginRetrieveIdentityResponse* retrieveAuth = NULL;
+    errCode = SealdSsksTMRPlugin_RetrieveIdentity(ssksPlugin, retrieveNotAuth->AuthenticatedSessionId, "EM", userEM, rawTMRSymKey, rawTMRSymKeyLen, NULL, &retrieveAuth, &err);
+    ASSERT_WITH_MSG(errCode == 0, err->Id);
+    assert(retrieveAuth->ShouldRenewKey == 1);
+    assert(memcmp(dummyIdentity, retrieveAuth->Identity, dummyIdentityLen) == 0);
 
     // If initial key has been saved without being fully authenticated, you should renew the user's private key, and save it again.
     // errCode = SealdSdk_RenewKeys(sdk1, 5 * 365 * 24 * 60 * 60, NULL, NULL, preparedRenewal, preparedRenewalLen, &err);
@@ -1423,7 +1872,7 @@ int testSealdSsksTMR(TestCredentials* testCredentials) {
     unsigned char* dummyIdentity2 = randomBuffer(dummyIdentityLen); // should be the result of: SealdSdk_ExportIdentity()
     // to save the newly renewed identity on the server, you can use the `authenticatedSessionId` from the response to `SealdSsksTMRPlugin_RetrieveIdentity`, with no challenge
     SealdSsksTMRPluginSaveIdentityResponse* saveIdentityRes2 = NULL;
-    errCode = SealdSsksTMRPlugin_SaveIdentity(ssksPlugin, retrieveResp->AuthenticatedSessionId, "EM", userEM, rawTMRSymKey, rawTMRSymKeyLen, dummyIdentity2, dummyIdentityLen, NULL, &saveIdentityRes2, &err);
+    errCode = SealdSsksTMRPlugin_SaveIdentity(ssksPlugin, retrieveNotAuth->AuthenticatedSessionId, "EM", userEM, rawTMRSymKey, rawTMRSymKeyLen, dummyIdentity2, dummyIdentityLen, NULL, &saveIdentityRes2, &err);
     ASSERT_WITH_MSG(errCode == 0, err->Id);
     ASSERT_STRING_EQUAL(saveIdentityRes2->SsksId, saveIdentityRes1->SsksId);
     assert(saveIdentityRes2->AuthenticatedSessionId == NULL);
@@ -1471,7 +1920,8 @@ int testSealdSsksTMR(TestCredentials* testCredentials) {
     free(authSessionRetrieve);
     free(authSessionRetrieve2);
     free(authSessionRetrieve3);
-    SealdSsksTMRPluginRetrieveIdentityResponse_Free(retrieveResp);
+    SealdSsksTMRPluginRetrieveIdentityResponse_Free(retrieveAuth);
+    SealdSsksTMRPluginRetrieveIdentityResponse_Free(retrieveNotAuth);
     SealdSsksTMRPluginRetrieveIdentityResponse_Free(retrieveResp2);
     SealdSsksTMRPluginRetrieveIdentityResponse_Free(retrieveResp3);
     SealdSsksTMRPlugin_Free(ssksPlugin);
@@ -1494,6 +1944,9 @@ int main() {
     printf("Read test credentials:\n- apiURL: %s\n- appId: %s\n- JWTSharedSecretId: %s\n- JWTSharedSecret: %s\n", testCredentials->apiURL, testCredentials->appId, testCredentials->JWTSharedSecretId, testCredentials->JWTSharedSecret);
 
     errCode = testSealdSDK(testCredentials);
+    assert(errCode == 0);
+
+    errCode = testSealdAnonymousSDK(testCredentials);
     assert(errCode == 0);
 
     errCode = testSealdSsksPassword(testCredentials);

@@ -61,4 +61,44 @@ typedef NS_ENUM (NSInteger, JWTPermission) {
 
     return token;
 }
+
+- (NSString*) anonymousFindKeyJWTWithRecipients:(const NSArray<NSString*>*)recipients
+{
+    NSDate* now = [NSDate date];
+    NSDictionary* headers = @{@"alg" : @"HS256", @"typ" : @"JWT"};
+    NSDictionary* payload = @{@"scopes": @(ANONYMOUS_FIND_KEY),
+                              @"iss" : _JWTSharedSecretId,
+                              @"iat" : @((NSInteger)now.timeIntervalSince1970),
+                              @"recipients" : recipients};
+
+    NSString* token = [JWT encodePayload:payload].headers(headers).secret((NSString*)_JWTSharedSecret).algorithm(_JWTAlgorithm).encode;
+
+    return token;
+}
+
+- (NSString*) anonymousCreateMessageJWTWithOwnerId:(NSString*)ownerId
+                                        recipients:(const NSArray<NSString*>*)recipients
+                                     tmrRecipients:(const NSArray<SealdAnonymousTmrRecipient*>*)tmrRecipients
+{
+    NSDate* now = [NSDate date];
+    NSDictionary* headers = @{@"alg" : @"HS256", @"typ" : @"JWT"};
+    NSMutableArray* serializedTmrRecipients = [NSMutableArray array];
+    for (SealdAnonymousTmrRecipient* recipient in tmrRecipients) {
+        [serializedTmrRecipients addObject:@{
+             @"auth_factor_value": recipient.authFactor.value,
+             @"auth_factor_type": recipient.authFactor.type
+         }];
+    }
+    NSDictionary* payload = @{@"scopes": @(ANONYMOUS_CREATE_MESSAGE),
+                              @"jti" : [[NSUUID UUID] UUIDString],
+                              @"iss" : _JWTSharedSecretId,
+                              @"iat" : @((NSInteger)now.timeIntervalSince1970),
+                              @"owner" : ownerId,
+                              @"recipients" : recipients,
+                              @"tmr_recipients": serializedTmrRecipients};
+
+    NSString* token = [JWT encodePayload:payload].headers(headers).secret((NSString*)_JWTSharedSecret).algorithm(_JWTAlgorithm).encode;
+
+    return token;
+}
 @end

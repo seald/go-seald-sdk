@@ -98,6 +98,6 @@ This should not be instantiated directly, and should be either created with [`-[
 or retrieved with [`-[SealdSdk retrieveEncryptionSessionWithSessionId:useCache:error:]`](./SealdSdk.md#retrieveencryptionsessionwithsessionid-usecache-error)
 or [`-[SealdSdk retrieveEncryptionSessionFromMessage:useCache:error:]`](./SealdSdk.md#retrieveencryptionsessionfrommessage-usecache-error).
 
-© 2024 Seald SAS
+© 2025 Seald SAS
 
 You can find the license information of Open Source libraries used in Seald SDK for mobile at <https://download.seald.io/download/mobile_dependencies_licenses_##VERSION##.txt>.
