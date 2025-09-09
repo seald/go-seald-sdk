@@ -6,8 +6,15 @@ To simply build the XCFramework:
 
 ```bash
 # From the root:
-mkdir -p ./ios_wrapper/SealdSdk/Frameworks/
-gomobile bind -target=ios -prefix=SealdSdkInternals -v -o=./ios_wrapper/SealdSdk/Frameworks/SealdSdkInternals.xcframework ./mobile_sdk
+mkdir -p ./ios_wrapper/SealdSdk/Frameworks/ ./build/apple/ios/ ./build/apple/macos/
+gomobile bind -target=ios -prefix=SealdSdkInternals -v -o=./build/apple/ios/SealdSdkInternals.xcframework ./mobile_sdk
+gomobile bind -target=macos -prefix=SealdSdkInternals -v -o=./build/apple/macos/SealdSdkInternals.xcframework ./mobile_sdk
+rm -rf ./ios_wrapper/SealdSdk/Frameworks/SealdSdkInternals.xcframework
+xcodebuild -create-xcframework \
+  -framework ./build/apple/ios/SealdSdkInternals.xcframework/ios-arm64/SealdSdkInternals.framework \
+  -framework ./build/apple/ios/SealdSdkInternals.xcframework/ios-arm64_x86_64-simulator/SealdSdkInternals.framework \
+  -framework ./build/apple/macos/SealdSdkInternals.xcframework/macos-arm64_x86_64/SealdSdkInternals.framework \
+  -output ./ios_wrapper/SealdSdk/Frameworks/SealdSdkInternals.xcframework
 ```
 
 ## Lint

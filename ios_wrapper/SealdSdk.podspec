@@ -12,7 +12,13 @@ Seald is an encryption SDK that allows you to use state-of-the-art End-to-End en
   s.author           = { 'SealdSAS' => 'contact@seald.io' }
   s.source           = { :http => "https://download.seald.io/download/seald-sdk-ios/SealdSdk-#{ENV['PACKAGE_VERSION']}.tgz", :flatten => false } # flatten : https://github.com/CocoaPods/cocoapods-downloader/issues/95#issuecomment-582246021
 
-  s.ios.deployment_target = '13.0'
-  s.ios.vendored_frameworks = 'SealdSdk/Frameworks/SealdSdkInternals.xcframework'
+  # iOS
+  s.ios.deployment_target     = '13.0'
+  s.ios.vendored_frameworks   = 'SealdSdk/Frameworks/SealdSdkInternals.xcframework'
+
+  # macOS
+  s.osx.deployment_target     = '12.0'
+  s.osx.vendored_frameworks   = 'SealdSdk/Frameworks/SealdSdkInternals.xcframework'
+
   s.source_files = 'SealdSdk/Classes/**/*'
 end
