@@ -102,11 +102,11 @@ class EncryptionSession(
      * Revoke some recipients or proxy sessions from this session.
      * If you want to revoke all recipients, see [revokeAll] instead.
      * If you want to revoke all recipients besides yourself, see [revokeOthers].
-     * @property sealdIds The Seald IDs of users to revoke from this session.
-     * @property proxySessionsIds The IDs of proxy sessions to revoke from this session.
-     * @property symEncKeysIds The IDs of symEncKeys to revoke from this session.
-     * @property tmrAccessIds  The IDs of tmrAccess to revoke from this session.
-     * @property tmrAccessAuthFactors The AuthFactor of tmrAccess to revoke from this session.
+     * @param sealdIds The Seald IDs of users to revoke from this session.
+     * @param proxySessionsIds The IDs of proxy sessions to revoke from this session.
+     * @param symEncKeysIds The IDs of symEncKeys to revoke from this session.
+     * @param tmrAccessIds  The IDs of tmrAccess to revoke from this session.
+     * @param tmrAccessAuthFactors The AuthFactor of tmrAccess to revoke from this session.
      * @return A [RevokeResult] instance.
      * @throws SealdException
      */
@@ -136,11 +136,11 @@ class EncryptionSession(
      * Revoke some recipients or proxy sessions from this session.
      * If you want to revoke all recipients, see [revokeAll] instead.
      * If you want to revoke all recipients besides yourself, see [revokeOthers].
-     * @property sealdIds The Seald IDs of users to revoke from this session.
-     * @property proxySessionsIds The IDs of proxy sessions to revoke from this session.
-     * @property symEncKeysIds The IDs of symEncKeys to revoke from this session.
-     * @property tmrAccessIds  The IDs of tmrAccess to revoke from this session.
-     * @property tmrAccessAuthFactors The AuthFactor of tmrAccess to revoke from this session.
+     * @param sealdIds The Seald IDs of users to revoke from this session.
+     * @param proxySessionsIds The IDs of proxy sessions to revoke from this session.
+     * @param symEncKeysIds The IDs of symEncKeys to revoke from this session.
+     * @param tmrAccessIds  The IDs of tmrAccess to revoke from this session.
+     * @param tmrAccessAuthFactors The AuthFactor of tmrAccess to revoke from this session.
      * @return A [RevokeResult] instance.
      * @throws SealdException
      */

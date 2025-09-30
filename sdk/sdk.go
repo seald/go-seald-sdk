@@ -4,14 +4,15 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/seald/go-seald-sdk/api_helper"
-	"github.com/seald/go-seald-sdk/utils"
-	"github.com/ztrue/tracerr"
 	"io"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/api_helper"
+	"github.com/seald/go-seald-sdk/utils"
+	"github.com/ztrue/tracerr"
 )
 
 var (
@@ -157,26 +158,31 @@ func Initialize(options *InitializeOptions) (*State, error) {
 
 	err = options.Database.readCurrentDevice(&state.storage.currentDevice)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 
 	err = options.Database.readContacts(&state.storage.contacts)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 
 	err = options.Database.readGroups(&state.storage.groups)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 
 	err = options.Database.readConnectors(&state.storage.connectors)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 
 	err = options.Database.readEncryptionSessions(&state.storage.encryptionSessionsCache)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 	state.storage.encryptionSessionsCache.setTTL(options.EncryptionSessionCacheTTL)
