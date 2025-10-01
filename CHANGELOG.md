@@ -1,3 +1,9 @@
+# 0.11.0 :
+- @ios: \[new feature\] Now compatible with macOS >= 12.0.
+- @all: \[enhancement\] Release database lock automatically when instantiation failed.
+- @android: \[new feature\] Compatibility with 16k pages.
+
+
 # 0.10.0 : 2025/09/08
 - @all: \[new feature\] Implement Anonymous SDK.
 - @go: \[**breaking change**\] Remove anonymous SDK `Encrypt` function.
