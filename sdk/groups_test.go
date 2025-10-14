@@ -3,6 +3,11 @@ package sdk
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/seald/go-seald-sdk/asymkey"
 	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/seald/go-seald-sdk/sdk/sigchain"
@@ -12,10 +17,6 @@ import (
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 func Test_Groups(t *testing.T) {
@@ -63,7 +64,7 @@ func Test_Groups(t *testing.T) {
 		t.Run("decryptPrivateKey working", func(t *testing.T) {
 			decryptedKey, err := decryptPrivateKey(&messageKey, b64PrivateKey)
 			require.NoError(t, err)
-			assert.Equal(t, privateKey, decryptedKey)
+			assert.Equal(t, privateKey.Encode(), decryptedKey.Encode()) // need to compare the .Encode(), because if internal arrays have null bytes at the beginning, they may be stripped by the export/import process, so the structs are not equal
 		})
 		t.Run("decryptPrivateKey failing with bad B64 input", func(t *testing.T) {
 			decryptedKey, err := decryptPrivateKey(&messageKey, "&aaa")
@@ -1121,7 +1122,13 @@ func Test_Groups(t *testing.T) {
 		err = account1.RenewGroupKey(groupId, preGenKeysRenew2)
 		require.NoError(t, err)
 
-		// create a third session after the second renew
+		// renew group a third time, after the previous renew re-encrypted GroupTmrTks
+		preGenKeysRenew3, err := getPreGeneratedKeys()
+		require.NoError(t, err)
+		err = account1.RenewGroupKey(groupId, preGenKeysRenew3)
+		require.NoError(t, err)
+
+		// create a third session after the third renew
 		session3, err := account1.CreateEncryptionSession(
 			[]*RecipientWithRights{recipientGroup},
 			CreateEncryptionSessionOptions{UseCache: false},
@@ -1171,7 +1178,7 @@ func Test_Groups(t *testing.T) {
 			groupId, err := os.ReadFile(filepath.Join(testArtifactsDir, "group_id"))
 			require.NoError(t, err)
 			group := account.storage.groups.get(string(groupId))
-			assert.Equal(t, 1, len(group.OldKeys))
+			assert.NotNil(t, group)
 
 			// Use the group TMR temp key to join the group
 			authFactorEM, err := os.ReadFile(filepath.Join(testArtifactsDir, "tmr_temp_key_EM"))

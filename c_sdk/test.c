@@ -405,6 +405,7 @@ int testSealdAnonymousSDK(TestCredentials* testCredentials) {
         .ApiURL = testCredentials->apiURL,
         .AppId = testCredentials->appId,
         .KeySize = 1024, // in production, use 4096
+        .MaxParallelRequests = 10,
         .LogLevel = -1,
         .LogNoColor = 0,
         .InstanceName = "C-Instance-anonymous-full-sdk",
@@ -417,6 +418,7 @@ int testSealdAnonymousSDK(TestCredentials* testCredentials) {
         .ApiURL = testCredentials->apiURL,
         .AppId = testCredentials->appId,
         .KeySize = 1024, // in production, use 4096
+        .MaxParallelRequests = 10,
         .LogLevel = -1,
         .LogNoColor = 0,
         .InstanceName = "C-Instance-anonymous-full-sdk2",
@@ -463,6 +465,7 @@ int testSealdAnonymousSDK(TestCredentials* testCredentials) {
     SealdAnonymousInitializeOptions anonymousOptions = {
         .ApiURL = testCredentials->apiURL,
         .AppId = testCredentials->appId,
+        .MaxParallelRequests = 10,
         .LogLevel = -1,
         .LogNoColor = 0,
         .InstanceName =  "C-Instance-anonymous",
@@ -528,6 +531,7 @@ int testSealdAnonymousSDK(TestCredentials* testCredentials) {
     SealdSsksTMRPluginInitializeOptions initOptionsTmr = {
         .SsksURL = testCredentials->ssksUrl,
         .AppId = testCredentials->appId,
+        .MaxParallelRequests = 10,
         .LogLevel = -1,
         .LogNoColor = 0,
         .InstanceName = "AnonymousTmrPlugin",
@@ -717,6 +721,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
         .DatabaseEncryptionKey = databaseEncryptionKey,
         .DatabaseEncryptionKeyLen = databaseEncryptionKeyLen,
         .EncryptionSessionCacheTTL = 0,
+        .MaxParallelRequests = 10,
         .LogLevel = -1,
         .LogNoColor = 0,
         .InstanceName = "C-Instance-1",
@@ -892,6 +897,7 @@ int testSealdSDK(TestCredentials* testCredentials) {
     SealdSsksTMRPluginInitializeOptions tmrSsksInitOptions = {
         .SsksURL = testCredentials->ssksUrl,
         .AppId = testCredentials->appId,
+        .MaxParallelRequests = 10,
         .LogLevel = -1,
         .LogNoColor = 0,
         .InstanceName = "tmr-access",
@@ -1689,6 +1695,7 @@ int testSealdSsksPassword(TestCredentials* testCredentials) {
     SealdSsksPasswordPluginInitializeOptions initOptions = {
         .SsksURL = testCredentials->ssksUrl,
         .AppId = testCredentials->appId,
+        .MaxParallelRequests = 10,
         .LogLevel = -1,
         .LogNoColor = 0,
         .InstanceName = "myCInstance-1",
@@ -1820,6 +1827,7 @@ int testSealdSsksTMR(TestCredentials* testCredentials) {
     SealdSsksTMRPluginInitializeOptions initOptions = {
         .SsksURL = testCredentials->ssksUrl,
         .AppId = testCredentials->appId,
+        .MaxParallelRequests = 10,
         .LogLevel = -1,
         .LogNoColor = 0,
         .InstanceName = "myCInstance-1",
@@ -1892,6 +1900,7 @@ int testSealdSsksTMR(TestCredentials* testCredentials) {
     SealdSsksTMRPluginInitializeOptions initOptions2 = {
         .SsksURL = testCredentials->ssksUrl,
         .AppId = testCredentials->appId,
+        .MaxParallelRequests = 10,
         .LogLevel = -1,
         .LogNoColor = 0,
         .InstanceName = "myCInstance-2",

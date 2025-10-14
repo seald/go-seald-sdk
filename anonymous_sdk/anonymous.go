@@ -43,6 +43,9 @@ type AnonymousInitializeOptions struct {
 	Platform string
 	// LogWriter is the io.Writer to which to write the logs. Defaults to os.Stdout.
 	LogWriter io.Writer
+	// MaxParallelRequests is the maximum number of concurrent network requests allowed per Anonymous SDK instance.
+	// Set to 0 for the default (10). Set to a negative value to disable the limit entirely.
+	MaxParallelRequests int
 }
 
 // CreateAnonymousSDK is the function to use to create an instance of the Anonymous SDK.
@@ -50,6 +53,9 @@ type AnonymousInitializeOptions struct {
 func CreateAnonymousSDK(options *AnonymousInitializeOptions) *AnonymousSDK {
 	if options.LogWriter == nil {
 		options.LogWriter = os.Stdout
+	}
+	if options.MaxParallelRequests == 0 {
+		options.MaxParallelRequests = 10
 	}
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	instanceLogger := zerolog.New(zerolog.ConsoleWriter{Out: options.LogWriter, TimeFormat: time.StampMilli, NoColor: options.LogNoColor}).With().Timestamp().Logger()
@@ -74,6 +80,7 @@ func CreateAnonymousSDK(options *AnonymousInitializeOptions) *AnonymousSDK {
 					{Name: "X-SEALD-VERSION", Value: version_},
 				},
 				apiLogger,
+				options.MaxParallelRequests,
 			),
 		},
 		logger: instanceLogger,

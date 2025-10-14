@@ -53,6 +53,7 @@ suspend fun generatePrivateKeysAsync(keySize: Int = 4096): PreGeneratedKeys {
  * @param appId The ID given by the Seald server to your app. This value is given on your Seald dashboard.
  * @param databasePath The path where to store the local Seald database. If no path is passed, uses an in-memory only database.
  * @param databaseEncryptionKey The encryption key with which to encrypt the local Seald database. Required when passing `databasePath`. This **must** be the Base64 string encoding of a cryptographically random buffer of 64 bytes.
+ * @param maxParallelRequests Maximum number of concurrent network requests allowed for this instance. Defaults to 10. Set to a negative value to disable the limit entirely.
  * @param instanceName An arbitrary name to give to this Seald instance. Can be useful for debugging when multiple instances are running in parallel, as it is added to logs.
  * @param logLevel The minimum level of logs you want. All logs of this level or above will be displayed. `-1`: Trace; `0`: Debug; `1`: Info; `2`: Warn; `3`: Error; `4`: Fatal; `5`: Panic; `6`: NoLevel; `7`: Disabled.
  * @param logNoColor Should be set to `false` if you want to enable colors in the log output. Defaults to `true`.
@@ -68,6 +69,7 @@ class SealdSDK
         appId: String,
         databasePath: String? = null,
         databaseEncryptionKey: ByteArray? = null,
+        maxParallelRequests: Int = 10,
         instanceName: String = "SealdSDK",
         logLevel: Byte = 0,
         logNoColor: Boolean = true,
@@ -84,6 +86,7 @@ class SealdSDK
             initOpts.appId = appId
             initOpts.databasePath = databasePath ?: ""
             initOpts.databaseEncryptionKey = databaseEncryptionKey
+            initOpts.maxParallelRequests = maxParallelRequests.toLong()
             initOpts.instanceName = instanceName
             initOpts.platform = "android"
             initOpts.logLevel = logLevel

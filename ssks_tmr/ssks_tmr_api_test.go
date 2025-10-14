@@ -20,7 +20,7 @@ func TestSSKSTMRApiClient(t *testing.T) {
 	require.NoError(t, err)
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli}).With().Timestamp().Str("instance", "testSSKSTMRAPI").Logger()
-	ssksTMRApiClient := apiClient{ApiClient: *api_helper.NewApiClient(testCred.SsksUrl, []api_helper.Header{{Name: "X-SEALD-APPID", Value: testCred.AppId}}, logger)}
+	ssksTMRApiClient := apiClient{ApiClient: *api_helper.NewApiClient(testCred.SsksUrl, []api_helper.Header{{Name: "X-SEALD-APPID", Value: testCred.AppId}}, logger, 10)}
 
 	nonce, err := utils.GenerateRandomNonce()
 	require.NoError(t, err)

@@ -5,10 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/seald/go-seald-sdk/common_models"
-	"github.com/seald/go-seald-sdk/utils"
-	"github.com/ztrue/tracerr"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,9 +12,15 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/utils"
+	"github.com/ztrue/tracerr"
 )
 
 const DatabaseEncryptionKeyB64 = "V4olGDOE5bAWNa9HDCvOACvZ59hUSUdKmpuZNyl1eJQnWKs5/l+PGnKUv4mKjivL3BtU014uRAIF2sOl83o6vQ"
+const DatabaseEncryptionKeyB64_2 = "iwhA+HZMRx4NkMoo+Ed5pJZk8+EBkdzovR+PMqr0u22I/OnN8Pl50dg77Cbbnz/OQtFDt29m0qdsTRH1ajZglw"
 
 var (
 	ErrorSyntheticTestError = utils.NewSealdError("SYNTHETIC_TEST_ERROR", "Synthetic test error")

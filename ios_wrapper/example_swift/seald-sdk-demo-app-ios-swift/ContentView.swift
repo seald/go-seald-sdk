@@ -58,9 +58,10 @@ func testSealdSDK() async -> Bool {
         // However, as this is a demo without a backend, we will use them on the frontend.
         // JWT documentation: https://docs.seald.io/en/sdk/guides/jwt.html
         // identity documentation: https://docs.seald.io/en/sdk/guides/4-identities.html
-        let jwtBuilder = JWTBuilder(
+        let jwtBuilder = await JWTBuilder(
             JWTSharedSecretId: testCredentials.JWTSharedSecretId,
-            JWTSharedSecret: testCredentials.JWTSharedSecret)
+            JWTSharedSecret: testCredentials.JWTSharedSecret
+        )
 
         // let's instantiate 3 SealdSDK. They will correspond to 3 users that will exchange messages.
         let sdk1 = try SealdSdk.init(
@@ -68,6 +69,7 @@ func testSealdSDK() async -> Bool {
             appId: testCredentials.appId,
             databasePath: "\(sealdDir)/sdk1",
             databaseEncryptionKey: databaseEncryptionKey,
+            maxParallelRequests: 10,
             instanceName: "Swift-Instance-1",
             logLevel: -1,
             logNoColor: true,
@@ -77,6 +79,7 @@ func testSealdSDK() async -> Bool {
             appId: testCredentials.appId,
             databasePath: "\(sealdDir)/sdk2",
             databaseEncryptionKey: databaseEncryptionKey,
+            maxParallelRequests: 10,
             instanceName: "Swift-Instance-2",
             logLevel: -1,
             logNoColor: true,
@@ -87,6 +90,7 @@ func testSealdSDK() async -> Bool {
             appId: testCredentials.appId,
             databasePath: "\(sealdDir)/sdk3",
             databaseEncryptionKey: databaseEncryptionKey,
+            maxParallelRequests: 10,
             instanceName: "Swift-Instance-3",
             logLevel: -1,
             logNoColor: true,
@@ -200,8 +204,13 @@ func testSealdSDK() async -> Bool {
             appKey: testCredentials.ssksBackendAppKey)
 
         // Retrieve the TMR JWT
-        let ssksTMR = SealdSsksTMRPlugin(ssksURL: testCredentials.ssksURL,
-        appId: testCredentials.appId, instanceName: "SdkDemoAppIosSwiftTmrAccess", logLevel: -1, logNoColor: true)
+        let ssksTMR = SealdSsksTMRPlugin(
+            ssksURL: testCredentials.ssksURL,
+            appId: testCredentials.appId,
+            maxParallelRequests: 10,
+            instanceName: "SdkDemoAppIosSwiftTmrAccess",
+            logLevel: -1,
+            logNoColor: true)
 
         // The app backend creates an SSKS authentication session.
         // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false,
@@ -611,6 +620,7 @@ func testSealdSDK() async -> Bool {
             appId: testCredentials.appId,
             databasePath: "\(sealdDir)/sdk1Exported",
             databaseEncryptionKey: databaseEncryptionKey,
+            maxParallelRequests: 10,
             instanceName: "sdk1Exported",
             logLevel: -1,
             logNoColor: true,
@@ -642,6 +652,7 @@ func testSealdSDK() async -> Bool {
             appId: testCredentials.appId,
             databasePath: "\(sealdDir)/sdk1SubDevice",
             databaseEncryptionKey: databaseEncryptionKey,
+            maxParallelRequests: 10,
             instanceName: "sdk1SubDevice",
             logLevel: -1,
             logNoColor: true,
@@ -762,8 +773,13 @@ func testSealdSsksPassword() async -> Bool {
         // Simulating a Seald identity with random data, for a simpler example.
         let userIdentity = randomData(length: 10) // should be the result of: sdk.exportIdentity()
 
-        let ssksPassword = SealdSsksPasswordPlugin(ssksURL: testCredentials.ssksURL,
-        appId: testCredentials.appId, instanceName: "SdkDemoAppIosSwift", logLevel: -1, logNoColor: true)
+        let ssksPassword = SealdSsksPasswordPlugin(
+            ssksURL: testCredentials.ssksURL,
+            appId: testCredentials.appId,
+            maxParallelRequests: 10,
+            instanceName: "SdkDemoAppIosSwift",
+            logLevel: -1,
+            logNoColor: true)
 
         // Test with password
         let userPassword = randomString(length: 10)
@@ -867,8 +883,13 @@ func testSealdSsksTMR() async -> Bool {
         // userIdentity is the user's exported identity that you want to store on SSKS
         let userIdentity = randomData(length: 10) // should be the result of: sdk.exportIdentity()
 
-        let ssksTMR = SealdSsksTMRPlugin(ssksURL: testCredentials.ssksURL,
-        appId: testCredentials.appId, instanceName: "SdkDemoAppIosSwift", logLevel: -1, logNoColor: true)
+        let ssksTMR = SealdSsksTMRPlugin(
+            ssksURL: testCredentials.ssksURL,
+            appId: testCredentials.appId,
+            maxParallelRequests: 10,
+            instanceName: "SdkDemoAppIosSwift",
+            logLevel: -1,
+            logNoColor: true)
 
         // Define an AuthFactor: the user's email address.
         // AuthFactor can be an email `AuthFactorType.EM` or a phone number `AuthFactorType.SMS`
@@ -965,6 +986,7 @@ func testSealdSsksTMR() async -> Bool {
         let ssksTMRInst2 = SealdSsksTMRPlugin(
             ssksURL: testCredentials.ssksURL,
             appId: testCredentials.appId,
+            maxParallelRequests: 10,
             instanceName: "SdkDemoAppIosSwift",
             logLevel: -1,
             logNoColor: true)
@@ -1015,13 +1037,14 @@ func testSealdAnonymousSDK() async -> Bool {
             appId: testCredentials.appId,
             databasePath: nil,
             databaseEncryptionKey: nil,
+            maxParallelRequests: 10,
             instanceName: "Swift-anonymous-full-sdk",
             logLevel: -1,
             logNoColor: true,
             encryptionSessionCacheTTL: 0,
             keySize: 4096
         )
-        let jwtBuilder = JWTBuilder(
+        let jwtBuilder = await JWTBuilder(
             JWTSharedSecretId: testCredentials.JWTSharedSecretId,
             JWTSharedSecret: testCredentials.JWTSharedSecret
         )
@@ -1038,6 +1061,7 @@ func testSealdAnonymousSDK() async -> Bool {
             appId: testCredentials.appId,
             databasePath: nil,
             databaseEncryptionKey: nil,
+            maxParallelRequests: 10,
             instanceName: "Swift-anonymous-full-sdk2",
             logLevel: -1,
             logNoColor: true,
@@ -1056,6 +1080,7 @@ func testSealdAnonymousSDK() async -> Bool {
         let anonymousSDK = try SealdAnonymousSdk(
             apiUrl: testCredentials.apiURL,
             appId: testCredentials.appId,
+            maxParallelRequests: 10,
             instanceName: "Swift-anonymous",
             logLevel: -1,
             logNoColor: true
@@ -1104,6 +1129,7 @@ func testSealdAnonymousSDK() async -> Bool {
         let ssksTMR = SealdSsksTMRPlugin(
             ssksURL: testCredentials.ssksURL,
             appId: testCredentials.appId,
+            maxParallelRequests: 10,
             instanceName: "AnonymousTmrPlugin",
             logLevel: -1,
             logNoColor: true

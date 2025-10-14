@@ -1,3 +1,13 @@
+# 0.11.0 : 2025/10/14
+- @ios: \[new feature\] Now compatible with macOS >= 12.0 (still considered beta).
+- @all: \[enhancement\] Release database lock automatically when instantiation failed.
+- @android: \[new feature\] Compatibility with 16k pages.
+- @all: \[new feature\] Add `maxParallelRequests` option to SealdSdk, AnonymousSdk, TMR Plugin, and Password Plugin.
+- @ios: \[**breaking change**\] Add `maxParallelRequests` option to SealdSdk, AnonymousSdk, TMR Plugin, and Password Plugin.
+- @all: \[bug fix\] Fix a bug that would break subsequent renews after renewing the keys of group that had GroupTmrTemporaryKeys.
+- @all: \[enhancement\] Update dependencies.
+
+
 # 0.10.0 : 2025/09/08
 - @all: \[new feature\] Implement Anonymous SDK.
 - @go: \[**breaking change**\] Remove anonymous SDK `Encrypt` function.

@@ -708,6 +708,8 @@ typedef struct {
     int DatabaseEncryptionKeyLen;
     /** EncryptionSessionCacheTTL is the duration of cache lifetime in Milliseconds. `-1` to cache forever. `0` for no cache. */
     long long EncryptionSessionCacheTTL;
+    /** MaxParallelRequests is the maximum number of concurrent network requests allowed per instance. 0 uses the default (10). Negative disables the limit. */
+    int MaxParallelRequests;
     /** LogLevel is the minimum level of logs you want. All logs of this level or above will be displayed. `-1`: Trace; `0`: Debug; `1`: Info; `2`: Warn; `3`: Error; `4`: Fatal; `5`: Panic; `6`: NoLevel; `7`: Disabled. */
     signed char LogLevel;
     /** LogNoColor should be set to `0` if you want to enable colors in the log output, `1` if you don't. */
@@ -2192,6 +2194,8 @@ typedef struct {
     char* SsksURL;
     /** AppId is the ID given by the Seald server to your app. This value is given on your Seald dashboard. */
     char* AppId;
+    /** MaxParallelRequests is the maximum number of concurrent network requests allowed per instance. 0 uses the default (10). Negative disables the limit. */
+    int MaxParallelRequests;
     /** LogLevel is the minimum level of logs you want. All logs of this level or above will be displayed. `-1`: Trace; `0`: Debug; `1`: Info; `2`: Warn; `3`: Error; `4`: Fatal; `5`: Panic; `6`: NoLevel; `7`: Disabled. */
     signed char LogLevel;
     /** LogNoColor should be set to `0` if you want to enable colors in the log output, `1` if you don't. */
@@ -2336,6 +2340,8 @@ typedef struct {
     char* SsksURL;
     /** AppId is the ID given by the Seald server to your app. This value is given on your Seald dashboard. */
     char* AppId;
+    /** MaxParallelRequests is the maximum number of concurrent network requests allowed per instance. 0 uses the default (10). Negative disables the limit. */
+    int MaxParallelRequests;
     /** LogLevel is the minimum level of logs you want. All logs of this level or above will be displayed. `-1`: Trace; `0`: Debug; `1`: Info; `2`: Warn; `3`: Error; `4`: Fatal; `5`: Panic; `6`: NoLevel; `7`: Disabled. */
     signed char LogLevel;
     /** LogNoColor should be set to `0` if you want to enable colors in the log output, `1` if you don't. */
@@ -2513,6 +2519,8 @@ typedef struct {
     char* InstanceName;
     /** Platform is a name that references the platform on which the SDK is running. */
     char* Platform;
+    /** MaxParallelRequests is the maximum number of concurrent network requests allowed per instance. 0 uses the default (10). Negative disables the limit. */
+    int MaxParallelRequests;
 } SealdAnonymousInitializeOptions;
 
 

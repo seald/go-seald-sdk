@@ -10,10 +10,10 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/ztrue/tracerr v0.4.0
 	go.mongodb.org/mongo-driver v1.17.4
-	golang.org/x/crypto v0.41.0
-	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
-	golang.org/x/mobile v0.0.0-20250813145510-f12310a0cfd9
-	golang.org/x/text v0.28.0
+	golang.org/x/crypto v0.43.0
+	golang.org/x/exp v0.0.0-20251009144603-d2f985daa21b
+	golang.org/x/mobile v0.0.0-20251009145931-8baca8bf4eeb
+	golang.org/x/text v0.30.0
 )
 
 require (
@@ -22,10 +22,10 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/tools v0.36.0 // indirect
+	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/tools v0.38.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

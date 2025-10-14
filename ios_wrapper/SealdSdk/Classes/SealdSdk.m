@@ -20,6 +20,7 @@ __attribute__((constructor)) static void initializeSealdSdkVersion(void) {
                           appId:(const NSString*)appId
                    databasePath:(const NSString*_Nullable)databasePath
           databaseEncryptionKey:(const NSData*_Nullable)databaseEncryptionKey
+            maxParallelRequests:(const NSInteger)maxParallelRequests
                    instanceName:(const NSString*)instanceName
                        logLevel:(const NSInteger)logLevel
                      logNoColor:(const BOOL)logNoColor
@@ -34,6 +35,7 @@ __attribute__((constructor)) static void initializeSealdSdkVersion(void) {
         initOpts.appId = (NSString*)appId;
         initOpts.databasePath = (NSString*)databasePath;
         initOpts.databaseEncryptionKey = (NSData*)databaseEncryptionKey;
+        initOpts.maxParallelRequests = maxParallelRequests;
         initOpts.instanceName = (NSString*)instanceName;
         initOpts.platform = @"ios";
         initOpts.logLevel = logLevel;

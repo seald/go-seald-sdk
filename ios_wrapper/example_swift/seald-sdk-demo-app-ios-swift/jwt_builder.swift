@@ -15,19 +15,17 @@ class JWTBuilder {
     let JWTSharedSecret: String
     let keys: JWTKeyCollection
 
-    init(JWTSharedSecretId: String, JWTSharedSecret: String) {
+    init(JWTSharedSecretId: String, JWTSharedSecret: String) async {
         self.JWTSharedSecretId = JWTSharedSecretId
         self.JWTSharedSecret = JWTSharedSecret
         self.keys = JWTKeyCollection()
 
         // Add the HMAC signing key to the collection
-        Task {
-            await keys.add(
-                hmac: HMACKey(stringLiteral: JWTSharedSecret),
-                digestAlgorithm: .sha256,
-                kid: JWKIdentifier(string: JWTSharedSecretId)
-            )
-        }
+        await keys.add(
+            hmac: HMACKey(stringLiteral: JWTSharedSecret),
+            digestAlgorithm: .sha256,
+            kid: JWKIdentifier(string: JWTSharedSecretId)
+        )
     }
 
     enum JWTPermission: String {

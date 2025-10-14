@@ -49,11 +49,16 @@ type PluginTMRInitializeOptions struct {
 	Platform string
 	// LogWriter is the io.Writer to which to write the logs. Defaults to os.Stdout.
 	LogWriter io.Writer
+	// MaxParallelRequests is the maximum number of concurrent network requests allowed per instance. Set 0 for default (10). Set negative to disable limit.
+	MaxParallelRequests int
 }
 
 func NewPluginTMR(options *PluginTMRInitializeOptions) *PluginTMR {
 	if options.LogWriter == nil {
 		options.LogWriter = os.Stdout
+	}
+	if options.MaxParallelRequests == 0 {
+		options.MaxParallelRequests = 10
 	}
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	instanceLogger := zerolog.New(zerolog.ConsoleWriter{Out: options.LogWriter, TimeFormat: time.StampMilli, NoColor: options.LogNoColor}).With().Timestamp().Logger()
@@ -77,6 +82,7 @@ func NewPluginTMR(options *PluginTMRInitializeOptions) *PluginTMR {
 					{Name: "X-SEALD-VERSION", Value: version_},
 				},
 				apiLogger,
+				options.MaxParallelRequests,
 			),
 		},
 		appId:  options.AppId,

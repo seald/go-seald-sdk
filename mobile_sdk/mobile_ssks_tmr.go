@@ -12,22 +12,24 @@ type MobileSSKSTMR struct {
 }
 
 type SsksTMRInitializeOptions struct {
-	SsksURL      string
-	AppId        string
-	LogLevel     int8
-	LogNoColor   bool
-	InstanceName string
-	Platform     string
+	SsksURL             string
+	AppId               string
+	MaxParallelRequests int
+	LogLevel            int8
+	LogNoColor          bool
+	InstanceName        string
+	Platform            string
 }
 
 func (mOpts SsksTMRInitializeOptions) toGoOptions() *ssks_tmr.PluginTMRInitializeOptions {
 	return &ssks_tmr.PluginTMRInitializeOptions{
-		SsksURL:      mOpts.SsksURL,
-		AppId:        mOpts.AppId,
-		LogLevel:     zerolog.Level(mOpts.LogLevel),
-		LogNoColor:   mOpts.LogNoColor,
-		InstanceName: mOpts.InstanceName,
-		Platform:     mOpts.Platform,
+		SsksURL:             mOpts.SsksURL,
+		AppId:               mOpts.AppId,
+		MaxParallelRequests: mOpts.MaxParallelRequests,
+		LogLevel:            zerolog.Level(mOpts.LogLevel),
+		LogNoColor:          mOpts.LogNoColor,
+		InstanceName:        mOpts.InstanceName,
+		Platform:            mOpts.Platform,
 	}
 }
 

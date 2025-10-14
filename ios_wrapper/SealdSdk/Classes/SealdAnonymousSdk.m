@@ -12,6 +12,7 @@
 @implementation SealdAnonymousSdk
 - (instancetype) initWithApiUrl:(const NSString*)apiUrl
                           appId:(const NSString*)appId
+            maxParallelRequests:(const NSInteger)maxParallelRequests
                    instanceName:(const NSString*)instanceName
                        logLevel:(const NSInteger)logLevel
                      logNoColor:(const BOOL)logNoColor
@@ -22,6 +23,7 @@
         SealdSdkInternalsMobile_sdkAnonymousInitializeOptions* initOpts = [[SealdSdkInternalsMobile_sdkAnonymousInitializeOptions alloc] init];
         initOpts.apiURL = (NSString*)apiUrl;
         initOpts.appId = (NSString*)appId;
+        initOpts.maxParallelRequests = maxParallelRequests;
         initOpts.instanceName = (NSString*)instanceName;
         initOpts.platform = @"ios";
         initOpts.logLevel = logLevel;

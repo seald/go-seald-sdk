@@ -28,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param apiUrl The Seald server for this instance to use. This value is given on your Seald dashboard.
  * @param appId The ID given by the Seald server to your app. This value is given on your Seald dashboard.
+ * @param maxParallelRequests The maximum number of concurrent network requests allowed for this instance. Set to 0 to use the default (10). Set to a negative value to disable the limit entirely.
  * @param instanceName An arbitrary name to give to this Seald instance. Can be useful for debugging when multiple instances are running in parallel, as it is added to logs.
  * @param logLevel The minimum level of logs you want. All logs of this level or above will be displayed. `-1`: Trace; `0`: Debug; `1`: Info; `2`: Warn; `3`: Error; `4`: Fatal; `5`: Panic; `6`: NoLevel; `7`: Disabled.
  * @param logNoColor Should be set to `NO` if you want to enable colors in the log output, `YES` if you don't.
@@ -35,6 +36,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (instancetype) initWithApiUrl:(const NSString*)apiUrl
                           appId:(const NSString*)appId
+            maxParallelRequests:(const NSInteger)maxParallelRequests
                    instanceName:(const NSString*)instanceName
                        logLevel:(const NSInteger)logLevel
                      logNoColor:(const BOOL)logNoColor

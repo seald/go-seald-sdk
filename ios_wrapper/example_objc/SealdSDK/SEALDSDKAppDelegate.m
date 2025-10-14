@@ -81,11 +81,11 @@ BOOL testSealdSDK(void)
         DemoAppJWTBuilder* jwtbuilder = [[DemoAppJWTBuilder alloc] initWithJWTSharedSecretId:sealdCredentials.JWTSharedSecretId JWTSharedSecret:sealdCredentials.JWTSharedSecret];
 
         // let's instantiate 3 SealdSDK. They will correspond to 3 users that will exchange messages.
-        SealdSdk* sdk1 = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/sdk1", sealdDir] databaseEncryptionKey:databaseEncryptionKey instanceName:@"Obj-C-Instance-1" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
+        SealdSdk* sdk1 = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/sdk1", sealdDir] databaseEncryptionKey:databaseEncryptionKey maxParallelRequests:10 instanceName:@"Obj-C-Instance-1" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
         NSCAssert(error == nil, error.localizedDescription);
-        SealdSdk* sdk2 = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/sdk2", sealdDir] databaseEncryptionKey:databaseEncryptionKey instanceName:@"Obj-C-Instance-2" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
+        SealdSdk* sdk2 = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/sdk2", sealdDir] databaseEncryptionKey:databaseEncryptionKey maxParallelRequests:10 instanceName:@"Obj-C-Instance-2" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
         NSCAssert(error == nil, error.localizedDescription);
-        SealdSdk* sdk3 = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/sdk3", sealdDir] databaseEncryptionKey:databaseEncryptionKey instanceName:@"Obj-C-Instance-3" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
+        SealdSdk* sdk3 = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/sdk3", sealdDir] databaseEncryptionKey:databaseEncryptionKey maxParallelRequests:10 instanceName:@"Obj-C-Instance-3" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
         NSCAssert(error == nil, error.localizedDescription);
 
         // retrieve info about current user before creating a user should return null
@@ -157,7 +157,7 @@ BOOL testSealdSDK(void)
         NSCAssert([addedTMRAccessId length] == 36, @"Expected UUID v4");
 
         // Retrieve the TMR JWT
-        SealdSsksTMRPlugin* ssksTMR = [[SealdSsksTMRPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL appId:sealdCredentials.appId instanceName:@"SsksTmr" logLevel:-1 logNoColor:YES];
+        SealdSsksTMRPlugin* ssksTMR = [[SealdSsksTMRPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL appId:sealdCredentials.appId maxParallelRequests:10 instanceName:@"SsksTmr" logLevel:-1 logNoColor:YES];
 
         // The app backend creates an SSKS authentication session.
         // This is the first time that this email is authenticating onto SSKS, so `mustAuthenticate` would be false, but we force auth because we want to convert TMR accesses.
@@ -503,7 +503,7 @@ BOOL testSealdSDK(void)
         NSCAssert(error == nil, error.localizedDescription);
 
         // We can instantiate a new SealdSDK, import the exported identity
-        SealdSdk* sdk1Exported = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/sdk1Exported", sealdDir] databaseEncryptionKey:databaseEncryptionKey instanceName:@"sdk1Exported" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
+        SealdSdk* sdk1Exported = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/sdk1Exported", sealdDir] databaseEncryptionKey:databaseEncryptionKey maxParallelRequests:10 instanceName:@"sdk1Exported" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
         NSCAssert(error == nil, error.localizedDescription);
         [sdk1Exported importIdentity:exportedIdentity error:&error];
         NSCAssert(error == nil, error.localizedDescription);
@@ -527,7 +527,7 @@ BOOL testSealdSDK(void)
         NSCAssert(error == nil, error.localizedDescription);
 
         // We can instantiate a new SealdSDK, import the sub-device identity
-        SealdSdk* sdk1SubDevice = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/inst1SubDevice", sealdDir] databaseEncryptionKey:databaseEncryptionKey instanceName:@"User1SubDevice" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
+        SealdSdk* sdk1SubDevice = [[SealdSdk alloc] initWithApiUrl:sealdCredentials.apiURL appId:sealdCredentials.appId databasePath:[NSString stringWithFormat:@"%@/inst1SubDevice", sealdDir] databaseEncryptionKey:databaseEncryptionKey maxParallelRequests:10 instanceName:@"User1SubDevice" logLevel:0 logNoColor:true encryptionSessionCacheTTL:0 keySize:4096 error:&error];
         NSCAssert(error == nil, error.localizedDescription);
         [sdk1SubDevice importIdentity:subIdentity.backupKey error:&error];
         NSCAssert(error == nil, error.localizedDescription);
@@ -635,7 +635,7 @@ BOOL testSealdSsksPassword(void)
         NSString* userId = [NSString stringWithFormat:@"user-%@", rand];
         NSData* userIdentity = randomData(64); // should be: [sealdSDKInstance exportIdentity]
 
-        SealdSsksPasswordPlugin* ssksPassword = [[SealdSsksPasswordPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL appId:sealdCredentials.appId instanceName:@"SsksPassword" logLevel:-1 logNoColor:YES];
+        SealdSsksPasswordPlugin* ssksPassword = [[SealdSsksPasswordPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL appId:sealdCredentials.appId maxParallelRequests:10 instanceName:@"SsksPassword" logLevel:-1 logNoColor:YES];
 
         // Test with password
         NSString* userPassword = randomString(10);
@@ -723,7 +723,7 @@ BOOL testSealdSsksTMR(void)
         // userIdentity is the user's exported identity that you want to store on SSKS
         NSData* userIdentity = randomData(64); // should be: [sealdSDKInstance exportIdentity]
 
-        SealdSsksTMRPlugin* ssksTMR = [[SealdSsksTMRPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL appId:sealdCredentials.appId instanceName:@"SsksTmr" logLevel:-1 logNoColor:YES];
+        SealdSsksTMRPlugin* ssksTMR = [[SealdSsksTMRPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL appId:sealdCredentials.appId maxParallelRequests:10 instanceName:@"SsksTmr" logLevel:-1 logNoColor:YES];
 
         // Define an AuthFactor: the user's email address.
         // AuthFactor can be an email `AuthFactorType.EM` or a phone number `AuthFactorType.SMS`
@@ -811,7 +811,7 @@ BOOL testSealdSsksTMR(void)
         NSCAssert(retrieveResp2.shouldRenewKey == NO, @"invalid should renew key value 2"); // this time, the identity was saved with a challenge : no need to renew
 
         // Try retrieving with another SealdSsksTMRPlugin instance
-        SealdSsksTMRPlugin* ssksTMR2 = [[SealdSsksTMRPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL appId:sealdCredentials.appId instanceName:@"SsksTmr2" logLevel:-1 logNoColor:YES];
+        SealdSsksTMRPlugin* ssksTMR2 = [[SealdSsksTMRPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL appId:sealdCredentials.appId maxParallelRequests:10 instanceName:@"SsksTmr2" logLevel:-1 logNoColor:YES];
         SealdSsksBackendChallengeResponse* authSessionRetrieve3 =
             [ssksBackend challengeSendWithUserId:userId
                                       authFactor:authFactor
@@ -866,6 +866,7 @@ BOOL testSealdAnonymousSDK(void)
                                                               appId:sealdCredentials.appId
                                                        databasePath:nil
                                               databaseEncryptionKey:nil
+                                                maxParallelRequests:10
                                                        instanceName:@"ObjC-anonymous-full-sdk"
                                                            logLevel:-1
                                                          logNoColor:YES
@@ -885,6 +886,7 @@ BOOL testSealdAnonymousSDK(void)
                                                                appId:sealdCredentials.appId
                                                         databasePath:nil
                                                databaseEncryptionKey:nil
+                                                 maxParallelRequests:10
                                                         instanceName:@"ObjC-anonymous-full-sdk2"
                                                             logLevel:-1
                                                           logNoColor:YES
@@ -903,6 +905,7 @@ BOOL testSealdAnonymousSDK(void)
         // Create anonymous SDK
         SealdAnonymousSdk* anonymousSDK = [[SealdAnonymousSdk alloc] initWithApiUrl:sealdCredentials.apiURL
                                                                               appId:sealdCredentials.appId
+                                                                maxParallelRequests:10
                                                                        instanceName:@"Obj-C-anonymous"
                                                                            logLevel:-1
                                                                          logNoColor:YES
@@ -940,6 +943,7 @@ BOOL testSealdAnonymousSDK(void)
         // Full SDK non-recipient can retrieve the EncryptionSession via TMR
         SealdSsksTMRPlugin* ssksTMR = [[SealdSsksTMRPlugin alloc] initWithSsksURL:sealdCredentials.ssksURL
                                                                             appId:sealdCredentials.appId
+                                                              maxParallelRequests:10
                                                                      instanceName:@"AnonymousTmrPlugin"
                                                                          logLevel:-1
                                                                        logNoColor:YES];
