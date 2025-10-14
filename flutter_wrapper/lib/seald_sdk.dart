@@ -50,6 +50,7 @@ class SealdSdk {
   /// [databasePath] - The path where to store the local Seald database. Defaults to an empty string.
   /// [databaseEncryptionKey] - The encryption key with which to encrypt the local Seald database. This *MUST* be a cryptographically random buffer of 64 bytes. Defaults to an empty string.
   /// [encryptionSessionCacheTTL] - The duration of cache lifetime. `-1` to cache forever. `0` for no cache. Defaults to 0.
+  /// [maxParallelRequests] - Maximum number of concurrent network requests allowed for this instance. Defaults to 10. Set a negative value to disable the limit.
   /// [logLevel] - The minimum level of logs you want. All logs of this level or above will be displayed. `-1`: Trace; `0`: Debug; `1`: Info; `2`: Warn; `3`: Error; `4`: Fatal; `5`: Panic; `6`: NoLevel; `7`: Disabled. Defaults to 0.
   /// [logNoColor] - Whether to disable colors in the log output. `true` to disable colors, `false` to enable colors. Defaults to false.
   /// [instanceName] - An arbitrary name to give to this Seald instance. Can be useful for debugging when multiple instances are running in parallel, as it is added to logs. Defaults to an empty string.
@@ -61,6 +62,7 @@ class SealdSdk {
       String databasePath = "",
       Uint8List? databaseEncryptionKey,
       Duration encryptionSessionCacheTTL = Duration.zero,
+      int maxParallelRequests = 10,
       int logLevel = 0,
       bool logNoColor = false,
       String instanceName = "",
@@ -99,6 +101,7 @@ class SealdSdk {
       ..DatabaseEncryptionKey = nativeDatabaseEncryptionKey
       ..DatabaseEncryptionKeyLen = databaseEncryptionKey?.length ?? 0
       ..EncryptionSessionCacheTTL = encryptionSessionCacheTTL.inMilliseconds
+      ..MaxParallelRequests = maxParallelRequests
       ..LogLevel = logLevel
       ..LogNoColor = logNoColor ? 1 : 0
       ..InstanceName = instanceName.toNativeUtf8()

@@ -8,27 +8,29 @@ package main
 */
 import "C"
 import (
+	"sync"
+	"unsafe"
+
 	"github.com/rs/zerolog"
 	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/seald/go-seald-sdk/ssks_password"
 	"github.com/seald/go-seald-sdk/ssks_tmr"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"sync"
-	"unsafe"
 )
 
 // Helper SealdSsksTMRPluginInitializeOptions
 
 func ssksTMRPluginInitializeOptionsToGo(cOpts *C.SealdSsksTMRPluginInitializeOptions) *ssks_tmr.PluginTMRInitializeOptions {
 	return &ssks_tmr.PluginTMRInitializeOptions{
-		SsksURL:      C.GoString(cOpts.SsksURL),
-		AppId:        C.GoString(cOpts.AppId),
-		LogLevel:     zerolog.Level(int8(cOpts.LogLevel)),
-		LogNoColor:   int(cOpts.LogNoColor) != 0,
-		InstanceName: C.GoString(cOpts.InstanceName),
-		Platform:     C.GoString(cOpts.Platform),
-		LogWriter:    logWriter,
+		SsksURL:             C.GoString(cOpts.SsksURL),
+		AppId:               C.GoString(cOpts.AppId),
+		MaxParallelRequests: int(cOpts.MaxParallelRequests),
+		LogLevel:            zerolog.Level(int8(cOpts.LogLevel)),
+		LogNoColor:          int(cOpts.LogNoColor) != 0,
+		InstanceName:        C.GoString(cOpts.InstanceName),
+		Platform:            C.GoString(cOpts.Platform),
+		LogWriter:           logWriter,
 	}
 }
 
@@ -165,13 +167,14 @@ func SealdSsksTMRPlugin_GetFactorToken(tmrPlugin *C.SealdSsksTMRPlugin, sessionI
 
 func ssksPasswordPluginInitializeOptionsToGo(cOpts *C.SealdSsksPasswordPluginInitializeOptions) *ssks_password.PluginPasswordInitializeOptions {
 	return &ssks_password.PluginPasswordInitializeOptions{
-		SsksURL:      C.GoString(cOpts.SsksURL),
-		AppId:        C.GoString(cOpts.AppId),
-		LogLevel:     zerolog.Level(int8(cOpts.LogLevel)),
-		LogNoColor:   int(cOpts.LogNoColor) != 0,
-		InstanceName: C.GoString(cOpts.InstanceName),
-		Platform:     C.GoString(cOpts.Platform),
-		LogWriter:    logWriter,
+		SsksURL:             C.GoString(cOpts.SsksURL),
+		AppId:               C.GoString(cOpts.AppId),
+		MaxParallelRequests: int(cOpts.MaxParallelRequests),
+		LogLevel:            zerolog.Level(int8(cOpts.LogLevel)),
+		LogNoColor:          int(cOpts.LogNoColor) != 0,
+		InstanceName:        C.GoString(cOpts.InstanceName),
+		Platform:            C.GoString(cOpts.Platform),
+		LogWriter:           logWriter,
 	}
 }
 

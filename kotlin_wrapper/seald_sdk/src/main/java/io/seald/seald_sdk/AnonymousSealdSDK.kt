@@ -7,17 +7,19 @@ import kotlinx.coroutines.withContext
  * This is the main class for the anonymous Seald SDK. It represents an instance of the Anonymous Seald SDK.
  * @param apiURL The Seald server for this instance to use. This value is given on your Seald dashboard.
  * @param appId The ID given by the Seald server to your app. This value is given on your Seald dashboard.
+ * @param maxParallelRequests Maximum number of concurrent network requests allowed for this instance. Defaults to 10. Set to a negative value to disable the limit entirely.
  * @param instanceName An arbitrary name to give to this Seald instance. Can be useful for debugging when multiple instances are running in parallel, as it is added to logs.
  * @param logLevel The minimum level of logs you want. All logs of this level or above will be displayed. `-1`: Trace; `0`: Debug; `1`: Info; `2`: Warn; `3`: Error; `4`: Fatal; `5`: Panic; `6`: NoLevel; `7`: Disabled.
  * @param logNoColor Should be set to `false` if you want to enable colors in the log output. Defaults to `true`.
  * @throws SealdException
- */
+*/
 class AnonymousSealdSDK
     @JvmOverloads
     @Throws(SealdException::class)
     constructor(
         apiURL: String = "https://api.seald.io/",
         appId: String,
+        maxParallelRequests: Int = 10,
         instanceName: String = "AnonymousSealdSDK",
         logLevel: Byte = 0,
         logNoColor: Boolean = true,
@@ -30,6 +32,7 @@ class AnonymousSealdSDK
                     .AnonymousInitializeOptions()
             initOpts.apiURL = apiURL
             initOpts.appId = appId
+            initOpts.maxParallelRequests = maxParallelRequests.toLong()
             initOpts.instanceName = instanceName
             initOpts.platform = "android"
             initOpts.logLevel = logLevel

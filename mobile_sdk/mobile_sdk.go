@@ -28,6 +28,7 @@ type SdkInitializeOptions struct {
 	DatabasePath              string
 	DatabaseEncryptionKey     []byte
 	EncryptionSessionCacheTTL int64
+	MaxParallelRequests       int
 	LogLevel                  int8
 	LogNoColor                bool
 	InstanceName              string
@@ -66,6 +67,7 @@ func (mOpts SdkInitializeOptions) toGoOptions() (*sdk.InitializeOptions, error) 
 		AppId:                     mOpts.AppId,
 		KeySize:                   mOpts.KeySize,
 		EncryptionSessionCacheTTL: time.Duration(mOpts.EncryptionSessionCacheTTL) * time.Millisecond,
+		MaxParallelRequests:       mOpts.MaxParallelRequests,
 		LogLevel:                  zerolog.Level(mOpts.LogLevel),
 		LogNoColor:                mOpts.LogNoColor,
 		InstanceName:              mOpts.InstanceName,

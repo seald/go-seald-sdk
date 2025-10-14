@@ -1,8 +1,10 @@
 package sdk
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/seald/go-seald-sdk/common_models"
+	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/test_utils"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/stretchr/testify/assert"
@@ -22,9 +24,20 @@ func Test_Storage(t *testing.T) {
 	require.NoError(t, err)
 	initOptions2, err := getInitializeOptions("testDB_persistence", true, "sdk_storage_2")
 	require.NoError(t, err)
+	initOptionsBadKey, err := getInitializeOptions("testDB_persistence", true, "sdk_storage_2")
+	require.NoError(t, err)
 	dbPath, err := test_utils.GetDBPath("testDB_persistence")
 	require.NoError(t, err)
 	initOptions.EncryptionSessionCacheTTL = 1 * time.Hour
+	badKeyData, err := base64.RawStdEncoding.DecodeString(test_utils.DatabaseEncryptionKeyB64_2)
+	require.NoError(t, err)
+	badKey, err := symmetric_key.Decode(badKeyData)
+	require.NoError(t, err)
+	initOptionsBadKey.Database = &FileStorage{
+		EncryptionKey: badKey,
+		DatabaseDir:   dbPath,
+	}
+
 	sdk, err := Initialize(initOptions)
 	require.NoError(t, err)
 
@@ -167,4 +180,18 @@ func Test_Storage(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, connectorFromLocalDB)
 	assert.Equal(t, connector, connectorFromLocalDB)
+
+	// Close SDK to unlock DB
+	err = sdkFromLocalDB.Close()
+	require.NoError(t, err)
+
+	// cannot instantiate SDK with wrong key
+	sdkFromBadKey, err := Initialize(initOptionsBadKey)
+	require.ErrorIs(t, err, symmetric_key.ErrorDecryptMacMismatch)
+	require.Nil(t, sdkFromBadKey)
+
+	// can instantiate again with correct key (to check that the bad instantiation did not take the DB lock)
+	sdkAfterBadKey, err := Initialize(initOptions)
+	require.NoError(t, err)
+	require.NotNil(t, sdkAfterBadKey)
 }

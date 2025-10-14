@@ -16,12 +16,14 @@ class SealdSsksPasswordPlugin implements Finalizable {
   ///
   /// [ssksURL] - The URL of the SSKS Identity Key Storage to which it should connect.
   /// [appId] - The ID given by the Seald server to your app. This value is given on your Seald dashboard.
+  /// [maxParallelRequests] - Maximum number of concurrent network requests allowed for this instance. Defaults to 10. Set a negative value to disable the limit.
   /// [logLevel] - The minimum level of logs you want. All logs of this level or above will be displayed. `-1`: Trace; `0`: Debug; `1`: Info; `2`: Warn; `3`: Error; `4`: Fatal; `5`: Panic; `6`: NoLevel; `7`: Disabled. Defaults to 0.
   /// [logNoColor] - Whether to disable colors in the log output. `true` to disable colors, `false` to enable colors. Defaults to false.
   /// [instanceName] - An arbitrary name to give to this Seald instance. Can be useful for debugging when multiple instances are running in parallel, as it is added to logs. Defaults to an empty string.
   SealdSsksPasswordPlugin({
     required String ssksURL,
     required String appId,
+    int maxParallelRequests = 10,
     int logLevel = 0,
     bool logNoColor = false,
     String instanceName = "",
@@ -32,6 +34,7 @@ class SealdSsksPasswordPlugin implements Finalizable {
     initOpts.ref
       ..SsksURL = ssksURL.toNativeUtf8()
       ..AppId = appId.toNativeUtf8()
+      ..MaxParallelRequests = maxParallelRequests
       ..LogLevel = logLevel
       ..LogNoColor = logNoColor ? 1 : 0
       ..InstanceName = instanceName.toNativeUtf8()

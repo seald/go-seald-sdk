@@ -7,15 +7,16 @@ package main
 import "C"
 import (
 	"fmt"
+	"sync"
+	"time"
+	"unsafe"
+
 	"github.com/rs/zerolog"
 	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/seald/go-seald-sdk/sdk"
 	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"sync"
-	"time"
-	"unsafe"
 )
 
 var (
@@ -193,6 +194,7 @@ func initializeOptionsToGo(cOpts *C.SealdInitializeOptions) (*sdk.InitializeOpti
 		AppId:                     C.GoString(cOpts.AppId),
 		KeySize:                   int(cOpts.KeySize),
 		EncryptionSessionCacheTTL: time.Duration(int64(cOpts.EncryptionSessionCacheTTL)) * time.Millisecond,
+		MaxParallelRequests:       int(cOpts.MaxParallelRequests),
 		LogLevel:                  zerolog.Level(int8(cOpts.LogLevel)),
 		LogNoColor:                int(cOpts.LogNoColor) != 0,
 		InstanceName:              C.GoString(cOpts.InstanceName),

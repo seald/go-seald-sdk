@@ -3,14 +3,15 @@ package sdk
 import (
 	"encoding/base64"
 	"errors"
+	"sort"
+	"time"
+
 	"github.com/seald/go-seald-sdk/asymkey"
 	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/seald/go-seald-sdk/sdk/sigchain"
 	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"sort"
-	"time"
 )
 
 var (
@@ -836,6 +837,7 @@ func (state *State) RenewGroupKey(groupId string, preGeneratedKeys *PreGenerated
 
 	reencryptedTempKeys := make(map[string]gTMRTKRenewed)
 	for _, keyToConvert := range temporaryKeysToConvert.Keys {
+		// Decrypt the GroupTmrTk with the group's current key (it must be signed & encrypted by the last key)
 		encryptedSymKeyGroupBytes, err := base64.StdEncoding.DecodeString(keyToConvert.EncryptedSymKeyGroup)
 		if err != nil {
 			return tracerr.Wrap(err)
@@ -861,15 +863,16 @@ func (state *State) RenewGroupKey(groupId string, preGeneratedKeys *PreGenerated
 			return tracerr.Wrap(err)
 		}
 
+		// Reencrypt with the new key
 		reencryptedKeyBytes, err := symKey.Encrypt(key.Encode())
 		if err != nil {
 			return tracerr.Wrap(err)
 		}
-		symkeySignatureBuff, err := group.CurrentKey.SigningPrivateKey.Sign(symKey.Encode())
+		symkeySignatureBuff, err := signingKeyPair.Sign(symKey.Encode())
 		if err != nil {
 			return tracerr.Wrap(err)
 		}
-		renewedEncryptedSymKeyBytes, err := group.CurrentKey.EncryptionPrivateKey.Public().Encrypt(symKey.Encode())
+		renewedEncryptedSymKeyBytes, err := encryptionPublicKey.Encrypt(symKey.Encode())
 		if err != nil {
 			return tracerr.Wrap(err)
 		}

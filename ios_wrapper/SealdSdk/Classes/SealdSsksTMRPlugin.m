@@ -11,6 +11,7 @@
 @implementation SealdSsksTMRPlugin
 - (instancetype) initWithSsksURL:(const NSString*)ssksURL
                            appId:(const NSString*)appId
+             maxParallelRequests:(const NSInteger)maxParallelRequests
                     instanceName:(const NSString*)instanceName
                         logLevel:(const NSInteger)logLevel
                       logNoColor:(const BOOL)logNoColor
@@ -20,6 +21,7 @@
         SealdSdkInternalsMobile_sdkSsksTMRInitializeOptions* initOpts = [[SealdSdkInternalsMobile_sdkSsksTMRInitializeOptions alloc] init];
         initOpts.ssksURL = (NSString*)ssksURL;
         initOpts.appId = (NSString*)appId;
+        initOpts.maxParallelRequests = maxParallelRequests;
         initOpts.instanceName = (NSString*)instanceName;
         initOpts.platform = @"ios";
         initOpts.logLevel = logLevel;

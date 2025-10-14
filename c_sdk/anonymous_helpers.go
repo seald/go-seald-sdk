@@ -16,13 +16,14 @@ import (
 
 func anonymousInitializeOptionsToGo(cOpts *C.SealdAnonymousInitializeOptions) *anonymous_sdk.AnonymousInitializeOptions {
 	return &anonymous_sdk.AnonymousInitializeOptions{
-		ApiURL:       C.GoString(cOpts.ApiURL),
-		AppId:        C.GoString(cOpts.AppId),
-		LogLevel:     zerolog.Level(int8(cOpts.LogLevel)),
-		LogNoColor:   int(cOpts.LogNoColor) != 0,
-		InstanceName: C.GoString(cOpts.InstanceName),
-		Platform:     C.GoString(cOpts.Platform),
-		LogWriter:    logWriter,
+		ApiURL:              C.GoString(cOpts.ApiURL),
+		AppId:               C.GoString(cOpts.AppId),
+		MaxParallelRequests: int(cOpts.MaxParallelRequests),
+		LogLevel:            zerolog.Level(int8(cOpts.LogLevel)),
+		LogNoColor:          int(cOpts.LogNoColor) != 0,
+		InstanceName:        C.GoString(cOpts.InstanceName),
+		Platform:            C.GoString(cOpts.Platform),
+		LogWriter:           logWriter,
 	}
 }
 

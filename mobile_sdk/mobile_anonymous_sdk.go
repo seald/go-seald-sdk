@@ -12,22 +12,24 @@ type MobileAnonymousSDK struct {
 }
 
 type AnonymousInitializeOptions struct {
-	ApiURL       string
-	AppId        string
-	LogLevel     int8 // zerolog.Level
-	LogNoColor   bool
-	InstanceName string
-	Platform     string
+	ApiURL              string
+	AppId               string
+	MaxParallelRequests int
+	LogLevel            int8 // zerolog.Level
+	LogNoColor          bool
+	InstanceName        string
+	Platform            string
 }
 
 func CreateAnonymousSDK(options *AnonymousInitializeOptions) *MobileAnonymousSDK {
 	aSDK := anonymous_sdk.CreateAnonymousSDK(&anonymous_sdk.AnonymousInitializeOptions{
-		ApiURL:       options.ApiURL,
-		AppId:        options.AppId,
-		LogLevel:     zerolog.Level(options.LogLevel),
-		LogNoColor:   options.LogNoColor,
-		InstanceName: options.InstanceName,
-		Platform:     options.Platform,
+		ApiURL:              options.ApiURL,
+		AppId:               options.AppId,
+		MaxParallelRequests: options.MaxParallelRequests,
+		LogLevel:            zerolog.Level(options.LogLevel),
+		LogNoColor:          options.LogNoColor,
+		InstanceName:        options.InstanceName,
+		Platform:            options.Platform,
 	})
 
 	return &MobileAnonymousSDK{aSDK: aSDK}

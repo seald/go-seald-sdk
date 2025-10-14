@@ -2,14 +2,15 @@ package sdk
 
 import (
 	"encoding/base64"
+	"math/rand"
+	"os"
+	"time"
+
 	"github.com/rs/zerolog"
 	"github.com/seald/go-seald-sdk/asymkey"
 	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/test_utils"
 	"github.com/ztrue/tracerr"
-	"math/rand"
-	"os"
-	"time"
 )
 
 // this file should be in test_utils package, but it is not possible because it would create a cyclical import,
@@ -151,6 +152,16 @@ func createTestAccountFromOptions(initOptions *InitializeOptions) (*State, error
 		return nil, tracerr.Wrap(err)
 	}
 
+	err = createTestAccountFromSdkInstance(account)
+
+	if err != nil {
+		return nil, tracerr.Wrap(err)
+	}
+
+	return account, nil
+}
+
+func createTestAccountFromSdkInstance(account *State) error {
 	claims := test_utils.Claims{
 		Scopes:   []test_utils.JWTPermissionScopes{test_utils.PermissionJoinTeam},
 		JoinTeam: true,
@@ -158,12 +169,12 @@ func createTestAccountFromOptions(initOptions *InitializeOptions) (*State, error
 
 	jwt, err := test_utils.GetJWT(claims)
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return tracerr.Wrap(err)
 	}
 
 	preGeneratedKeys, err := getPreGeneratedKeys()
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return tracerr.Wrap(err)
 	}
 
 	_, err = account.CreateAccount(&CreateAccountOptions{
@@ -175,10 +186,10 @@ func createTestAccountFromOptions(initOptions *InitializeOptions) (*State, error
 	})
 
 	if err != nil {
-		return nil, tracerr.Wrap(err)
+		return tracerr.Wrap(err)
 	}
 
-	return account, nil
+	return nil
 }
 
 func stateToPreGenerated(state *State) *PreGeneratedKeys {

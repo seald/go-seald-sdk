@@ -4,14 +4,15 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/seald/go-seald-sdk/api_helper"
-	"github.com/seald/go-seald-sdk/utils"
-	"github.com/ztrue/tracerr"
 	"io"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/api_helper"
+	"github.com/seald/go-seald-sdk/utils"
+	"github.com/ztrue/tracerr"
 )
 
 var (
@@ -55,6 +56,8 @@ type InitializeOptions struct {
 	Platform string
 	// LogWriter is the io.Writer to which to write the logs. Defaults to os.Stdout.
 	LogWriter io.Writer
+	// MaxParallelRequests is the maximum number of concurrent network requests allowed per SDK instance. Set 0 for default (10). Set negative to disable limit.
+	MaxParallelRequests int
 }
 
 type storage struct {
@@ -106,6 +109,9 @@ func Initialize(options *InitializeOptions) (*State, error) {
 	if options.KeySize == 0 {
 		options.KeySize = 4096
 	}
+	if options.MaxParallelRequests == 0 {
+		options.MaxParallelRequests = 10
+	}
 	err := validateOptions(*options)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
@@ -149,6 +155,7 @@ func Initialize(options *InitializeOptions) (*State, error) {
 					{Name: "X-SEALD-VERSION", Value: version_},
 				},
 				apiLogger,
+				options.MaxParallelRequests,
 			),
 		},
 		options: options,
@@ -157,26 +164,31 @@ func Initialize(options *InitializeOptions) (*State, error) {
 
 	err = options.Database.readCurrentDevice(&state.storage.currentDevice)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 
 	err = options.Database.readContacts(&state.storage.contacts)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 
 	err = options.Database.readGroups(&state.storage.groups)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 
 	err = options.Database.readConnectors(&state.storage.connectors)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 
 	err = options.Database.readEncryptionSessions(&state.storage.encryptionSessionsCache)
 	if err != nil {
+		_ = options.Database.close() // release lock, without checking error because we want to return the original error
 		return nil, tracerr.Wrap(err)
 	}
 	state.storage.encryptionSessionsCache.setTTL(options.EncryptionSessionCacheTTL)

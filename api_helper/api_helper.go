@@ -4,22 +4,24 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/seald/go-seald-sdk/utils"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/seald/go-seald-sdk/utils"
 )
 
 type ApiClient struct {
-	client       *http.Client
-	ApiURL       string
-	SessionId    string
-	CSRFToken    string
-	ExtraHeaders []Header
-	Logger       zerolog.Logger
+	client         *http.Client
+	ApiURL         string
+	SessionId      string
+	CSRFToken      string
+	ExtraHeaders   []Header
+	Logger         zerolog.Logger
+	requestLimiter chan struct{}
 }
 
 type serverError struct {
@@ -33,7 +35,7 @@ type Header struct {
 	Value string
 }
 
-func NewApiClient(apiUrl string, extraHeaders []Header, logger zerolog.Logger) *ApiClient {
+func NewApiClient(apiUrl string, extraHeaders []Header, logger zerolog.Logger, maxParallelRequests int) *ApiClient {
 	var url string
 	if strings.HasSuffix(apiUrl, "/") {
 		url = apiUrl[:len(apiUrl)-1]
@@ -41,19 +43,40 @@ func NewApiClient(apiUrl string, extraHeaders []Header, logger zerolog.Logger) *
 		url = apiUrl
 	}
 
+	var limiter chan struct{}
+	if maxParallelRequests > 0 {
+		limiter = make(chan struct{}, maxParallelRequests)
+	}
+
 	return &ApiClient{
-		client:       &http.Client{},
-		ApiURL:       url,
-		SessionId:    "",
-		CSRFToken:    "",
-		ExtraHeaders: extraHeaders,
-		Logger:       logger,
+		client:         &http.Client{},
+		ApiURL:         url,
+		SessionId:      "",
+		CSRFToken:      "",
+		ExtraHeaders:   extraHeaders,
+		Logger:         logger,
+		requestLimiter: limiter,
+	}
+}
+
+func (apiClient *ApiClient) acquireRequestSlot() func() {
+	if apiClient.requestLimiter == nil {
+		return nil
+	}
+	apiClient.requestLimiter <- struct{}{}
+	return func() {
+		<-apiClient.requestLimiter
 	}
 }
 
 func (apiClient *ApiClient) MakeRequest(method string, url string, requestBody []byte, headers []Header, expectedStatusCode int) ([]byte, error) {
 	if apiClient.client == nil {
 		apiClient.client = &http.Client{}
+	}
+
+	release := apiClient.acquireRequestSlot()
+	if release != nil {
+		defer release()
 	}
 
 	var req *http.Request
