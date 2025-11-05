@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/seald/go-seald-sdk/common_models"
 	"github.com/seald/go-seald-sdk/encrypt_decrypt_file"
 	"github.com/seald/go-seald-sdk/messages"
@@ -11,7 +13,6 @@ import (
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
 	"go.mongodb.org/mongo-driver/bson"
-	"time"
 )
 
 var (
@@ -755,6 +756,7 @@ func (state *State) RetrieveEncryptionSessionWithSymEncKeyPassword(sessionId str
 // SelfAddToEncryptionSessionWithSymEncKeyPassword allow to Self-add to an encryption session, and return it.
 // You can only call this if the SymEncKey has the `forward` right.
 // You can only assign to yourself a subset of rights that the SymEncKey does have.
+// If `rights` is nil, it defaults to `Read: true, Forward: true, Revoke: false`.
 func (state *State) SelfAddToEncryptionSessionWithSymEncKeyPassword(sessionId string, symEncKeyId string, symEncKeyPassword string, rights *RecipientRights, useCache bool) (*EncryptionSession, error) {
 	state.locks.currentDeviceLock.RLock()
 	defer state.locks.currentDeviceLock.RUnlock()
@@ -784,6 +786,9 @@ func (state *State) SelfAddToEncryptionSessionWithSymEncKeyPassword(sessionId st
 		return nil, tracerr.Wrap(err)
 	}
 
+	if rights == nil {
+		rights = &RecipientRights{Read: true, Forward: true, Revoke: false}
+	}
 	_, err = autoLogin(state, state.apiClient.selfAddWithSymEncKey)(&selfAddWithSymEncKeyRequest{
 		SymEncKeyId: symEncKeyId,
 		Secret:      rawSecret,
@@ -820,6 +825,7 @@ func (state *State) RetrieveEncryptionSessionWithSymEncKeyFromRawKeys(sessionId 
 // SelfAddToEncryptionSessionWithSymEncKeyFromRawKeys allow to Self-add to an encryption session, and return it.
 // You can only call this if the SymEncKey has the `forward` right.
 // You can only assign to yourself a subset of rights that the SymEncKey does have.
+// If `rights` is nil, it defaults to `Read: true, Forward: true, Revoke: false`.
 func (state *State) SelfAddToEncryptionSessionWithSymEncKeyFromRawKeys(sessionId string, symEncKeyId string, rawSecret string, rawSymKey []byte, rights *RecipientRights, useCache bool) (*EncryptionSession, error) {
 	state.locks.currentDeviceLock.RLock()
 	defer state.locks.currentDeviceLock.RUnlock()
@@ -845,6 +851,9 @@ func (state *State) SelfAddToEncryptionSessionWithSymEncKeyFromRawKeys(sessionId
 		return nil, tracerr.Wrap(err)
 	}
 
+	if rights == nil {
+		rights = &RecipientRights{Read: true, Forward: true, Revoke: false}
+	}
 	_, err = autoLogin(state, state.apiClient.selfAddWithSymEncKey)(&selfAddWithSymEncKeyRequest{
 		SymEncKeyId: symEncKeyId,
 		Secret:      rawSecret,
@@ -1203,6 +1212,7 @@ func (state *State) DeserializeEncryptionSession(str string) (*EncryptionSession
 
 // AddSymEncKeyFromPassword adds a SymEncKey for this session, which allows to retrieve the session without being a recipient,
 // and/or to self-add to the session.
+// If `rights` is nil, it defaults to `Read: true, Forward: true, Revoke: false`.
 func (encryptionSession *EncryptionSession) AddSymEncKeyFromPassword(password string, rights *RecipientRights) (*SymEncKey, error) {
 	rawSecretBytes, err := utils.DeriveSecret("seald-SymEncKey-Secret", encryptionSession.state.options.AppId, encryptionSession.Id, password)
 	if err != nil {
@@ -1224,6 +1234,9 @@ func (encryptionSession *EncryptionSession) AddSymEncKeyFromPassword(password st
 	}
 	symEncKeyData := base64.StdEncoding.EncodeToString(encMessageKey)
 
+	if rights == nil {
+		rights = &RecipientRights{Read: true, Forward: true, Revoke: false}
+	}
 	response, err := handleMultipleAcl(encryptionSession.state, autoLogin(encryptionSession.state, encryptionSession.state.apiClient.addSymEncKey))(&addSymEncKeyRequest{
 		Id:             encryptionSession.Id,
 		Secret:         rawSecret,
@@ -1240,6 +1253,7 @@ func (encryptionSession *EncryptionSession) AddSymEncKeyFromPassword(password st
 
 // AddSymEncKeyFromRawKeys adds a SymEncKey for this session, which allows to retrieve the session without being a recipient,
 // and/or to self-add to the session.
+// If `rights` is nil, it defaults to `Read: true, Forward: true, Revoke: false`.
 func (encryptionSession *EncryptionSession) AddSymEncKeyFromRawKeys(rawSecret string, rawSymKey []byte, rights *RecipientRights) (*SymEncKey, error) {
 	symKey, err := symmetric_key.Decode(rawSymKey)
 	if err != nil {
@@ -1251,6 +1265,9 @@ func (encryptionSession *EncryptionSession) AddSymEncKeyFromRawKeys(rawSecret st
 	}
 	symEncKeyData := base64.StdEncoding.EncodeToString(encMessageKey)
 
+	if rights == nil {
+		rights = &RecipientRights{Read: true, Forward: true, Revoke: false}
+	}
 	response, err := handleMultipleAcl(encryptionSession.state, autoLogin(encryptionSession.state, encryptionSession.state.apiClient.addSymEncKey))(&addSymEncKeyRequest{
 		Id:             encryptionSession.Id,
 		Secret:         rawSecret,

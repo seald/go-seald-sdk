@@ -78,6 +78,86 @@
     });
 }
 
+- (SealdAnonymousEncryptionSession*) retrieveAnonymousEncryptionSessionWithSymEncKeyPassword:(const NSString*)retrieveToken
+                                                                                   sessionId:(const NSString*)sessionId
+                                                                                 symEncKeyId:(const NSString*)symEncKeyId
+                                                                           symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                                                       error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+
+    SealdSdkInternalsMobile_sdkMobileAnonymousEncryptionSession* aes = [anonymousSdkInstance retrieveAnonymousEncryptionSessionWithSymEncKeyPassword:(NSString*)retrieveToken
+                                                                                                                                           sessionId:(NSString*)sessionId
+                                                                                                                                         symEncKeyId:(NSString*)symEncKeyId
+                                                                                                                                   symEncKeyPassword:(NSString*)symEncKeyPassword
+                                                                                                                                               error:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return [SealdAnonymousEncryptionSession fromMobileSdk:aes];
+}
+
+- (void) retrieveAnonymousEncryptionSessionAsyncWithSymEncKeyPassword:(const NSString*)retrieveToken
+                                                            sessionId:(const NSString*)sessionId
+                                                          symEncKeyId:(const NSString*)symEncKeyId
+                                                    symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                    completionHandler:(void (^)(SealdAnonymousEncryptionSession* anonymousEncryptionSession, NSError*_Nullable error))completionHandler
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError* localErr = nil;
+        SealdAnonymousEncryptionSession* res = [self retrieveAnonymousEncryptionSessionWithSymEncKeyPassword:retrieveToken
+                                                                                                   sessionId:sessionId
+                                                                                                 symEncKeyId:symEncKeyId
+                                                                                           symEncKeyPassword:symEncKeyPassword
+                                                                                                       error:&localErr];
+
+        completionHandler(res, localErr);
+    });
+}
+
+- (SealdAnonymousEncryptionSession*) retrieveAnonymousEncryptionSessionWithSymEncKeyRawKeys:(const NSString*)retrieveToken
+                                                                                  sessionId:(const NSString*)sessionId
+                                                                                symEncKeyId:(const NSString*)symEncKeyId
+                                                                                  rawSecret:(const NSString*)rawSecret
+                                                                                  rawSymKey:(const NSData*)rawSymKey
+                                                                                      error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+
+    SealdSdkInternalsMobile_sdkMobileAnonymousEncryptionSession* aes = [anonymousSdkInstance retrieveAnonymousEncryptionSessionWithSymEncKeyRawKeys:(NSString*)retrieveToken
+                                                                                                                                          sessionId:(NSString*)sessionId
+                                                                                                                                        symEncKeyId:(NSString*)symEncKeyId
+                                                                                                                                          rawSecret:(NSString*)rawSecret
+                                                                                                                                          rawSymKey:(NSData*)rawSymKey
+                                                                                                                                              error:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return [SealdAnonymousEncryptionSession fromMobileSdk:aes];
+}
+
+- (void) retrieveAnonymousEncryptionSessionAsyncWithSymEncKeyRawKeys:(const NSString*)retrieveToken
+                                                           sessionId:(const NSString*)sessionId
+                                                         symEncKeyId:(const NSString*)symEncKeyId
+                                                           rawSecret:(const NSString*)rawSecret
+                                                           rawSymKey:(const NSData*)rawSymKey
+                                                   completionHandler:(void (^)(SealdAnonymousEncryptionSession* anonymousEncryptionSession, NSError*_Nullable error))completionHandler
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError* localErr = nil;
+        SealdAnonymousEncryptionSession* res = [self retrieveAnonymousEncryptionSessionWithSymEncKeyRawKeys:retrieveToken
+                                                                                                  sessionId:sessionId
+                                                                                                symEncKeyId:symEncKeyId
+                                                                                                  rawSecret:rawSecret
+                                                                                                  rawSymKey:rawSymKey
+                                                                                                      error:&localErr];
+
+        completionHandler(res, localErr);
+    });
+}
+
 - (SealdAnonymousEncryptionSession*) deserializeAnonymousEncryptionSession:(const NSString*_Nonnull)serializedSession
                                                                      error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
 {

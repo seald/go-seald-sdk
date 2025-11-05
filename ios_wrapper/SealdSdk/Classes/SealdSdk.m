@@ -877,6 +877,174 @@ __attribute__((constructor)) static void initializeSealdSdkVersion(void) {
     });
 }
 
+- (SealdEncryptionSession*) retrieveEncryptionSessionWithSymEncKeyPassword:(const NSString*)sessionId
+                                                               symEncKeyId:(const NSString*)symEncKeyId
+                                                         symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                                  useCache:(const BOOL)useCache
+                                                                     error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+    SealdSdkInternalsMobile_sdkMobileEncryptionSession* es =
+        [sdkInstance retrieveEncryptionSessionWithSymEncKeyPassword:(NSString*)sessionId
+                                                        symEncKeyId:(NSString*)symEncKeyId
+                                                  symEncKeyPassword:(NSString*)symEncKeyPassword
+                                                           useCache:(BOOL)useCache
+                                                              error:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return [SealdEncryptionSession fromMobileSdk:es];
+}
+
+- (void) retrieveEncryptionSessionAsyncWithSymEncKeyPassword:(const NSString*)sessionId
+                                                 symEncKeyId:(const NSString*)symEncKeyId
+                                           symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                    useCache:(const BOOL)useCache
+                                           completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError* localErr = nil;
+        SealdEncryptionSession* res = [self retrieveEncryptionSessionWithSymEncKeyPassword:sessionId
+                                                                               symEncKeyId:symEncKeyId
+                                                                         symEncKeyPassword:symEncKeyPassword
+                                                                                  useCache:useCache
+                                                                                     error:&localErr];
+
+        completionHandler(res, localErr);
+    });
+}
+
+- (SealdEncryptionSession*) retrieveEncryptionSessionWithSymEncKeyRawKeys:(const NSString*)sessionId
+                                                              symEncKeyId:(const NSString*)symEncKeyId
+                                                                rawSecret:(const NSString*)rawSecret
+                                                                rawSymKey:(const NSData*)rawSymKey
+                                                                 useCache:(const BOOL)useCache
+                                                                    error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+    SealdSdkInternalsMobile_sdkMobileEncryptionSession* es =
+        [sdkInstance retrieveEncryptionSessionWithSymEncKeyRawKeys:(NSString*)sessionId
+                                                       symEncKeyId:(NSString*)symEncKeyId
+                                                         rawSecret:(NSString*)rawSecret
+                                                         rawSymKey:(NSData*)rawSymKey
+                                                          useCache:(BOOL)useCache
+                                                             error:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return [SealdEncryptionSession fromMobileSdk:es];
+}
+
+- (void) retrieveEncryptionSessionAsyncWithSymEncKeyRawKeys:(const NSString*)sessionId
+                                                symEncKeyId:(const NSString*)symEncKeyId
+                                                  rawSecret:(const NSString*)rawSecret
+                                                  rawSymKey:(const NSData*)rawSymKey
+                                                   useCache:(const BOOL)useCache
+                                          completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError* localErr = nil;
+        SealdEncryptionSession* res = [self retrieveEncryptionSessionWithSymEncKeyRawKeys:sessionId
+                                                                              symEncKeyId:symEncKeyId
+                                                                                rawSecret:rawSecret
+                                                                                rawSymKey:rawSymKey
+                                                                                 useCache:useCache
+                                                                                    error:&localErr];
+
+        completionHandler(res, localErr);
+    });
+}
+
+- (SealdEncryptionSession*) selfAddToEncryptionSessionWithSymEncKeyPassword:(const NSString*)sessionId
+                                                                symEncKeyId:(const NSString*)symEncKeyId
+                                                          symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                                     rights:(const SealdRecipientRights*_Nullable)rights
+                                                                   useCache:(const BOOL)useCache
+                                                                      error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+    SealdSdkInternalsMobile_sdkMobileEncryptionSession* es =
+        [sdkInstance selfAddToEncryptionSessionWithSymEncKeyPassword:(NSString*)sessionId
+                                                         symEncKeyId:(NSString*)symEncKeyId
+                                                   symEncKeyPassword:(NSString*)symEncKeyPassword
+                                                              rights:[rights toMobileSdk]
+                                                            useCache:(BOOL)useCache
+                                                               error:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return [SealdEncryptionSession fromMobileSdk:es];
+}
+
+- (void) selfAddToEncryptionSessionAsyncWithSymEncKeyPassword:(const NSString*)sessionId
+                                                  symEncKeyId:(const NSString*)symEncKeyId
+                                            symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                       rights:(const SealdRecipientRights*_Nullable)rights
+                                                     useCache:(const BOOL)useCache
+                                            completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError* localErr = nil;
+        SealdEncryptionSession* res = [self selfAddToEncryptionSessionWithSymEncKeyPassword:sessionId
+                                                                                symEncKeyId:symEncKeyId
+                                                                          symEncKeyPassword:symEncKeyPassword
+                                                                                     rights:rights
+                                                                                   useCache:useCache
+                                                                                      error:&localErr];
+
+        completionHandler(res, localErr);
+    });
+}
+
+- (SealdEncryptionSession*) selfAddToEncryptionSessionWithSymEncKeyRawKeys:(const NSString*)sessionId
+                                                               symEncKeyId:(const NSString*)symEncKeyId
+                                                                 rawSecret:(const NSString*)rawSecret
+                                                                 rawSymKey:(const NSData*)rawSymKey
+                                                                    rights:(const SealdRecipientRights*_Nullable)rights
+                                                                  useCache:(const BOOL)useCache
+                                                                     error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+    SealdSdkInternalsMobile_sdkMobileEncryptionSession* es =
+        [sdkInstance selfAddToEncryptionSessionWithSymEncKeyRawKeys:(NSString*)sessionId
+                                                        symEncKeyId:(NSString*)symEncKeyId
+                                                          rawSecret:(NSString*)rawSecret
+                                                          rawSymKey:(NSData*)rawSymKey
+                                                             rights:[rights toMobileSdk]
+                                                           useCache:(BOOL)useCache
+                                                              error:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return [SealdEncryptionSession fromMobileSdk:es];
+}
+
+- (void) selfAddToEncryptionSessionAsyncWithSymEncKeyRawKeys:(const NSString*)sessionId
+                                                 symEncKeyId:(const NSString*)symEncKeyId
+                                                   rawSecret:(const NSString*)rawSecret
+                                                   rawSymKey:(const NSData*)rawSymKey
+                                                      rights:(const SealdRecipientRights*)rights
+                                                    useCache:(const BOOL)useCache
+                                           completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError* localErr = nil;
+        SealdEncryptionSession* res = [self selfAddToEncryptionSessionWithSymEncKeyRawKeys:sessionId
+                                                                               symEncKeyId:symEncKeyId
+                                                                                 rawSecret:rawSecret
+                                                                                 rawSymKey:rawSymKey
+                                                                                    rights:rights
+                                                                                  useCache:useCache
+                                                                                     error:&localErr];
+
+        completionHandler(res, localErr);
+    });
+}
+
 - (NSArray<SealdEncryptionSession*>*) retrieveMultipleEncryptionSessions:(const NSArray<NSString*>*)sessionIds
                                                                 useCache:(const BOOL)useCache
                                                           lookupProxyKey:(const BOOL)lookupProxyKey

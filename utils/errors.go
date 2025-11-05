@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/ztrue/tracerr"
 )
 
@@ -145,5 +146,14 @@ func ToSerializableError(err error) *SerializableError {
 		Id:      "GOSDK_OTHER_ERROR",
 		Details: err.Error(),
 		Stack:   tracerr.Sprint(err),
+	}
+}
+
+func (e SerializableError) Is(target error) bool {
+	var serializableErrorTarget SerializableError
+	if errors.As(target, &serializableErrorTarget) {
+		return serializableErrorTarget.Id == e.Id && serializableErrorTarget.Code == e.Code
+	} else {
+		return false
 	}
 }

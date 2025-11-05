@@ -676,6 +676,154 @@ FOUNDATION_EXPORT NSString*_Nonnull SealdSdkVersion;
                            completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler;
 
 /**
+ * Retrieve an encryption session, with which you can then encrypt / decrypt multiple messages, through SymEncKey with a password.
+ *
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param symEncKeyPassword The password used to create this SymEncKey.
+ * @param useCache Whether or not to use the cache (if enabled globally).
+ * @param error The error that occurred while retrieving the session, if any.
+ * @return The retrieved SealdEncryptionSession, or null if an error occurred.
+ */
+- (SealdEncryptionSession*) retrieveEncryptionSessionWithSymEncKeyPassword:(const NSString*)sessionId
+                                                               symEncKeyId:(const NSString*)symEncKeyId
+                                                         symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                                  useCache:(const BOOL)useCache
+                                                                     error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
+/**
+ * Retrieve an encryption session, with which you can then encrypt / decrypt multiple messages, through SymEncKey with a password.
+ *
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param symEncKeyPassword The password used to create this SymEncKey.
+ * @param useCache Whether or not to use the cache (if enabled globally).
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) retrieveEncryptionSessionAsyncWithSymEncKeyPassword:(const NSString*)sessionId
+                                                 symEncKeyId:(const NSString*)symEncKeyId
+                                           symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                    useCache:(const BOOL)useCache
+                                           completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler;
+
+/**
+ * Retrieve an encryption session, with which you can then encrypt / decrypt multiple messages, through SymEncKey with raw keys.
+ *
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param rawSecret The rawSecret used to create this SymEncKey.
+ * @param rawSymKey The rawSymKey used to create this SymEncKey.
+ * @param useCache Whether or not to use the cache (if enabled globally).
+ * @param error The error that occurred while retrieving the session, if any.
+ * @return The retrieved SealdEncryptionSession, or null if an error occurred.
+ */
+- (SealdEncryptionSession*) retrieveEncryptionSessionWithSymEncKeyRawKeys:(const NSString*)sessionId
+                                                              symEncKeyId:(const NSString*)symEncKeyId
+                                                                rawSecret:(const NSString*)rawSecret
+                                                                rawSymKey:(const NSData*)rawSymKey
+                                                                 useCache:(const BOOL)useCache
+                                                                    error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
+/**
+ * Retrieve an encryption session, with which you can then encrypt / decrypt multiple messages, through SymEncKey with raw keys.
+ *
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param rawSecret The rawSecret used to create this SymEncKey.
+ * @param rawSymKey The rawSymKey used to create this SymEncKey.
+ * @param useCache Whether or not to use the cache (if enabled globally).
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) retrieveEncryptionSessionAsyncWithSymEncKeyRawKeys:(const NSString*)sessionId
+                                                symEncKeyId:(const NSString*)symEncKeyId
+                                                  rawSecret:(const NSString*)rawSecret
+                                                  rawSymKey:(const NSData*)rawSymKey
+                                                   useCache:(const BOOL)useCache
+                                          completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler;
+
+/**
+ * Self-add to an encryption session, and return it, through SymEncKey with a password.
+ * You can only call this if the SymEncKey has the `forward` right.
+ * You can only assign to yourself a subset of rights that the SymEncKey does have.
+ *
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param symEncKeyPassword The password used to create this SymEncKey.
+ * @param rights The rights to assign to yourself for this session. Cannot contain rights that the SymEncKey does not have. Nil for default (read = true, forward = true, revoke = false).
+ * @param useCache Whether or not to use the cache (if enabled globally).
+ * @param error The error that occurred while retrieving the session, if any.
+ * @return The retrieved SealdEncryptionSession, or null if an error occurred.
+ */
+- (SealdEncryptionSession*) selfAddToEncryptionSessionWithSymEncKeyPassword:(const NSString*)sessionId
+                                                                symEncKeyId:(const NSString*)symEncKeyId
+                                                          symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                                     rights:(const SealdRecipientRights*_Nullable)rights
+                                                                   useCache:(const BOOL)useCache
+                                                                      error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
+/**
+ * Self-add to an encryption session, and return it, through SymEncKey with a password.
+ * You can only call this if the SymEncKey has the `forward` right.
+ * You can only assign to yourself a subset of rights that the SymEncKey does have.
+ *
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param symEncKeyPassword The password used to create this SymEncKey.
+ * @param rights The rights to assign to yourself for this session. Cannot contain rights that the SymEncKey does not have. Nil for default (read = true, forward = true, revoke = false).
+ * @param useCache Whether or not to use the cache (if enabled globally).
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) selfAddToEncryptionSessionAsyncWithSymEncKeyPassword:(const NSString*)sessionId
+                                                  symEncKeyId:(const NSString*)symEncKeyId
+                                            symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                       rights:(const SealdRecipientRights*_Nullable)rights
+                                                     useCache:(const BOOL)useCache
+                                            completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler;
+
+/**
+ * Self-add to an encryption session, and return it, through SymEncKey with a password.
+ * You can only call this if the SymEncKey has the `forward` right.
+ * You can only assign to yourself a subset of rights that the SymEncKey does have.
+ *
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param rawSecret The rawSecret used to create this SymEncKey.
+ * @param rawSymKey The rawSymKey used to create this SymEncKey.
+ * @param rights The rights to assign to yourself for this session. Cannot contain rights that the SymEncKey does not have. Nil for default (read = true, forward = true, revoke = false).
+ * @param useCache Whether or not to use the cache (if enabled globally).
+ * @param error The error that occurred while retrieving the session, if any.
+ * @return The retrieved SealdEncryptionSession, or null if an error occurred.
+ */
+- (SealdEncryptionSession*) selfAddToEncryptionSessionWithSymEncKeyRawKeys:(const NSString*)sessionId
+                                                               symEncKeyId:(const NSString*)symEncKeyId
+                                                                 rawSecret:(const NSString*)rawSecret
+                                                                 rawSymKey:(const NSData*)rawSymKey
+                                                                    rights:(const SealdRecipientRights*_Nullable)rights
+                                                                  useCache:(const BOOL)useCache
+                                                                     error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
+/**
+ * Self-add to an encryption session, and return it, through SymEncKey with a password.
+ * You can only call this if the SymEncKey has the `forward` right.
+ * You can only assign to yourself a subset of rights that the SymEncKey does have.
+ *
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param rawSecret The rawSecret used to create this SymEncKey.
+ * @param rawSymKey The rawSymKey used to create this SymEncKey.
+ * @param rights The rights to assign to yourself for this session. Cannot contain rights that the SymEncKey does not have. Nil for default (read = true, forward = true, revoke = false).
+ * @param useCache Whether or not to use the cache (if enabled globally).
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) selfAddToEncryptionSessionAsyncWithSymEncKeyRawKeys:(const NSString*)sessionId
+                                                 symEncKeyId:(const NSString*)symEncKeyId
+                                                   rawSecret:(const NSString*)rawSecret
+                                                   rawSymKey:(const NSData*)rawSymKey
+                                                      rights:(const SealdRecipientRights*_Nullable)rights
+                                                    useCache:(const BOOL)useCache
+                                           completionHandler:(void (^)(SealdEncryptionSession* encryptionSession, NSError*_Nullable error))completionHandler;
+
+/**
  * Retrieve multiple encryption sessions with an NSArray of sessionIds, and return an
  * NSArray of the associated EncryptionSession instances, with which you can then encrypt / decrypt multiple messages.
  * The returned array of EncryptionSession instances is in the same order as the input array.

@@ -400,6 +400,66 @@
     });
 }
 
+- (NSString*) addSymEncKeyFromPassword:(const NSString*)password
+                                rights:(const SealdRecipientRights*_Nullable)rights
+                                 error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+    NSString* symEncKeyId = [encryptionSession addSymEncKeyFromPassword:(NSString*)password
+                                                                 rights:[rights toMobileSdk]
+                                                                  error:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return symEncKeyId;
+}
+
+- (void) addSymEncKeyAsyncFromPassword:(const NSString*)password
+                                rights:(const SealdRecipientRights*_Nullable)rights
+                     completionHandler:(void (^)(NSString* result, NSError*_Nullable error))completionHandler
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError* localError = nil;
+        NSString* symEncKeyId = [self addSymEncKeyFromPassword:password
+                                                        rights:rights
+                                                         error:&localError];
+        completionHandler(symEncKeyId, localError);
+    });
+}
+
+- (NSString*) addSymEncKeyFromRawKeys:(const NSString*)rawSecret
+                            rawSymKey:(const NSData*)rawSymKey
+                               rights:(const SealdRecipientRights*_Nullable)rights
+                                error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
+{
+    NSError* localErr = nil;
+    NSString* symEncKeyId = [encryptionSession addSymEncKeyFromRawKeys:(NSString*)rawSecret
+                                                             rawSymKey:(NSData*)rawSymKey
+                                                                rights:[rights toMobileSdk]
+                                                                 error:&localErr];
+    if (localErr) {
+        _SealdInternal_ConvertError(localErr, error);
+        return nil;
+    }
+    return symEncKeyId;
+}
+
+- (void) addSymEncKeyAsyncFromRawKeys:(const NSString*)rawSecret
+                            rawSymKey:(const NSData*)rawSymKey
+                               rights:(const SealdRecipientRights*_Nullable)rights
+                    completionHandler:(void (^)(NSString* result, NSError*_Nullable error))completionHandler
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError* localError = nil;
+        NSString* symEncKeyId = [self addSymEncKeyFromRawKeys:rawSecret
+                                                    rawSymKey:rawSymKey
+                                                       rights:rights
+                                                        error:&localError];
+        completionHandler(symEncKeyId, localError);
+    });
+}
+
 - (NSString*) serializeWithError:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)))
 {
     NSError* localErr = nil;

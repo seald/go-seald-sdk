@@ -16,7 +16,7 @@ func TestMobileEncryptionSession(t *testing.T) {
 	require.NoError(t, err)
 	sdk2, sdk2UserInfo, err := getTestAccount(test_utils.GetTestName(t), true)
 	require.NoError(t, err)
-	_, sdk3UserInfo, err := getTestAccount(test_utils.GetTestName(t), true)
+	sdk3, sdk3UserInfo, err := getTestAccount(test_utils.GetTestName(t), true)
 	require.NoError(t, err)
 
 	allRights := &RecipientRights{
@@ -158,5 +158,85 @@ func TestMobileEncryptionSession(t *testing.T) {
 		assert.True(t, res1.Success)
 		assert.True(t, utils.IsUUID(res0.Result))
 		assert.True(t, utils.IsUUID(res1.Result))
+	})
+
+	t.Run("SymEncKeys", func(t *testing.T) {
+		mES, err := sdk1.CreateEncryptionSession((&RecipientsWithRightsArray{}).Add(sdk1Recipient), "test-mobile-symEncKey", true)
+		require.NoError(t, err)
+
+		// encrypt some data
+		messageToEncrypt := "This is some data to encrypt"
+		encryptedMessage, err := mES.EncryptMessage(messageToEncrypt)
+		require.NoError(t, err)
+		assert.NotEqual(t, messageToEncrypt, encryptedMessage)
+
+		// add sym enc key with password
+		password := "strong-password-1234"
+		symEncKeyIdFromPassword, err := mES.AddSymEncKeyFromPassword(password, allRights)
+		require.NoError(t, err)
+		assert.True(t, utils.IsUUID(symEncKeyIdFromPassword))
+
+		// add sym enc key with raw key
+		secret := "symEncKey-secret"
+		rawKey, err := utils.GenerateRandomBytes(64)
+		symEncKeyIdFromRawKeys, err := mES.AddSymEncKeyFromRawKeys(secret, rawKey, allRights)
+		require.NoError(t, err)
+		assert.True(t, utils.IsUUID(symEncKeyIdFromRawKeys))
+
+		// sdk2 retrieves encryption session with sym enc key password and decrypt
+		mESRetrievedWithPassword, err := sdk2.RetrieveEncryptionSessionWithSymEncKeyPassword(mES.Id, symEncKeyIdFromPassword, password, false)
+		require.NoError(t, err)
+		assert.Equal(t, mES.Id, mESRetrievedWithPassword.Id)
+		decryptedMessageRetrievedWithPassword, err := mESRetrievedWithPassword.DecryptMessage(encryptedMessage)
+		require.NoError(t, err)
+		assert.Equal(t, messageToEncrypt, decryptedMessageRetrievedWithPassword)
+
+		// sdk2 still can't retrieve without sym enc key
+		_, err = sdk2.RetrieveEncryptionSession(mES.Id, false, false, false)
+		assert.ErrorIs(t, err, utils.SerializableError{Id: "GOSDK_NO_TOKEN_FOR_YOU", Code: "NO_TOKEN_FOR_YOU"})
+
+		// sdk3 retrieve encryption session with sym enc key raw keys and decrypt
+		mESRetrievedWithRawKeys, err := sdk3.RetrieveEncryptionSessionWithSymEncKeyRawKeys(mES.Id, symEncKeyIdFromRawKeys, secret, rawKey, false)
+		require.NoError(t, err)
+		assert.Equal(t, mES.Id, mESRetrievedWithRawKeys.Id)
+		decryptedMessageRetrievedWithRawKeys, err := mESRetrievedWithRawKeys.DecryptMessage(encryptedMessage)
+		require.NoError(t, err)
+		assert.Equal(t, messageToEncrypt, decryptedMessageRetrievedWithRawKeys)
+
+		// sdk3 still can't retrieve without sym enc key
+		_, err = sdk3.RetrieveEncryptionSession(mES.Id, false, false, false)
+		assert.ErrorIs(t, err, utils.SerializableError{Id: "GOSDK_NO_TOKEN_FOR_YOU", Code: "NO_TOKEN_FOR_YOU"})
+
+		// sdk2 self-adds to encryption session with sym enc key password and decrypt
+		mESAddedWithPassword, err := sdk2.SelfAddToEncryptionSessionWithSymEncKeyPassword(mES.Id, symEncKeyIdFromPassword, password, allRights, false)
+		require.NoError(t, err)
+		assert.Equal(t, mES.Id, mESAddedWithPassword.Id)
+		decryptedMessageAddedWithPassword, err := mESAddedWithPassword.DecryptMessage(encryptedMessage)
+		require.NoError(t, err)
+		assert.Equal(t, messageToEncrypt, decryptedMessageAddedWithPassword)
+
+		// sdk2 now can retrieve without sym enc key
+		mESAddedWithPassword2, err := sdk2.RetrieveEncryptionSession(mES.Id, false, false, false)
+		require.NoError(t, err)
+		assert.Equal(t, mES.Id, mESAddedWithPassword2.Id)
+		decryptedMessageAddedWithPassword2, err := mESAddedWithPassword2.DecryptMessage(encryptedMessage)
+		require.NoError(t, err)
+		assert.Equal(t, messageToEncrypt, decryptedMessageAddedWithPassword2)
+
+		// sdk3 retrieve encryption session with sym enc key raw keys and decrypt
+		mESAddedWithRawKeys, err := sdk3.SelfAddToEncryptionSessionWithSymEncKeyRawKeys(mES.Id, symEncKeyIdFromRawKeys, secret, rawKey, allRights, false)
+		require.NoError(t, err)
+		assert.Equal(t, mES.Id, mESAddedWithRawKeys.Id)
+		decryptedMessageAddedWithRawKeys, err := mESAddedWithRawKeys.DecryptMessage(encryptedMessage)
+		require.NoError(t, err)
+		assert.Equal(t, messageToEncrypt, decryptedMessageAddedWithRawKeys)
+
+		// sdk3 now can retrieve without sym enc key
+		mESAddedWithRawKeys2, err := sdk3.RetrieveEncryptionSession(mES.Id, false, false, false)
+		require.NoError(t, err)
+		assert.Equal(t, mES.Id, mESAddedWithRawKeys2.Id)
+		decryptedMessageWithRawKeys2, err := mESAddedWithRawKeys2.DecryptMessage(encryptedMessage)
+		require.NoError(t, err)
+		assert.Equal(t, messageToEncrypt, decryptedMessageWithRawKeys2)
 	})
 }

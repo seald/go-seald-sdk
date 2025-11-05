@@ -16,7 +16,8 @@ typedef NS_ENUM (NSInteger, JWTPermission) {
     ANONYMOUS_FIND_KEY = 1,
     ANONYMOUS_FIND_SIGCHAIN = 2,
     JOIN_TEAM = 3,
-    ADD_CONNECTOR = 4
+    ADD_CONNECTOR = 4,
+    ANONYMOUS_RETRIEVE_SESSION = 5
 };
 
 @implementation DemoAppJWTBuilder
@@ -96,6 +97,22 @@ typedef NS_ENUM (NSInteger, JWTPermission) {
                               @"owner" : ownerId,
                               @"recipients" : recipients,
                               @"tmr_recipients": serializedTmrRecipients};
+
+    NSString* token = [JWT encodePayload:payload].headers(headers).secret((NSString*)_JWTSharedSecret).algorithm(_JWTAlgorithm).encode;
+
+    return token;
+}
+
+- (NSString*) anonymousRetrieveSessionWithSymEncKeyId:(NSString*)symEncKeyId
+{
+    NSDate* now = [NSDate date];
+    NSDictionary* headers = @{@"alg" : @"HS256", @"typ" : @"JWT"};
+    NSMutableArray* serializedTmrRecipients = [NSMutableArray array];
+    NSDictionary* payload = @{@"scopes": @(ANONYMOUS_RETRIEVE_SESSION),
+                              @"jti" : [[NSUUID UUID] UUIDString],
+                              @"iss" : _JWTSharedSecretId,
+                              @"iat" : @((NSInteger)now.timeIntervalSince1970),
+                              @"sym_enc_keys": [NSArray arrayWithObjects:symEncKeyId, nil]};
 
     NSString* token = [JWT encodePayload:payload].headers(headers).secret((NSString*)_JWTSharedSecret).algorithm(_JWTAlgorithm).encode;
 

@@ -2,6 +2,7 @@ package mobile_sdk
 
 import (
 	"fmt"
+
 	"github.com/seald/go-seald-sdk/sdk"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
@@ -194,6 +195,24 @@ func (encryptionSession *MobileEncryptionSession) AddMultipleTmrAccesses(recipie
 		msArray.Add(as)
 	}
 	return msArray, nil
+}
+
+func (encryptionSession *MobileEncryptionSession) AddSymEncKeyFromPassword(password string, rights *RecipientRights) (string, error) {
+	symEncKey, err := encryptionSession.es.AddSymEncKeyFromPassword(password, rights.toCommon())
+	if err != nil {
+		return "", utils.ToSerializableError(tracerr.Wrap(err))
+	}
+
+	return symEncKey.SymEncKeyId, nil
+}
+
+func (encryptionSession *MobileEncryptionSession) AddSymEncKeyFromRawKeys(rawSecret string, rawSymKey []byte, rights *RecipientRights) (string, error) {
+	symEncKey, err := encryptionSession.es.AddSymEncKeyFromRawKeys(rawSecret, rawSymKey, rights.toCommon())
+	if err != nil {
+		return "", utils.ToSerializableError(tracerr.Wrap(err))
+	}
+
+	return symEncKey.SymEncKeyId, nil
 }
 
 func (encryptionSession *MobileEncryptionSession) Serialize() (string, error) {

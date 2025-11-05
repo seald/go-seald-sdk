@@ -27,6 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString*) anonymousCreateMessageJWTWithOwnerId:(NSString*)ownerId
                                         recipients:(const NSArray<NSString*>*)recipients
                                      tmrRecipients:(const NSArray<SealdAnonymousTmrRecipient*>*)tmrRecipients;
+- (NSString*) anonymousRetrieveSessionWithSymEncKeyId:(NSString*)symEncKeyId;
 @end
 
 NS_ASSUME_NONNULL_END

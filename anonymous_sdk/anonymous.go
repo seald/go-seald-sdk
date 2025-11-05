@@ -3,6 +3,10 @@ package anonymous_sdk
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
+	"os"
+	"time"
+
 	"github.com/rs/zerolog"
 	"github.com/seald/go-seald-sdk/api_helper"
 	"github.com/seald/go-seald-sdk/asymkey"
@@ -10,9 +14,6 @@ import (
 	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"io"
-	"os"
-	"time"
 )
 
 var (
@@ -172,9 +173,9 @@ func (aSDK *AnonymousSDK) CreateAnonymousEncryptionSession(encryptionToken strin
 	return &res, nil
 }
 
-// RetrieveEncryptionSessionFromPassword retrieves an Encryption Session with a SymEncKey, and returns the associated
+// RetrieveEncryptionSessionWithSymEncKeyPassword retrieves an Encryption Session with a SymEncKey, and returns the associated
 // AnonymousEncryptionSession instance, with which you can then encrypt / decrypt multiple messages.
-func (aSDK *AnonymousSDK) RetrieveEncryptionSessionFromPassword(retrieveJWT string, sessionId string, symEncKeyId string, symEncKeyPassword string) (*AnonymousEncryptionSession, error) {
+func (aSDK *AnonymousSDK) RetrieveEncryptionSessionWithSymEncKeyPassword(retrieveJWT string, sessionId string, symEncKeyId string, symEncKeyPassword string) (*AnonymousEncryptionSession, error) {
 	rawSecretBytes, err := utils.DeriveSecret("seald-SymEncKey-Secret", aSDK.AppId, sessionId, symEncKeyPassword)
 	if err != nil {
 		return nil, tracerr.Wrap(err)
@@ -212,9 +213,9 @@ func (aSDK *AnonymousSDK) RetrieveEncryptionSessionFromPassword(retrieveJWT stri
 	return &res, nil
 }
 
-// RetrieveEncryptionSessionFromRawKey retrieves an Encryption Session with a SymEncKey, and returns the associated
+// RetrieveEncryptionSessionWithSymEncKeyRawKeys retrieves an Encryption Session with a SymEncKey, and returns the associated
 // AnonymousEncryptionSession instance, with which you can then encrypt / decrypt multiple messages.
-func (aSDK *AnonymousSDK) RetrieveEncryptionSessionFromRawKey(retrieveJWT string, sessionId string, symEncKeyId string, symEncKeyRawSecret string, rawSymKey []byte) (*AnonymousEncryptionSession, error) {
+func (aSDK *AnonymousSDK) RetrieveEncryptionSessionWithSymEncKeyRawKeys(retrieveJWT string, sessionId string, symEncKeyId string, symEncKeyRawSecret string, rawSymKey []byte) (*AnonymousEncryptionSession, error) {
 	encSymEncKeyB64, err := aSDK.ApiClient.RetrieveSession(retrieveJWT, &RetrieveSessionRequest{Id: symEncKeyId, Secret: symEncKeyRawSecret})
 	if err != nil {
 		return nil, tracerr.Wrap(err)

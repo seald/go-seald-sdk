@@ -2,6 +2,8 @@
 package mobile_sdk
 
 import (
+	"time"
+
 	"github.com/rs/zerolog"
 	"github.com/seald/go-seald-sdk/asymkey"
 	"github.com/seald/go-seald-sdk/common_models"
@@ -9,7 +11,6 @@ import (
 	"github.com/seald/go-seald-sdk/symmetric_key"
 	"github.com/seald/go-seald-sdk/utils"
 	"github.com/ztrue/tracerr"
-	"time"
 )
 
 const Version = utils.Version
@@ -434,6 +435,38 @@ func (mSDK MobileSDK) RetrieveEncryptionSessionFromBytes(fileBytes []byte, useCa
 
 func (mSDK MobileSDK) RetrieveEncryptionSessionByTmr(tmrJWT string, sessionId string, overEncryptionKey []byte, tmrAccessesFilters *TmrAccessesRetrievalFilters, tryIfMultiple bool, useCache bool) (*MobileEncryptionSession, error) {
 	es, err := mSDK.sdk.RetrieveEncryptionSessionByTmr(tmrJWT, sessionId, overEncryptionKey, tmrAccessesFilters.toCommon(), tryIfMultiple, useCache)
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+	return mobileEncryptionSessionFromCommon(es), nil
+}
+
+func (mSDK MobileSDK) RetrieveEncryptionSessionWithSymEncKeyPassword(sessionId string, symEncKeyId string, symEncKeyPassword string, useCache bool) (*MobileEncryptionSession, error) {
+	es, err := mSDK.sdk.RetrieveEncryptionSessionWithSymEncKeyPassword(sessionId, symEncKeyId, symEncKeyPassword, useCache)
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+	return mobileEncryptionSessionFromCommon(es), nil
+}
+
+func (mSDK MobileSDK) RetrieveEncryptionSessionWithSymEncKeyRawKeys(sessionId string, symEncKeyId string, rawSecret string, rawSymKey []byte, useCache bool) (*MobileEncryptionSession, error) {
+	es, err := mSDK.sdk.RetrieveEncryptionSessionWithSymEncKeyFromRawKeys(sessionId, symEncKeyId, rawSecret, rawSymKey, useCache)
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+	return mobileEncryptionSessionFromCommon(es), nil
+}
+
+func (mSDK MobileSDK) SelfAddToEncryptionSessionWithSymEncKeyPassword(sessionId string, symEncKeyId string, symEncKeyPassword string, rights *RecipientRights, useCache bool) (*MobileEncryptionSession, error) {
+	es, err := mSDK.sdk.SelfAddToEncryptionSessionWithSymEncKeyPassword(sessionId, symEncKeyId, symEncKeyPassword, rights.toCommon(), useCache)
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+	return mobileEncryptionSessionFromCommon(es), nil
+}
+
+func (mSDK MobileSDK) SelfAddToEncryptionSessionWithSymEncKeyRawKeys(sessionId string, symEncKeyId string, rawSecret string, rawSymKey []byte, rights *RecipientRights, useCache bool) (*MobileEncryptionSession, error) {
+	es, err := mSDK.sdk.SelfAddToEncryptionSessionWithSymEncKeyFromRawKeys(sessionId, symEncKeyId, rawSecret, rawSymKey, rights.toCommon(), useCache)
 	if err != nil {
 		return nil, utils.ToSerializableError(tracerr.Wrap(err))
 	}

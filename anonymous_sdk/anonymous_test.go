@@ -142,7 +142,7 @@ func TestAnonymousSDK(t *testing.T) {
 			esSymEncKeyPassword, err := session.AddSymEncKeyFromPassword(password, allRights)
 			require.NoError(t, err)
 
-			aes, err := aSdk.RetrieveEncryptionSessionFromPassword(signedToken, session.Id, esSymEncKeyPassword.SymEncKeyId, password)
+			aes, err := aSdk.RetrieveEncryptionSessionWithSymEncKeyPassword(signedToken, session.Id, esSymEncKeyPassword.SymEncKeyId, password)
 			require.NoError(t, err)
 
 			decryptedMessage, err := aes.DecryptMessage(encryptedMessage)
@@ -159,7 +159,7 @@ func TestAnonymousSDK(t *testing.T) {
 			esSymEncKeyRawKey, err := session.AddSymEncKeyFromRawKeys(rawSecret, encodedRawEncryptionKey, allRights)
 			require.NoError(t, err)
 
-			aes, err := aSdk.RetrieveEncryptionSessionFromRawKey(signedToken, session.Id, esSymEncKeyRawKey.SymEncKeyId, rawSecret, encodedRawEncryptionKey)
+			aes, err := aSdk.RetrieveEncryptionSessionWithSymEncKeyRawKeys(signedToken, session.Id, esSymEncKeyRawKey.SymEncKeyId, rawSecret, encodedRawEncryptionKey)
 			require.NoError(t, err)
 
 			decryptedMessage, err := aes.DecryptMessage(encryptedMessage)
@@ -229,7 +229,7 @@ func TestAnonymousSDK(t *testing.T) {
 			require.NoError(t, err)
 
 			// Retrieve by SymEncKeys password
-			retrievedSessionSKP, err := aSdk.RetrieveEncryptionSessionFromPassword(signedToken, string(fullSessionId), string(symEncKeyPasswordId), string(symEncKeyPassword))
+			retrievedSessionSKP, err := aSdk.RetrieveEncryptionSessionWithSymEncKeyPassword(signedToken, string(fullSessionId), string(symEncKeyPasswordId), string(symEncKeyPassword))
 			require.NoError(t, err)
 
 			decryptedMessageSKP, err := retrievedSessionSKP.DecryptMessage(string(encryptedMessageFullSession))
@@ -244,7 +244,7 @@ func TestAnonymousSDK(t *testing.T) {
 			symEncKeySecret, err := os.ReadFile(filepath.Join(testArtifactsDir, "symEncKey_symEncKeySecret"))
 			require.NoError(t, err)
 
-			retrievedSessionSKRawKey, err := aSdk.RetrieveEncryptionSessionFromRawKey(signedToken, string(fullSessionId), string(symEncKeyRawKeyId), string(symEncKeySecret), rawSymKey)
+			retrievedSessionSKRawKey, err := aSdk.RetrieveEncryptionSessionWithSymEncKeyRawKeys(signedToken, string(fullSessionId), string(symEncKeyRawKeyId), string(symEncKeySecret), rawSymKey)
 			require.NoError(t, err)
 
 			decryptedMessageSKRawKey, err := retrievedSessionSKRawKey.DecryptMessage(string(encryptedMessageFullSession))

@@ -193,6 +193,59 @@ BOOL testSealdSDK(void)
         NSCAssert(error == nil, error.localizedDescription);
         NSCAssert(classicES.retrievalDetails.flow == SealdEncryptionSessionRetrievalDirect, @"unexpected flow");
 
+        // Using SymEncKeys
+
+        // Create a session, add SymEncKeys, then retrieve the session using them.
+        // Create session
+        SealdEncryptionSession* esSymEncKeys = [sdk1 createEncryptionSessionWithRecipients:[NSArray arrayWithObjects:[[SealdRecipientWithRights alloc] initWithRecipientId:user1AccountInfo.userId], nil]
+                                                                                  metadata:@"test-objc-sessionSymEncKeys"
+                                                                                  useCache:NO
+                                                                                     error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        // Create a SymEncKey with Password
+        NSString* symEncKeyPassword = randomString(16);
+
+        NSString* symEncKeyFromPassword = [esSymEncKeys addSymEncKeyFromPassword:symEncKeyPassword rights:nil error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([symEncKeyFromPassword length] == 36, @"Expected UUID v4");
+
+        // Create a SymEncKey with raw keys
+        NSString* symEncKeySecret = randomString(16);
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
+        NSData* symEncKeyRawKey = randomData(64);
+
+        NSString* symEncKeyFromRawKeys = [esSymEncKeys addSymEncKeyFromRawKeys:symEncKeySecret rawSymKey:symEncKeyRawKey rights:nil error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([symEncKeyFromPassword length] == 36, @"Expected UUID v4");
+
+        // Retrieve the encryption session using the SymEncKey with Password
+        SealdEncryptionSession* sekpES = [sdk2 retrieveEncryptionSessionWithSymEncKeyPassword:esSymEncKeys.sessionId symEncKeyId:symEncKeyFromPassword symEncKeyPassword:symEncKeyPassword useCache:NO error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert(sekpES.retrievalDetails.flow == SealdEncryptionSessionRetrievalViaSymEncKey, @"unexpected flow");
+
+        // Retrieve the encryption session using the SymEncKey with raw keys
+        SealdEncryptionSession* sekrES = [sdk3 retrieveEncryptionSessionWithSymEncKeyRawKeys:esSymEncKeys.sessionId symEncKeyId:symEncKeyFromRawKeys rawSecret:symEncKeySecret rawSymKey:symEncKeyRawKey useCache:NO error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert(sekrES.retrievalDetails.flow == SealdEncryptionSessionRetrievalViaSymEncKey, @"unexpected flow");
+
+        // Self-add using the SymEncKey with Password
+        [sdk2 selfAddToEncryptionSessionWithSymEncKeyPassword:esSymEncKeys.sessionId symEncKeyId:symEncKeyFromPassword symEncKeyPassword:symEncKeyPassword rights:nil useCache:NO error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        // After conversion, sdk2 can retrieve the encryption session directly.
+        SealdEncryptionSession* classicESfromSymEncKeyPassword = [sdk2 retrieveEncryptionSessionWithSessionId:esSymEncKeys.sessionId useCache:NO lookupProxyKey:NO lookupGroupKey:NO error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert(classicESfromSymEncKeyPassword.retrievalDetails.flow == SealdEncryptionSessionRetrievalDirect, @"unexpected flow");
+
+        // Self-add using the SymEncKey with Password
+        [sdk3 selfAddToEncryptionSessionWithSymEncKeyRawKeys:esSymEncKeys.sessionId symEncKeyId:symEncKeyFromRawKeys rawSecret:symEncKeySecret rawSymKey:symEncKeyRawKey rights:nil useCache:NO error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+
+        // After conversion, sdk2 can retrieve the encryption session directly.
+        SealdEncryptionSession* classicESfromSymEncKeyRawKeys = [sdk3 retrieveEncryptionSessionWithSessionId:esSymEncKeys.sessionId useCache:NO lookupProxyKey:NO lookupGroupKey:NO error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert(classicESfromSymEncKeyRawKeys.retrievalDetails.flow == SealdEncryptionSessionRetrievalDirect, @"unexpected flow");
+
         // Using proxy sessions: https://docs.seald.io/sdk/guides/proxy-sessions.html
 
         // Create proxy sessions: user1 needs to be a recipient of this session in order
@@ -974,6 +1027,48 @@ BOOL testSealdAnonymousSDK(void)
         NSString* decryptedMessageTMRES = [tmrES decryptMessage:encryptedMessage error:&error]; // TMR-retrieved session can decrypt the message
         NSCAssert(error == nil, error.localizedDescription);
         NSCAssert([initialMessage isEqualToString:decryptedMessageTMRES], @"decryptedMessageTMRES incorrect");
+
+        // Using SymEncKeys
+
+        // Add SymEncKeys, then retrieve the session using them.
+        // Create session
+        SealdEncryptionSession* esSymEncKeys = [sdkClassicUser createEncryptionSessionWithRecipients:[NSArray arrayWithObjects:[[SealdRecipientWithRights alloc] initWithRecipientId:sdkClassicUserInfo.userId], nil]
+                                                                                            metadata:@"anonymous-objc-sessionSymEncKeys"
+                                                                                            useCache:NO
+                                                                                               error:&error];
+        NSString* encryptedMessageSymEncKey = [esSymEncKeys encryptMessage:initialMessage error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        // Create a SymEncKey with Password
+        NSString* symEncKeyPassword = randomString(16);
+
+        NSString* symEncKeyFromPassword = [esSymEncKeys addSymEncKeyFromPassword:symEncKeyPassword rights:nil error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([symEncKeyFromPassword length] == 36, @"Expected UUID v4");
+
+        // Create a SymEncKey with raw keys
+        NSString* symEncKeySecret = randomString(16);
+        // WARNING: This MUST be a cryptographically random buffer of 64 bytes.
+        NSData* symEncKeyRawKey = randomData(64);
+
+        NSString* symEncKeyFromRawKeys = [esSymEncKeys addSymEncKeyFromRawKeys:symEncKeySecret rawSymKey:symEncKeyRawKey rights:nil error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([symEncKeyFromPassword length] == 36, @"Expected UUID v4");
+
+        // Retrieve the encryption session using the SymEncKey with Password
+        NSString* retrieveJwtPassword = [jwtbuilder anonymousRetrieveSessionWithSymEncKeyId:symEncKeyFromPassword];
+        SealdAnonymousEncryptionSession* sekpES = [anonymousSDK retrieveAnonymousEncryptionSessionWithSymEncKeyPassword:retrieveJwtPassword sessionId:esSymEncKeys.sessionId symEncKeyId:symEncKeyFromPassword symEncKeyPassword:symEncKeyPassword error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSString* decryptedFromPassword = [sekpES decryptMessage:encryptedMessageSymEncKey error:&error]; // test decryption
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([decryptedFromPassword isEqualToString:initialMessage], @"decryptedFromPassword incorrect"); // decrypted message is as expected
+
+        // Retrieve the encryption session using the SymEncKey with raw keys
+        NSString* retrieveJwtRawKeys = [jwtbuilder anonymousRetrieveSessionWithSymEncKeyId:symEncKeyFromRawKeys];
+        SealdAnonymousEncryptionSession* sekrES = [anonymousSDK retrieveAnonymousEncryptionSessionWithSymEncKeyRawKeys:retrieveJwtRawKeys sessionId:esSymEncKeys.sessionId symEncKeyId:symEncKeyFromRawKeys rawSecret:symEncKeySecret rawSymKey:symEncKeyRawKey error:&error];
+        NSCAssert(error == nil, error.localizedDescription);
+        NSString* decryptedFromRawKeys = [sekrES decryptMessage:encryptedMessageSymEncKey error:&error]; // test decryption
+        NSCAssert(error == nil, error.localizedDescription);
+        NSCAssert([decryptedFromRawKeys isEqualToString:initialMessage], @"decryptedFromRawKeys incorrect"); // decrypted message is as expected
 
         // Serialize / Deserialize session
         NSString* serialized = [anonymousSession serializeWithError:&error]; // serialize

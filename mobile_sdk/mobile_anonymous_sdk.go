@@ -54,3 +54,19 @@ func (maSDK MobileAnonymousSDK) DeserializeAnonymousEncryptionSession(serialized
 	}
 	return mobileAnonymousEncryptionSessionFromCommon(aes), nil
 }
+
+func (maSDK MobileAnonymousSDK) RetrieveAnonymousEncryptionSessionWithSymEncKeyPassword(retrieveJWT string, sessionId string, symEncKeyId string, symEncKeyPassword string) (*MobileAnonymousEncryptionSession, error) {
+	aes, err := maSDK.aSDK.RetrieveEncryptionSessionWithSymEncKeyPassword(retrieveJWT, sessionId, symEncKeyId, symEncKeyPassword)
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+	return mobileAnonymousEncryptionSessionFromCommon(aes), nil
+}
+
+func (maSDK MobileAnonymousSDK) RetrieveAnonymousEncryptionSessionWithSymEncKeyRawKeys(retrieveJWT string, sessionId string, symEncKeyId string, rawSecret string, rawSymKey []byte) (*MobileAnonymousEncryptionSession, error) {
+	aes, err := maSDK.aSDK.RetrieveEncryptionSessionWithSymEncKeyRawKeys(retrieveJWT, sessionId, symEncKeyId, rawSecret, rawSymKey)
+	if err != nil {
+		return nil, utils.ToSerializableError(tracerr.Wrap(err))
+	}
+	return mobileAnonymousEncryptionSessionFromCommon(aes), nil
+}

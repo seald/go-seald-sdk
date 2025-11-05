@@ -1,3 +1,8 @@
+# 0.12.0 : Unreleased
+- @ios: \[new feature\] Add SymEncKeys : in main SDK add methods to retrieve session and self-add with SymEncKeys, and add EncryptionSession methods to add SymEncKeys; in Anonymous SDK, add methods to retrieve EncryptionSession with SymEncKey.
+- @go: \[new feature\] SymEncKey methods now support passing nil for rights, which gives default rights.
+
+
 # 0.11.0 : 2025/10/14
 - @ios: \[new feature\] Now compatible with macOS >= 12.0 (still considered beta).
 - @all: \[enhancement\] Release database lock automatically when instantiation failed.

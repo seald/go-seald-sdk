@@ -186,6 +186,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdRecipientsList instance. and a `NSError*` that indicates if any error occurred.
  */
 - (void) listRecipientsAsyncWithCompletionHandler:(void (^)(SealdRecipientsList* result, NSError*_Nullable error))completionHandler;
+
 /**
  * Encrypt a clear-text string into an encrypted message, for the recipients of this session.
  *
@@ -340,6 +341,68 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void) addMultipleTmrAccessesAsync:(const NSArray<SealdTmrRecipientWithRights*>*)recipients
                    completionHandler:(void (^)(NSDictionary<NSString*, SealdActionStatus*>* result, NSError*_Nullable error))completionHandler;
+
+/**
+ * Add a SymEncKey for this session, which allows to retrieve the session without being a recipient,
+ * and/or to self-add to the session, with a password.
+ *
+ * Returns the id of the newly added SymEncKey.
+ *
+ * @param password The password to set for this SymEncKey.
+ * @param rights The rights to give to the SymEncKey. Nil for default (read = true, forward = true, revoke = false).
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return A `NSString*` containing the Id of the newly added SymEncKey.
+ */
+- (NSString*) addSymEncKeyFromPassword:(const NSString*)password
+                                rights:(const SealdRecipientRights*_Nullable)rights
+                                 error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
+/**
+ * Add a SymEncKey for this session, which allows to retrieve the session without being a recipient,
+ * and/or to self-add to the session, with a password.
+ *
+ * Returns the id of the newly added SymEncKey.
+ *
+ * @param password The password to set for this SymEncKey.
+ * @param rights The rights to give to the SymEncKey. Nil for default (read = true, forward = true, revoke = false).
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSString*` instance, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) addSymEncKeyAsyncFromPassword:(const NSString*)password
+                                rights:(const SealdRecipientRights*_Nullable)rights
+                     completionHandler:(void (^)(NSString* result, NSError*_Nullable error))completionHandler;
+
+/**
+ * Add a SymEncKey for this session, which allows to retrieve the session without being a recipient,
+ * and/or to self-add to the session, with raw keys.
+ *
+ * Returns the id of the newly added SymEncKey.
+ *
+ * @param rawSecret The raw secret to set for this SymEncKey.
+ * @param rawSymKey The raw SymKey to set for this SymEncKey.
+ * @param rights The rights to give to the SymEncKey. Nil for default (read = true, forward = true, revoke = false).
+ * @param error A pointer to a SealdError* where details will be stored in case of error.
+ * @return A `NSString*` containing the Id of the newly added SymEncKey.
+ */
+- (NSString*) addSymEncKeyFromRawKeys:(const NSString*)rawSecret
+                            rawSymKey:(const NSData*)rawSymKey
+                               rights:(const SealdRecipientRights*_Nullable)rights
+                                error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
+/**
+ * Add a SymEncKey for this session, which allows to retrieve the session without being a recipient,
+ * and/or to self-add to the session, with raw keys.
+ *
+ * Returns the id of the newly added SymEncKey.
+ *
+ * @param rawSecret The raw secret to set for this SymEncKey.
+ * @param rawSymKey The raw SymKey to set for this SymEncKey.
+ * @param rights The rights to give to the SymEncKey. Nil for default (read = true, forward = true, revoke = false).
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a `NSString*` instance, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) addSymEncKeyAsyncFromRawKeys:(const NSString*)rawSecret
+                            rawSymKey:(const NSData*)rawSymKey
+                               rights:(const SealdRecipientRights*_Nullable)rights
+                    completionHandler:(void (^)(NSString* result, NSError*_Nullable error))completionHandler;
 
 /**
  * Serialize the EncryptionSession to a string.

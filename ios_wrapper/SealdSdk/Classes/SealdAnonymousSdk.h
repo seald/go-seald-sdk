@@ -76,6 +76,72 @@ NS_ASSUME_NONNULL_BEGIN
                                                 completionHandler:(void (^)(SealdAnonymousEncryptionSession* anonymousEncryptionSession, NSError*_Nullable error))completionHandler;
 
 /**
+ * Retrieve an anonymous encryption session, with which you can then encrypt / decrypt multiple messages, through SymEncKey with a password.
+ *
+ * @param retrieveToken Mandatory. The JWT to retrieve the session.
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param symEncKeyPassword The password used to create this SymEncKey.
+ * @param error The error that occurred while retrieving the session, if any.
+ * @return The retrieved SealdAnonymousEncryptionSession, or null if an error occurred.
+ */
+- (SealdAnonymousEncryptionSession*) retrieveAnonymousEncryptionSessionWithSymEncKeyPassword:(const NSString*)retrieveToken
+                                                                                   sessionId:(const NSString*)sessionId
+                                                                                 symEncKeyId:(const NSString*)symEncKeyId
+                                                                           symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                                                       error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
+/**
+ * Retrieve an anonymous encryption session, with which you can then encrypt / decrypt multiple messages, through SymEncKey with a password.
+ *
+ * @param retrieveToken Mandatory. The JWT to retrieve the session.
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param symEncKeyPassword The password used to create this SymEncKey.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdAnonymousEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) retrieveAnonymousEncryptionSessionAsyncWithSymEncKeyPassword:(const NSString*)retrieveToken
+                                                            sessionId:(const NSString*)sessionId
+                                                          symEncKeyId:(const NSString*)symEncKeyId
+                                                    symEncKeyPassword:(const NSString*)symEncKeyPassword
+                                                    completionHandler:(void (^)(SealdAnonymousEncryptionSession* anonymousEncryptionSession, NSError*_Nullable error))completionHandler;
+
+/**
+ * Retrieve an anonymous encryption session, with which you can then encrypt / decrypt multiple messages, through SymEncKey with raw keys.
+ *
+ * @param retrieveToken Mandatory. The JWT to retrieve the session.
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param rawSecret The rawSecret used to create this SymEncKey.
+ * @param rawSymKey The rawSymKey used to create this SymEncKey.
+ * @param error The error that occurred while retrieving the session, if any.
+ * @return The retrieved SealdAnonymousEncryptionSession, or null if an error occurred.
+ */
+- (SealdAnonymousEncryptionSession*) retrieveAnonymousEncryptionSessionWithSymEncKeyRawKeys:(const NSString*)retrieveToken
+                                                                                  sessionId:(const NSString*)sessionId
+                                                                                symEncKeyId:(const NSString*)symEncKeyId
+                                                                                  rawSecret:(const NSString*)rawSecret
+                                                                                  rawSymKey:(const NSData*)rawSymKey
+                                                                                      error:(NSError*_Nullable*)error __attribute__((swift_error(nonnull_error)));
+
+/**
+ * Retrieve an anonymous encryption session, with which you can then encrypt / decrypt multiple messages, through SymEncKey with raw keys.
+ *
+ * @param retrieveToken Mandatory. The JWT to retrieve the session.
+ * @param sessionId The id of the session to retrieve.
+ * @param symEncKeyId The id of the SymEncKey to use to retrieve the session.
+ * @param rawSecret The rawSecret used to create this SymEncKey.
+ * @param rawSymKey The rawSymKey used to create this SymEncKey.
+ * @param completionHandler A callback called after function execution. This callback takes two arguments, a SealdAnonymousEncryptionSession* instance of the retrieved encryption session, and a `NSError*` that indicates if any error occurred.
+ */
+- (void) retrieveAnonymousEncryptionSessionAsyncWithSymEncKeyRawKeys:(const NSString*)retrieveToken
+                                                           sessionId:(const NSString*)sessionId
+                                                         symEncKeyId:(const NSString*)symEncKeyId
+                                                           rawSecret:(const NSString*)rawSecret
+                                                           rawSymKey:(const NSData*)rawSymKey
+                                                   completionHandler:(void (^)(SealdAnonymousEncryptionSession* anonymousEncryptionSession, NSError*_Nullable error))completionHandler;
+
+/**
  * Deserialize a serialized session.
  * For advanced use.
  *
